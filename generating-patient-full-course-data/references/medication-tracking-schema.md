@@ -1,0 +1,92 @@
+# Medication Tracking and List Schema
+
+## Input Workbook
+
+Accept the reviewed patient workbook with these required headers in this exact order:
+
+`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
+
+For stage 3, keep the reviewed 17-column workbook unchanged. Read adverse-reaction level from `患者标签`; its value must be `轻度 | 中度 | 高度`. Require the trigger to include `服务周期 YYYY-MM-DD 至 YYYY-MM-DD`, parse both dates, and reject missing/invalid periods or a start after the end. Preserve every non-empty row, `userid`, source order, patient name, activation time, gender, age, disease, allergy history, combined medication, and prescription list. Reject blank or duplicate `userid`, invalid age or activation date, invalid patient labels, blank disease, blank combined medication, blank prescription list, or reordered headers. Do not substitute medication duration for the service period.
+
+The extractor emits:
+
+- `userid`, `patientName`, `activateDate`, `serviceStartDate`, `serviceEndDate`, `adverseReactionLevel` (from `患者标签`), `gender`, `age`, `diseaseName`, `allergyHistory`
+- `combinedMedication`: non-empty array split from the reviewed `+`-separated field
+- `prescriptionList`, `treatmentPlan`, `surgeryName`, `coursePlanName`
+
+`activateDate` is record metadata only. Never use it to calculate, anchor, or describe a medication cycle.
+
+## Generated JSON
+
+Generate exactly one record per patient in source order with exactly these four keys:
+
+1. `userid`
+2. `medicationPlan`
+3. `medicationCycle`
+4. `medicationItems`
+
+Each `medicationItems` entry must have exactly these seven keys:
+
+1. `drugName`
+2. `specification`
+3. `singleDose`
+4. `frequency`
+5. `medicationTime`
+6. `treatmentDays`
+7. `precautions`
+
+## Medication Plan
+
+- Write concise, individualized Chinese text covering the actual disease, age group, gender, reviewed medications, adherence, monitoring, and clinician review.
+- Describe only the medications already present in `combinedMedication` and `prescriptionList`.
+- When `treatmentPlan` exists, keep the plan consistent with it and do not introduce another treatment.
+- Do not promise efficacy or invent diagnoses, examinations, contraindications, complications, or response.
+
+## Medication Cycle
+
+- Derive the cycle from the reviewed prescription, disease logic, age, gender, and supplied treatment plan.
+- State each distinct finite or long-term phase clearly. Do not calculate dates from `activateDate` and do not include the activation date text.
+- Never extend a reviewed finite course or convert a finite course into long-term therapy without source support.
+- When the source does not provide a reliable duration, use conservative wording requiring clinician confirmation rather than inventing a duration.
+
+## Medication Items
+
+- `drugName`: must exactly equal one item in `combinedMedication`. Every reviewed medication appears exactly once and in the same order. No other drug is allowed.
+- `specification`: preserve the reviewed specification. Use one normalized format for equivalent values, such as `20mg/粒`, `0.5g/片`, or `4000单位/支`.
+- `singleDose`: preserve the reviewed dose, including age-adjusted content. Do not silently revise it.
+- `frequency`: use Chinese quantitative forms such as `每日1次`, `每日2次`, `每8小时1次`, or `每周1次`. Do not use `qd`, `bid`, `tid`, `q8h`, `prn`, or an unquantified `必要时`.
+- `medicationTime`: contain only a normalized timing phrase such as `早餐前`, `餐后`, `餐后1小时`, `晚餐中`, `睡前`, `早晚`, `固定时间`, or a quantified equal interval. Do not put administration routes such as `口服`, `吸入`, `肌肉注射`, `静脉注射`, or `静脉滴注` here, and do not use non-timing text such as `按医嘱`.
+- `treatmentDays`: use a positive integer when the reviewed course gives a fixed number of days; otherwise use exactly `长期` or `无限期` only when the source explicitly supports it. Stop and report the affected `userid` when the reviewed prescription does not support any of these values; do not invent a duration.
+- `precautions`: include medication-specific safety advice. Mention every supplied non-empty allergy history. For multi-drug regimens, require clinician/pharmacist review of combined-medication interactions or spacing without inventing a specific interaction. Include bleeding, hepatic, renal, or age-related cautions only when supported. Do not invent an allergy or contraindication.
+
+## Tracking Reminder Workbook
+
+Use exactly these 16 headers from the bundled template:
+
+`序号 | 患者ID | 姓名 | 性别 | 年龄 | 疾病 | 既往过敏史 | 联合用药 | 体温监测次数 | 血压、心率监测次数 | 用药提醒次数 | 用药方案 | 用药周期 | 方案链接 | 患者响应率 | 是否触发人工干预`
+
+Generate one row per input patient in source order. Validate the full trigger-supplied service period, then let `D = max(服务结束日期 - 患者激活日期 + 1, 1)` using calendar days. The service start date does not replace the patient activation date in this formula. Generate stable per-user pseudorandom values so rerunning the same input and service period is reproducible while values vary between patients:
+
+- `体温监测次数 = round(2 × D × random[0.4, 0.9))`
+- `血压、心率监测次数 = round(D × random[0.5, 0.85))`
+- `用药提醒次数 = round(3 × D × random[0.6, 0.85))`
+- `患者响应率`: integer from 45 through 70 inclusive; store the integer and let the page display it with `%`.
+- `是否触发人工干预`: `中度` or `高度` → `是`; `轻度` → `否`.
+
+Leave `方案链接` blank because the input does not establish it.
+
+## Medication List Workbook
+
+Use exactly these nine headers from the bundled template:
+
+`userid | 用药方案确认时间 | 药品名称 | 规格 | 单次剂量 | 用药频率 | 用药时间 | 疗程天数 | 注意事项`
+
+Flatten medication items in patient order and reviewed medication order. Generate `用药方案确认时间` once per patient and reuse the same confirmation timestamp for every medication row belonging to that patient. The confirmation timestamp must be strictly later than `激活时间`, remain in the same year and month, and fall between `06:00:00` and `21:59:59` inclusive. Generate it stably from `userid` so rerunning the same input produces the same value. Stop and report the affected `userid` if no legal timestamp remains in the activation month; never cross into another month. This timestamp is record metadata only and must not derive, anchor, or describe `medicationCycle`. A `userid` therefore appears once per reviewed medication, while the distinct userid set must exactly equal the input set.
+
+## Compliance Checks
+
+- Preserve all source `userid` values; never omit, add, merge, or change patients.
+- Do not add any medication absent from the reviewed combined medication and prescription list.
+- Keep the medication plan, cycle, and item list mutually consistent. The plan names every reviewed medication, and each item's specification, dose, frequency, and duration match its reviewed prescription segment.
+- Verify every medication confirmation timestamp is strictly later than activation, in the same month, within `06:00:00–21:59:59`, identical across that patient's medication rows, and stable across repeated generation.
+- Keep content educational and subject to clinician/pharmacist review; it is not a real prescription.

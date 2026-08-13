@@ -1,0 +1,7 @@
+interface:
+  display_name: "患者全病程数据生成"
+  short_description: "依据患者Excel生成全病程明细、健康方案、用药跟踪及不良反应清单"
+  default_prompt: "Use $generating-patient-full-course-data for: 生成患者明细 依据文件：<Excel路径>; 生成健康管理方案 依据文件：<Excel路径>; 生成跟踪提醒和用药清单 依据文件：<Excel路径> 服务周期 YYYY-MM-DD 至 YYYY-MM-DD; or 生成不良反应清单 依据文件：<Excel路径> 数量：N."
+
+policy:
+  allow_implicit_invocation: true
