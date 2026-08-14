@@ -94,6 +94,28 @@ assert.equal(outputRows[1][15], "已生成");
 assert.equal(outputRows[1][16], "待确认");
 assert.equal(outputSheet.tables.items.length, 1);
 
+const variableCountRecords = [
+  records[0],
+  {
+    ...records[1],
+    combinedMedication: ["琥珀酸美托洛尔缓释片"],
+    prescriptionList: "琥珀酸美托洛尔缓释片 规格47.5mg/片，每次23.75mg，口服，每日1次，早餐后服用，长期治疗；因青霉素过敏，未选用青霉素类药物；【术后用药阶段：心脏起搏器植入术后】",
+  },
+];
+await fs.writeFile(recordsPath, JSON.stringify(variableCountRecords, null, 2), "utf8");
+const variableCountResult = spawnSync(nodePath, [
+  path.join(scriptDir, "build_workbook.mjs"),
+  "--input", sourcePath,
+  "--records", recordsPath,
+  "--template", templatePath,
+  "--output", outputPath,
+], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModules } });
+assert.equal(variableCountResult.status, 0, `${variableCountResult.stdout}\n${variableCountResult.stderr}`);
+const variableCountWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(outputPath));
+const variableCountRows = variableCountWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
+assert.equal(variableCountRows[1][11].split("+").length, 2);
+assert.equal(variableCountRows[2][11].split("+").length, 1);
+
 async function assertInvalidRecords(invalidRecords, expectedMessage) {
   await fs.writeFile(recordsPath, JSON.stringify(invalidRecords, null, 2), "utf8");
   const invalidResult = spawnSync(nodePath, [
@@ -108,9 +130,9 @@ async function assertInvalidRecords(invalidRecords, expectedMessage) {
 }
 
 await assertInvalidRecords([
-  { ...records[0], combinedMedication: ["华法林钠片"], prescriptionList: "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周" },
+  { ...records[0], combinedMedication: [], prescriptionList: "" },
   records[1],
-], /combinedMedication必须为2～5项数组/);
+], /combinedMedication必须为1～5项数组/);
 
 await assertInvalidRecords([
   {
@@ -119,7 +141,7 @@ await assertInvalidRecords([
     prescriptionList: "药物一 规格1mg，每次1mg，口服，每日1次，早餐后服用，连续1天 + 药物二 规格2mg，每次2mg，口服，每日1次，早餐后服用，连续1天 + 药物三 规格3mg，每次3mg，口服，每日1次，早餐后服用，连续1天 + 药物四 规格4mg，每次4mg，口服，每日1次，早餐后服用，连续1天 + 药物五 规格5mg，每次5mg，口服，每日1次，早餐后服用，连续1天 + 药物六 规格6mg，每次6mg，口服，每日1次，早餐后服用，连续1天",
   },
   records[1],
-], /combinedMedication必须为2～5项数组/);
+], /combinedMedication必须为1～5项数组/);
 
 await assertInvalidRecords([
   {

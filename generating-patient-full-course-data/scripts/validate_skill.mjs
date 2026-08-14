@@ -54,8 +54,9 @@ assert.match(skill, /scripts\/build_medication_tracking_workbooks\.mjs/);
 assert.match(skill, /references\/adverse-reaction-schema\.md/);
 assert.match(skill, /scripts\/extract_adverse_reaction_patients\.mjs/);
 assert.match(skill, /scripts\/build_adverse_reaction_workbook\.mjs/);
-assert.match(skill, /2～5/);
-assert.match(skill, /first determine 2～5 clinically supported medications/);
+assert.match(skill, /1～5/);
+assert.match(skill, /first determine 1～5 clinically supported medications/);
+assert.match(skill, /never force the same count across patients or randomize the count/);
 assert.match(skill, /生成患者明细 依据文件：<source\.xlsx>/);
 assert.match(skill, /生成健康管理方案 依据文件：<source\.xlsx>/);
 assert.match(skill, /生成跟踪提醒和用药清单 依据文件：<source\.xlsx>/);
@@ -87,13 +88,17 @@ assert.match(adverseSchema, /`高度` → `是`; `中度` → `否`/);
 assert.match(adverseSchema, /Do not introduce a medication absent from `联合用药` or `处方清单`/);
 
 const schema = await fs.readFile(path.join(skillDir, "references", "record-schema.md"), "utf8");
-assert.match(schema, /2–5/);
+assert.match(schema, /1–5/);
 assert.match(schema, /same-order one-to-one mapping/);
 assert.doesNotMatch(schema, /1–6|\["无"\]/);
+assert.match(schema, /include the supplied product first/);
+assert.match(schema, /must not target a fixed count, randomize the count/);
 
 const clinicalRules = await fs.readFile(path.join(skillDir, "references", "clinical-rules.md"), "utf8");
-assert.match(clinicalRules, /2–5/);
-assert.doesNotMatch(clinicalRules, /Do not force 2 drugs|\["无"\]/);
+assert.match(clinicalRules, /1–5/);
+assert.match(clinicalRules, /treat the supplied `产品名称` as a source-reviewed medication and include it first/);
+assert.match(clinicalRules, /Do not target a fixed medication count, randomize the count/);
+assert.doesNotMatch(clinicalRules, /\["无"\]/);
 
 const metadata = await fs.readFile(path.join(skillDir, "agents/openai.yaml"), "utf8");
 assert.match(metadata, /display_name: "患者全病程数据生成"/);

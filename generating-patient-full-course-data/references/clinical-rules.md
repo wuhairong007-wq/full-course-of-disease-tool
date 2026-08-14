@@ -4,7 +4,9 @@
 
 Generate simulated discharge records, not real prescriptions. Use only source disease, age, sex, product, product type, and allergy history. Do not invent symptoms, test results, pathology, stage, comorbidities, organ function, weight, contraindications, or efficacy claims. Add a clinician-review statement to each prescription.
 
-Every completed record must contain 2–5 clinically justified medications. First finalize `combinedMedication`, then derive `prescriptionList` from it in the same order with exactly one complete prescription entry per medication. If fewer than 2 medications have a direct indication, stop and report the affected `userid`; never manufacture an indication or add a generic adjunct merely to satisfy the count.
+Every completed record must contain 1–5 clinically justified medications. When `产品类型=用药`, treat the supplied `产品名称` as a source-reviewed medication and include it first. Then independently evaluate first-line disease treatment and every directly indicated adjunct from disease, age, sex, and allergy history; add each supported medication until the clinically complete regimen is represented, subject to the five-drug cap. Do not stop after the product when another safe, directly indicated medication can be determined. Do not target a fixed medication count, randomize the count, or add an unrelated drug merely to create variation. If no additional medication can be selected without inventing missing clinical facts, retain the reviewed product as the sole medication.
+
+First finalize `combinedMedication`, then derive `prescriptionList` from it in the same order with exactly one complete prescription entry per medication. Every medication added by AI must receive a complete matching prescription entry; never add a prescription drug absent from `combinedMedication`.
 
 ## Allergy
 
@@ -35,13 +37,13 @@ For non-surgery patients:
 
 1. List first-line etiologic/disease treatment plus the named medicinal product when it is a drug.
 2. Add only directly indicated adjuncts.
-3. For malignant tumors, never cross indications; if missing pathology or stage prevents selection of at least 2 supported medications, stop for the affected patient rather than guessing systemic therapy.
+3. For malignant tumors, never cross indications. If pathology or stage is insufficient for systemic therapy, retain only source-reviewed medicinal products and do not guess another antitumor drug.
 
 ## Dose and Warning Rules
 
 - Age 18–64: use guideline-standard adult starting doses.
 - Age 65+: use a conservative 1/2–2/3 starting dose when appropriate and include `需根据肌酐清除率调整`.
-- Age under 18: use a weight-based reference range only when weight-independent bounds are safe; if safe dosing cannot be stated for at least 2 indicated drugs without weight, stop for the affected patient and request clinician calculation. Never use fluoroquinolones, tetracyclines, or aspirin.
+- Age under 18: use a weight-based reference range only when weight-independent bounds are safe. Omit any otherwise optional medication whose safe dose cannot be stated without weight; stop only if no source-reviewed or directly indicated medication can be prescribed safely. Never use fluoroquinolones, tetracyclines, or aspirin.
 - Acetaminophen: include `每日极量2g，禁与含同成分复方制剂同服`.
 - NSAIDs: include the mandatory gastrointestinal/cardiovascular warning; never use after gastrointestinal surgery.
 - Anticoagulants: include meal timing when required, bleeding monitoring, avoidance of strenuous activity, and a clear review/duration point.

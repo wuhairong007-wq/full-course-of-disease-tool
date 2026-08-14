@@ -26,8 +26,8 @@ Return one object per source row with exactly these keys in this order:
 Rules:
 
 - `allergyHistory` must equal the source value. Do not add or delete known allergies.
-- `combinedMedication` must be a unique JSON array containing 2–5 clinically supported drug generic names. Do not use `"无"`, and do not add an unrelated drug merely to reach the minimum.
-- Generate `prescriptionList` only after `combinedMedication` is final. Split the prescription at ` + `: the number of prescription entries must equal the medication count, and entry N must begin with medication N's exact name. This same-order one-to-one mapping prevents omissions, duplicates, and extra prescription drugs.
+- `combinedMedication` must be a unique JSON array containing 1–5 clinically supported drug generic names. When the source product type is medicinal, include the supplied product first. AI must add every first-line or directly indicated medication that can be selected safely from disease, age, sex, and allergy history, but it must not target a fixed count, randomize the count, or add an unrelated drug merely to create variation. If no additional medication is supportable without missing clinical facts, the reviewed product may remain the sole medication.
+- Generate `prescriptionList` only after `combinedMedication` is final. Split the prescription at ` + `: the number of prescription entries must equal the medication count, and entry N must begin with medication N's exact name. AI-added medications must never lack their own complete prescription entry. This same-order one-to-one mapping prevents omissions, duplicates, and extra prescription drugs.
 - Keep warnings, allergy substitutions, clinician-review text, and the postoperative-stage label inside the corresponding final prescription entry; never create a standalone ` + ` segment for non-drug text.
 - Each prescription entry uses `药品名 + 规格 + 每次用量 + 给药途径 + 频次 + 服药时机 + 疗程`; join complete entries with the exact separator ` + `.
 - Do not use `tid`, `bid`, `qd`, `q8h`, `prn`, `ivgtt`, `im`, `po`, `适量`, `酌情`, or `必要时`.

@@ -41,7 +41,7 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
    <bundled-node> scripts/extract_patients.mjs --input <source.xlsx> --output <temp>/patients.json
    ```
 
-2. For each patient, first determine 2～5 clinically supported medications, then generate exactly one prescription entry for each medication in the same order. Generate exactly one six-field record according to both stage-1 references and write `<temp>/records.json`.
+2. For each patient, first determine 1～5 clinically supported medications. Include a supplied medicinal product first, then add every safe first-line or directly indicated medication supported by disease, age, sex, and allergy history. Let clinical need determine the count; never force the same count across patients or randomize the count. Generate exactly one complete prescription entry for each final medication in the same order. Generate exactly one six-field record according to both stage-1 references and write `<temp>/records.json`.
 3. Set the output to the source directory unless the user specifies another location. Use `<source-stem>_患者全病程数据.xlsx`; if the source stem already contains `患者明细`, prefer `患者全病程数据_生成.xlsx`. If the source directory is not writable, use `outputs/patient-full-course/<source-stem>/`.
 4. Run:
 
@@ -147,7 +147,7 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
 
 - Stop and report missing or reordered required columns instead of guessing.
 - Stop on duplicate/blank `userid`, invalid age, empty disease or plan name, unsupported product type, malformed records, or patient coverage mismatch.
-- In stage 1, stop and report the affected `userid` if the supplied fields cannot support at least 2 clinically justified medications. Do not pad the list with unrelated drugs.
+- In stage 1, allow a single supplied medicinal product when no additional medication can be selected without inventing missing clinical facts. Stop only if no source-reviewed or directly indicated medication can be prescribed safely. Never omit a supportable first-line medication, force a fixed count, randomize the count, or pad the list with unrelated drugs.
 - In stage 2, stop if treatment or pharmacology content omits a reviewed medication, or if treatment content introduces a medication or procedure not present in the reviewed input.
 - In stage 3, stop if the trigger omits an invalid `服务周期 YYYY-MM-DD 至 YYYY-MM-DD`, if the start is after the end, or if `患者标签` is not `轻度 | 中度 | 高度`; stop and report the affected `userid` if no same-month confirmation timestamp exists strictly after activation within `06:00:00–21:59:59`; stop for the existing medication, prescription, timing, cycle, and allergy validation failures.
 - In stage 4, stop if `数量：N` is missing or invalid, if fewer than `N` patients have a `中度` or `高度` label, if a selected patient has no same-month timestamp strictly after activation within `06:00:00–21:59:59`, or if the fixed input/output schema, selected-patient order, occurrence-time boundary, or generated narrative contract fails.
