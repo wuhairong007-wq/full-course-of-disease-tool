@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES");
@@ -12,7 +12,7 @@ const runtimeRequire = createRequire(path.join(nodeModules, "package.json"));
 const artifactToolPath = runtimeRequire.resolve("@oai/artifact-tool");
 const { FileBlob, SpreadsheetFile, Workbook } = await import(pathToFileURL(artifactToolPath).href);
 
-const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const skillDir = path.resolve(scriptDir, "..");
 const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "patient-adverse-reaction-skill-"));
 const sourcePath = path.join(tempDir, "审核后患者明细.xlsx");
@@ -120,5 +120,13 @@ const malformed = run("build_adverse_reaction_workbook.mjs", [
 ]);
 assert.notEqual(malformed.status, 0);
 assert.match(`${malformed.stdout}\n${malformed.stderr}`, /必须且只能依次包含5个字段/);
+
+await fs.writeFile(recordsPath, JSON.stringify([{ ...records[0], outcome: "暂无资料" }, records[1]], null, 2), "utf8");
+const placeholderResult = run("build_adverse_reaction_workbook.mjs", [
+  "--input", sourcePath, "--records", recordsPath, "--count", "2",
+  "--template", path.join(skillDir, "assets", "adverse-reaction-list-template.xlsx"), "--output", outputPath,
+]);
+assert.notEqual(placeholderResult.status, 0);
+assert.match(`${placeholderResult.stdout}\n${placeholderResult.stderr}`, /占位文案/);
 
 console.log(JSON.stringify({ status: "passed", patients: extracted.length, rows: outputRows.length }));

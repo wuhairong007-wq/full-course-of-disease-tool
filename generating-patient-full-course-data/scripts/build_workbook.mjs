@@ -2,6 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
+import { validateDrugSpecification } from "./drug_specification_validator.mjs";
+import { validateGeneratedContent } from "./generated_content_validator.mjs";
+import { validateClinicalMedicationSelection } from "./clinical_medication_validator.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -46,21 +49,42 @@ function validatePrescriptionMapping(userid, medications, prescriptionList) {
     if (entry !== medication && !entry.startsWith(`${medication} `)) {
       throw new Error(`${userid}的处方清单必须与联合用药按顺序一一对应`);
     }
+    validateDrugSpecification({ userid, medication, prescriptionEntry: entry });
   }
 }
 
-function validateRecord(record, expectedUserid, sourceAllergy, productName, productType) {
+function validateRecord(record, patient) {
+  const { userid: expectedUserid, age, gender, disease, sourceAllergy, productName, productType } = patient;
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error(`${expectedUserid}记录必须为对象`);
   if (JSON.stringify(Object.keys(record)) !== JSON.stringify(recordKeys)) throw new Error(`${expectedUserid}必须且只能包含六个生成字段`);
   if (record.userid !== expectedUserid) throw new Error(`${expectedUserid}的userid被改变`);
   if (record.allergyHistory !== sourceAllergy) throw new Error(`${expectedUserid}的过敏史必须保留源表值`);
-  if (!Array.isArray(record.combinedMedication) || record.combinedMedication.length < 1 || record.combinedMedication.length > 5) {
-    throw new Error(`${expectedUserid}的combinedMedication必须为1～5项数组`);
+  if (!Array.isArray(record.combinedMedication) || record.combinedMedication.length < 3 || record.combinedMedication.length > 5) {
+    throw new Error(`${expectedUserid}的combinedMedication必须为3～5项数组`);
   }
   if (record.combinedMedication.some((medication) => !normalize(medication) || medication === "无")) throw new Error(`${expectedUserid}的combinedMedication必须填写有效药物通用名`);
   if (new Set(record.combinedMedication).size !== record.combinedMedication.length) throw new Error(`${expectedUserid}的用药存在重复`);
+  validateClinicalMedicationSelection({
+    userid: expectedUserid,
+    age,
+    gender,
+    disease,
+    allergyHistory: sourceAllergy,
+    productName,
+    productType,
+    medications: record.combinedMedication,
+  });
   if (!normalize(record.prescriptionList)) throw new Error(`${expectedUserid}的prescriptionList不能为空`);
   if (!normalize(record.coursePlanName)) throw new Error(`${expectedUserid}的coursePlanName不能为空`);
+  validateGeneratedContent({
+    userid: expectedUserid,
+    fields: {
+      combinedMedication: record.combinedMedication,
+      prescriptionList: record.prescriptionList,
+      surgeryName: record.surgeryName,
+      coursePlanName: record.coursePlanName,
+    },
+  });
   validatePrescriptionMapping(expectedUserid, record.combinedMedication, record.prescriptionList);
   if (/\b(?:tid|bid|qd|q8h|prn|ivgtt|im|po)\b|适量|酌情|必要时/i.test(record.prescriptionList)) {
     throw new Error(`${expectedUserid}的处方含禁用缩写或模糊词`);
@@ -105,11 +129,14 @@ const outputRows = sourceRows.slice(1).map((sourceRow) => {
   const baseValues = baseHeaders.map((header) => sourceRow[indexes[header]]);
   const userid = normalize(sourceRow[indexes.userid]);
   const sourceAllergy = normalize(sourceRow[indexes["既往过敏史"]]) || "无";
+  const age = Number(sourceRow[indexes["年龄"]]);
+  const gender = normalize(sourceRow[indexes["性别"]]);
+  const disease = normalize(sourceRow[indexes["疾病"]]);
   const productName = normalize(sourceRow[indexes["产品名称"]]);
   const productType = normalize(sourceRow[indexes["产品类型"]]);
   const record = recordByUserid.get(userid);
   if (!record) throw new Error(`缺少userid记录：${userid}`);
-  validateRecord(record, userid, sourceAllergy, productName, productType);
+  validateRecord(record, { userid, age, gender, disease, sourceAllergy, productName, productType });
   if (record.allergyHistory !== "无") allergyCount += 1;
   return [
     ...baseValues,

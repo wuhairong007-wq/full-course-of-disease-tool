@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES");
@@ -12,7 +12,7 @@ const runtimeRequire = createRequire(path.join(nodeModules, "package.json"));
 const artifactToolPath = runtimeRequire.resolve("@oai/artifact-tool");
 const { FileBlob, SpreadsheetFile, Workbook } = await import(pathToFileURL(artifactToolPath).href);
 
-const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const skillDir = path.resolve(scriptDir, "..");
 const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "patient-course-skill-"));
 const sourcePath = path.join(tempDir, "基础患者.xlsx");
@@ -26,25 +26,25 @@ const sourceHeaders = [
   "患者标签", "既往过敏史", "产品名称", "产品类型",
 ];
 const sourceRows = [
-  [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动伴缓慢心室率", "130****0001", "江苏省南京市", "轻度", "无", "心脏起搏器", "器械"],
-  [2, "U002", "乙*", "2026-08-02 11:00:00", "女", 42, "肥厚型梗阻性心肌病", "130****0002", "江苏省无锡市", "中度", "青霉素过敏", "心脏起搏器", "器械"],
+  [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动伴缓慢心室率合并慢性心力衰竭", "130****0001", "江苏省南京市", "轻度", "无", "心脏起搏器", "器械"],
+  [2, "U002", "乙*", "2026-08-02 11:00:00", "女", 42, "原发性膝骨关节炎", "130****0002", "江苏省无锡市", "中度", "青霉素过敏", "硫酸氨基葡萄糖胶囊", "用药"],
 ];
 const records = [
   {
     userid: "U001",
     allergyHistory: "无",
-    combinedMedication: ["华法林钠片", "对乙酰氨基酚片"],
-    prescriptionList: "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天；【术后用药阶段：心脏起搏器植入术后】",
+    combinedMedication: ["华法林钠片", "达格列净片", "对乙酰氨基酚片"],
+    prescriptionList: "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周 + 达格列净片 规格10mg/片，每次10mg，口服，每日1次，早餐后服用，长期治疗；需根据肌酐清除率调整 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天；【术后用药阶段：心脏起搏器植入术后】",
     surgeryName: "单腔永久心脏起搏器植入术（VVI模式）",
-    coursePlanName: "心房颤动伴缓慢心室率心脏起搏器术后抗凝与设备随访方案",
+    coursePlanName: "心房颤动伴缓慢心室率合并慢性心力衰竭心脏起搏器术后管理方案",
   },
   {
     userid: "U002",
     allergyHistory: "青霉素过敏",
-    combinedMedication: ["琥珀酸美托洛尔缓释片", "对乙酰氨基酚片"],
-    prescriptionList: "琥珀酸美托洛尔缓释片 规格47.5mg/片，每次23.75mg，口服，每日1次，早餐后服用，长期治疗 + 对乙酰氨基酚片 规格0.5g/片，每次0.5g，口服，每8小时1次，餐后服用，连续3天；因青霉素过敏，未选用青霉素类药物；【术后用药阶段：心脏起搏器植入术后】",
-    surgeryName: "双腔永久心脏起搏器植入术（DDD模式）",
-    coursePlanName: "肥厚型梗阻性心肌病心脏起搏器术后流出道梗阻管理方案",
+    combinedMedication: ["硫酸氨基葡萄糖胶囊", "双氯芬酸二乙胺乳胶剂", "对乙酰氨基酚片"],
+    prescriptionList: "硫酸氨基葡萄糖胶囊 规格0.25g/粒，每次0.5g，口服，每日3次，餐后服用，连续84天 + 双氯芬酸二乙胺乳胶剂 规格1%（20g/支），每次2g，外用，每日3次，早中晚涂抹，连续14天 + 对乙酰氨基酚片 规格0.5g/片，每次0.5g，口服，每日2次，早晚餐后服用，连续7天；因青霉素过敏，未选用青霉素类药物",
+    surgeryName: "",
+    coursePlanName: "原发性膝骨关节炎关节保护与症状管理方案",
   },
 ];
 
@@ -63,8 +63,8 @@ const extractResult = spawnSync(nodePath, [
 assert.equal(extractResult.status, 0, `${extractResult.stdout}\n${extractResult.stderr}`);
 const extractedPatients = JSON.parse(await fs.readFile(extractedPath, "utf8"));
 assert.deepEqual(extractedPatients, [
-  { userid: "U001", activateTime: "2026-08-01 10:00:00", gender: "男", age: 70, disease: "心房颤动伴缓慢心室率", productName: "心脏起搏器", productType: "器械", allergyHistory: "无" },
-  { userid: "U002", activateTime: "2026-08-02 11:00:00", gender: "女", age: 42, disease: "肥厚型梗阻性心肌病", productName: "心脏起搏器", productType: "器械", allergyHistory: "青霉素过敏" },
+  { userid: "U001", activateTime: "2026-08-01 10:00:00", gender: "男", age: 70, disease: "心房颤动伴缓慢心室率合并慢性心力衰竭", productName: "心脏起搏器", productType: "器械", allergyHistory: "无" },
+  { userid: "U002", activateTime: "2026-08-02 11:00:00", gender: "女", age: 42, disease: "原发性膝骨关节炎", productName: "硫酸氨基葡萄糖胶囊", productType: "用药", allergyHistory: "青霉素过敏" },
 ]);
 
 const result = spawnSync(nodePath, [
@@ -89,18 +89,18 @@ assert.deepEqual(outputRows[0], expectedHeaders);
 assert.equal(outputRows.length, 3);
 assert.deepEqual(outputRows[1].slice(0, 11), sourceRows[0].slice(0, 11));
 assert.deepEqual(outputRows[2].slice(0, 11), sourceRows[1].slice(0, 11));
-assert.equal(outputRows[1][11], "华法林钠片+对乙酰氨基酚片");
+assert.equal(outputRows[1][11], "华法林钠片+达格列净片+对乙酰氨基酚片");
 assert.equal(outputRows[1][15], "已生成");
 assert.equal(outputRows[1][16], "待确认");
 assert.equal(outputSheet.tables.items.length, 1);
 
 const variableCountRecords = [
-  records[0],
   {
-    ...records[1],
-    combinedMedication: ["琥珀酸美托洛尔缓释片"],
-    prescriptionList: "琥珀酸美托洛尔缓释片 规格47.5mg/片，每次23.75mg，口服，每日1次，早餐后服用，长期治疗；因青霉素过敏，未选用青霉素类药物；【术后用药阶段：心脏起搏器植入术后】",
+    ...records[0],
+    combinedMedication: ["华法林钠片", "达格列净片", "沙库巴曲缬沙坦钠片", "螺内酯片", "对乙酰氨基酚片"],
+    prescriptionList: "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周 + 达格列净片 规格10mg/片，每次10mg，口服，每日1次，早餐后服用，长期治疗；需根据肌酐清除率调整 + 沙库巴曲缬沙坦钠片 规格50mg/片，每次25mg，口服，每日2次，早晚服用，长期治疗；需根据肌酐清除率调整 + 螺内酯片 规格20mg/片，每次10mg，口服，每日1次，早餐后服用，长期治疗；需根据肌酐清除率调整 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天；【术后用药阶段：心脏起搏器植入术后】",
   },
+  records[1],
 ];
 await fs.writeFile(recordsPath, JSON.stringify(variableCountRecords, null, 2), "utf8");
 const variableCountResult = spawnSync(nodePath, [
@@ -113,8 +113,8 @@ const variableCountResult = spawnSync(nodePath, [
 assert.equal(variableCountResult.status, 0, `${variableCountResult.stdout}\n${variableCountResult.stderr}`);
 const variableCountWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(outputPath));
 const variableCountRows = variableCountWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
-assert.equal(variableCountRows[1][11].split("+").length, 2);
-assert.equal(variableCountRows[2][11].split("+").length, 1);
+assert.equal(variableCountRows[1][11].split("+").length, 5);
+assert.equal(variableCountRows[2][11].split("+").length, 3);
 
 async function assertInvalidRecords(invalidRecords, expectedMessage) {
   await fs.writeFile(recordsPath, JSON.stringify(invalidRecords, null, 2), "utf8");
@@ -132,7 +132,30 @@ async function assertInvalidRecords(invalidRecords, expectedMessage) {
 await assertInvalidRecords([
   { ...records[0], combinedMedication: [], prescriptionList: "" },
   records[1],
-], /combinedMedication必须为1～5项数组/);
+], /combinedMedication必须为3～5项数组/);
+
+await assertInvalidRecords([
+  records[0],
+  {
+    ...records[1],
+    combinedMedication: ["双氯芬酸二乙胺乳胶剂", "硫酸氨基葡萄糖胶囊", "对乙酰氨基酚片"],
+    prescriptionList: "双氯芬酸二乙胺乳胶剂 规格1%（20g/支），每次2g，外用，每日3次，早中晚涂抹，连续14天 + 硫酸氨基葡萄糖胶囊 规格0.25g/粒，每次0.5g，口服，每日3次，餐后服用，连续84天 + 对乙酰氨基酚片 规格0.5g/片，每次0.5g，口服，每日2次，早晚餐后服用，连续7天",
+  },
+], /药品类产品必须作为联合用药第一项/);
+
+await assertInvalidRecords([
+  { ...records[0], coursePlanName: "源文件未提供方案名称" },
+  records[1],
+], /占位文案/);
+
+await assertInvalidRecords([
+  {
+    ...records[0],
+    combinedMedication: records[0].combinedMedication.slice(0, 2),
+    prescriptionList: records[0].prescriptionList.split(" + ").slice(0, 2).join(" + "),
+  },
+  records[1],
+], /combinedMedication必须为3～5项数组/);
 
 await assertInvalidRecords([
   {
@@ -141,7 +164,7 @@ await assertInvalidRecords([
     prescriptionList: "药物一 规格1mg，每次1mg，口服，每日1次，早餐后服用，连续1天 + 药物二 规格2mg，每次2mg，口服，每日1次，早餐后服用，连续1天 + 药物三 规格3mg，每次3mg，口服，每日1次，早餐后服用，连续1天 + 药物四 规格4mg，每次4mg，口服，每日1次，早餐后服用，连续1天 + 药物五 规格5mg，每次5mg，口服，每日1次，早餐后服用，连续1天 + 药物六 规格6mg，每次6mg，口服，每日1次，早餐后服用，连续1天",
   },
   records[1],
-], /combinedMedication必须为1～5项数组/);
+], /combinedMedication必须为3～5项数组/);
 
 await assertInvalidRecords([
   {
@@ -158,5 +181,14 @@ await assertInvalidRecords([
   },
   records[1],
 ], /处方清单必须与联合用药按顺序一一对应/);
+
+await assertInvalidRecords([
+  {
+    ...records[0],
+    combinedMedication: ["注射用胰蛋白酶", "达格列净片", "对乙酰氨基酚片"],
+    prescriptionList: "注射用胰蛋白酶 规格5mg，每次5mg，静脉注射，每日1次，治疗期间复核，连续3天 + 达格列净片 规格10mg/片，每次10mg，口服，每日1次，早餐后服用，长期治疗 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天；【术后用药阶段：心脏起搏器植入术后】",
+  },
+  records[1],
+], /U001.*注射用胰蛋白酶.*5mg.*效价单位/);
 
 console.log(JSON.stringify({ status: "passed", rows: outputRows.length, columns: outputRows[0].length }));

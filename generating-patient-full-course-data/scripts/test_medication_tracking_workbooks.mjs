@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES");
@@ -12,7 +12,7 @@ const runtimeRequire = createRequire(path.join(nodeModules, "package.json"));
 const artifactToolPath = runtimeRequire.resolve("@oai/artifact-tool");
 const { FileBlob, SpreadsheetFile, Workbook } = await import(pathToFileURL(artifactToolPath).href);
 
-const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const skillDir = path.resolve(scriptDir, "..");
 const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "patient-medication-tracking-skill-"));
 const sourcePath = path.join(tempDir, "审核后患者明细.xlsx");
@@ -171,6 +171,7 @@ await assertInvalid([{ ...records[0], medicationPlan: records[0].medicationPlan.
 await assertInvalid([{ ...records[0], medicationCycle: "以激活日为起点长期治疗", medicationItems: records[0].medicationItems }, records[1]], /不得以激活时间为周期锚点/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], singleDose: "0mg" }, records[0].medicationItems[1]] }, records[1]], /单次剂量必须与审核处方一致/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], precautions: "观察出血。" }, records[0].medicationItems[1]] }, records[1]], /联合用药核对或相互作用风险/);
+await assertInvalid([{ ...records[0], medicationCycle: "源文件未提供明确周期，需医生确认", medicationItems: records[0].medicationItems }, records[1]], /占位文案/);
 
 sourceRows[0][3] = "2026-08-31 21:59:59";
 const noWindowSourceWorkbook = Workbook.create();

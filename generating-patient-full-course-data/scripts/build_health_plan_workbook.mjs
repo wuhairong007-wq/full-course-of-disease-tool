@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
+import { validateGeneratedContent } from "./generated_content_validator.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -48,10 +49,10 @@ function parseTreatmentItemNames(text) {
 }
 
 function validateMedicalRecord(userid, text) {
-  if (/(?:主诉|体征)[：:].*(?:\d+(?:\.\d+)?\s*(?:℃|次\/分|mmHg|%|bpm)|T\s*\d|P\s*\d|BP\s*\d|SpO2)/i.test(text)) {
+  if (/^(?:主诉|体征)[：:]/m.test(text)) {
     throw new Error(`${userid}的AI病历解读不得虚构主诉、体征或生命体征数值`);
   }
-  for (const required of ["就诊科室：", "就诊日期：", "主诉：源文件未提供", "体征：源文件未提供", "处置："]) {
+  for (const required of ["就诊科室：", "就诊日期：", "处置："]) {
     if (!text.includes(required)) throw new Error(`${userid}的AI病历解读缺少：${required}`);
   }
 }
@@ -62,6 +63,7 @@ function validateRecord(record, patient) {
   if (JSON.stringify(Object.keys(record)) !== JSON.stringify(recordKeys)) throw new Error(`${userid}必须且只能依次包含11个健康方案字段`);
   if (record.userid !== userid) throw new Error(`${userid}的userid被改变`);
   for (const key of contentKeys) if (!normalize(record[key])) throw new Error(`${userid}的${key}不能为空`);
+  validateGeneratedContent({ userid, fields: Object.fromEntries(contentKeys.map((key) => [key, record[key]])) });
   validateMedicalRecord(userid, record.aiMedicalRecord);
   if (!/[①一].*[②二].*[③三]/s.test(record.aiHealthPlan)) throw new Error(`${userid}的AI健康管理方案必须至少包含①②③`);
   if (normalize(record.monitoringIndicators).split(/\r?\n/).filter(Boolean).length < 4) throw new Error(`${userid}的建议监测指标必须至少4行`);

@@ -31,6 +31,7 @@ The builder derives the sequence number, disease, occurrence time, severity, and
 - Do not introduce a medication absent from `联合用药` or `处方清单`. Use `由医生评估是否调整现有用药` when the source cannot support a named intervention.
 - Keep the outcome conservative: describe partial stabilization, ongoing observation, referral, or pending reassessment. Never promise recovery or invent normalized measurements.
 - Use remarks for disease-specific danger signs, medication/allergy cautions, monitoring and follow-up. Do not repeat generic boilerplate unrelated to the patient.
+- Never mention the source file or describe absent input with wording such as `源文件未提供`, `未提供`, `未获取`, `未记录`, or `暂无资料`. Omit unsupported narrative instead; never fabricate a replacement.
 
 ## Deterministic Fields
 

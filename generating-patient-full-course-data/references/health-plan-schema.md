@@ -55,13 +55,13 @@ Introduce the AI health manager's monitoring, medication education, rehabilitati
 
 ### aiMedicalRecord
 
-Use source facts only and include all of these labels on separate lines:
+Use source facts only and include these labels on separate lines:
 
 - `就诊科室：` — choose a conventional specialty from the disease; this is routing guidance, not a new diagnosis.
-- `就诊日期：` — use the activation date when available; otherwise write `源文件未提供`.
-- `主诉：源文件未提供`
-- `体征：源文件未提供`
+- `就诊日期：` — use the activation date.
 - `处置：` — conservatively summarize only the reviewed disease, surgery, medication, prescription, and plan.
+
+The reviewed input has no chief-complaint or physical-examination fields. Omit `主诉：` and `体征：` completely; do not output missing-input placeholders and do not simulate typical values or symptoms.
 
 Never invent temperatures, pulse, respiratory rate, blood pressure, oxygen saturation, laboratory values, imaging results, pathological stage, chief complaint, symptoms, examination findings, contraindications, or treatment response.
 
@@ -108,3 +108,4 @@ At least four newline-separated danger signals beginning with `⚠`. Tailor them
 - `treatmentPlan` and `aiPharmacology` must each contain every medication in `combinedMedication`.
 - The treatment plan must not introduce medication or procedure names outside the reviewed medication list and surgery name.
 - Keep advice educational and subject to clinician review; it must not replace diagnosis or a real prescription.
+- Never mention the source file or describe absent input with wording such as `源文件未提供`, `未提供`, `未获取`, `未记录`, or `暂无资料`. Omit unsupported facts and their labels instead of fabricating replacements.

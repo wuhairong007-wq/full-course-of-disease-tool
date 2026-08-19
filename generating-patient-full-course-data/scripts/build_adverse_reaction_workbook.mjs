@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { validateAdverseReactionRecord } from "./adverse_reaction_validation.mjs";
 import { generateAdverseReactionTime } from "./adverse_reaction_time.mjs";
+import { validateGeneratedContent } from "./generated_content_validator.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -78,6 +79,15 @@ const outputRows = selected.map((patient, index) => {
   const record = recordByUserid.get(patient.userid);
   if (!record) throw new Error(`缺少userid记录：${patient.userid}`);
   validateAdverseReactionRecord(record, patient);
+  validateGeneratedContent({
+    userid: patient.userid,
+    fields: {
+      symptomDescription: record.symptomDescription,
+      treatmentMeasures: record.treatmentMeasures,
+      outcome: record.outcome,
+      remarks: record.remarks,
+    },
+  });
   return [
     index + 1,
     patient.userid,

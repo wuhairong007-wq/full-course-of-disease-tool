@@ -4,9 +4,27 @@
 
 Generate simulated discharge records, not real prescriptions. Use only source disease, age, sex, product, product type, and allergy history. Do not invent symptoms, test results, pathology, stage, comorbidities, organ function, weight, contraindications, or efficacy claims. Add a clinician-review statement to each prescription.
 
-Every completed record must contain 1–5 clinically justified medications. When `产品类型=用药`, treat the supplied `产品名称` as a source-reviewed medication and include it first. Then independently evaluate first-line disease treatment and every directly indicated adjunct from disease, age, sex, and allergy history; add each supported medication until the clinically complete regimen is represented, subject to the five-drug cap. Do not stop after the product when another safe, directly indicated medication can be determined. Do not target a fixed medication count, randomize the count, or add an unrelated drug merely to create variation. If no additional medication can be selected without inventing missing clinical facts, retain the reviewed product as the sole medication.
+Every completed record must contain 3–5 clinically justified medications. When `产品类型=用药`, treat the supplied `产品名称` as a source-reviewed medication and include it first. Then independently evaluate first-line disease treatment, maintenance or mandatory postoperative therapy, and every directly indicated adjunct from disease, procedure, age, sex, allergy history, product, and reviewed surgery. Finally evaluate each 有明确依据的对症支持药物. Continue the complete assessment until at least three distinct treatment roles are represented, subject to the five-drug cap. Within the 3–5 range, let clinical need determine the count; do not default every patient to the same number, randomize the number, or add an unrelated or contraindicated drug merely to reach three. If fewer than three safe, directly indicated medications remain after the complete assessment, stop and report the affected `userid` instead of writing an incomplete or padded record.
 
-First finalize `combinedMedication`, then derive `prescriptionList` from it in the same order with exactly one complete prescription entry per medication. Every medication added by AI must receive a complete matching prescription entry; never add a prescription drug absent from `combinedMedication`.
+## Symptom-Supportive Medication Gate
+
+Add a symptom-supportive medication only when the named disease, standard procedure, or already selected treatment itself establishes a recognized indication without inventing a symptom. Examples include quantified short-course non-opioid analgesia after an operation, sputum clearance after a procedure that impairs airway clearance, and bowel management when the supplied operation itself creates a standard postoperative constipation risk. Infection treatment still requires explicit infectious evidence in the diagnosis or procedure context.
+
+Do not infer dyspepsia, nausea, hepatic injury, electrolyte deficiency, vitamin deficiency, dysbiosis, or malnutrition. Without direct evidence, do not add proton-pump inhibitors, antacids, hepatoprotective drugs, antiemetics, prokinetics, laxatives, electrolytes, vitamins, probiotics, or nutritional supplements merely to make the regimen look complete. Existing procedure-specific default rules take precedence only when they expressly establish the risk and permitted drug class.
+
+Prioritize source-reviewed and indispensable core therapy over optional symptom support. If more than five roles are selected, remove the lowest-priority optional support role first. Never remove indispensable core therapy to preserve a support drug. If more than five indispensable roles remain, stop and report the affected `userid`.
+
+## Generated Wording
+
+Never describe absent input or mention the source file in generated content. Prohibited wording includes `源文件未提供`, any other phrase containing `源文件`, `未提供`, `未获取`, `未记录`, `暂无资料`, and semantic equivalents. When a fact is unavailable and cannot be inferred safely, omit the fact and its label. Never fabricate a symptom, sign, test result, diagnosis, or history to replace the omission.
+
+## Equivalent Hospital-Preference Variation
+
+Create an equivalent candidate group only for drugs with the same disease indication, treatment role, treatment-line status, route, and phase of care. Filter the group for age, allergy, contraindication, and interaction safety before selection. 同一治疗作用只选择一种; never prescribe multiple alternatives from the same group together, and never use a supportive candidate to replace core therapy.
+
+Use `userid + 疾病 + 治疗作用` as the stable selection key with `scripts/equivalent_medication_selector.mjs`. The userid is a reproducibility key, not a clinical indication: it may select one option within an already eligible group but must not create a treatment role, change medication count, bypass safety filters, or justify cross-indication use. The same patient and eligible group must reproduce the same choice even if candidate input order changes. Different userids may select different eligible equivalents, representing institution-level prescribing preference. When only one safe candidate remains, use it directly and do not manufacture variation.
+
+First finalize `combinedMedication`, including all equivalent selections, then derive `prescriptionList` from it in the same order with exactly one complete prescription entry per medication. Every medication added by AI must receive a complete matching prescription entry; never add a prescription drug absent from `combinedMedication`. After a substitution, regenerate all prescription parameters and warnings from the selected candidate; never retain parameters from a discarded alternative.
 
 ## Allergy
 
@@ -41,6 +59,10 @@ For non-surgery patients:
 
 ## Dose and Warning Rules
 
+- Read `drug-specification-rules.md` before creating any prescription. Treat drug name, dosage form, specification, single dose, and route as one validated set. Exact drug rules override generic dosage-form conventions.
+- Use only a supported approved specification for the exact selected dosage form. Never invent a marketed strength or silently convert mass, volume, potency, activity, or biological units.
+- `注射用胰蛋白酶` is potency-labelled: use specifications such as `5万单位` or `5万单位/支`; never generate `5mg` or another mass-unit specification.
+- After an equivalent substitution, rebuild and revalidate the final drug's specification and dose; no parameter may remain from the discarded candidate.
 - Age 18–64: use guideline-standard adult starting doses.
 - Age 65+: use a conservative 1/2–2/3 starting dose when appropriate and include `需根据肌酐清除率调整`.
 - Age under 18: use a weight-based reference range only when weight-independent bounds are safe. Omit any otherwise optional medication whose safe dose cannot be stated without weight; stop only if no source-reviewed or directly indicated medication can be prescribed safely. Never use fluoroquinolones, tetracyclines, or aspirin.

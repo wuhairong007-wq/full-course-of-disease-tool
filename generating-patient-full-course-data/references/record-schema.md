@@ -16,7 +16,7 @@ Return one object per source row with exactly these keys in this order:
 {
   "userid": "source userid",
   "allergyHistory": "source allergy or 无",
-  "combinedMedication": ["药物通用名1", "药物通用名2"],
+  "combinedMedication": ["药物通用名1", "药物通用名2", "药物通用名3"],
   "prescriptionList": "完整中文处方",
   "surgeryName": "规范手术名称或空字符串",
   "coursePlanName": "个性化方案名称"
@@ -26,13 +26,18 @@ Return one object per source row with exactly these keys in this order:
 Rules:
 
 - `allergyHistory` must equal the source value. Do not add or delete known allergies.
-- `combinedMedication` must be a unique JSON array containing 1–5 clinically supported drug generic names. When the source product type is medicinal, include the supplied product first. AI must add every first-line or directly indicated medication that can be selected safely from disease, age, sex, and allergy history, but it must not target a fixed count, randomize the count, or add an unrelated drug merely to create variation. If no additional medication is supportable without missing clinical facts, the reviewed product may remain the sole medication.
-- Generate `prescriptionList` only after `combinedMedication` is final. Split the prescription at ` + `: the number of prescription entries must equal the medication count, and entry N must begin with medication N's exact name. AI-added medications must never lack their own complete prescription entry. This same-order one-to-one mapping prevents omissions, duplicates, and extra prescription drugs.
+- `combinedMedication` must be a unique JSON array containing 3–5 clinically supported drug generic names. When the source product type is medicinal, include the supplied product first. AI must add every safely determinable etiologic, first-line, maintenance, mandatory postoperative, and directly supported symptom-treatment role. Continue the complete assessment until at least three safe treatment roles are represented. Within the 3–5 range, clinical need determines the count; do not default every patient to the same number, randomize the number, or add an unrelated or contraindicated drug merely to reach three. If fewer than three medications are supportable without inventing clinical facts, stop and report the affected `userid`.
+- For a treatment role with multiple eligible equivalents, use `scripts/equivalent_medication_selector.mjs` after clinical filtering. 不得同时开具同一治疗作用的多个等效候选药物. The stable selector may vary the chosen equivalent, but it must not vary the role set or medication count.
+- Generate `prescriptionList` only after `combinedMedication` and every equivalent selection are final. Split the prescription at ` + `: the number of prescription entries must equal the medication count, and entry N must begin with medication N's exact name. AI-added medications must never lack their own complete prescription entry. This same-order one-to-one mapping prevents omissions, duplicates, and extra prescription drugs.
+- 等效替换后，药品名、规格、每次剂量、给药途径、频次、服药时机、疗程和专项警示必须全部对应最终选中的药物；不得保留被替换药物的规格、剂量、频次、疗程或警示。
+- Before writing each entry, validate the exact drug and dosage form against `drug-specification-rules.md`. The specification must use the drug's supported mass, volume, concentration, potency, activity, or biological-unit convention. Do not guess or silently convert units.
+- `注射用胰蛋白酶` must use an activity specification such as `5万单位` or `5万单位/支`; `5mg` and `g`-based specifications are invalid. Tablet and capsule package denominators, when present, must match `/片` and `/粒` respectively.
 - Keep warnings, allergy substitutions, clinician-review text, and the postoperative-stage label inside the corresponding final prescription entry; never create a standalone ` + ` segment for non-drug text.
 - Each prescription entry uses `药品名 + 规格 + 每次用量 + 给药途径 + 频次 + 服药时机 + 疗程`; join complete entries with the exact separator ` + `.
 - Do not use `tid`, `bid`, `qd`, `q8h`, `prn`, `ivgtt`, `im`, `po`, `适量`, `酌情`, or `必要时`.
 - For surgery patients with actual medications, end with `【术后用药阶段：<产品名称>植入术后】` or an equally specific surgery-stage label.
 - `coursePlanName` must reflect the disease, phase, and product when relevant. Do not include age or sex labels.
+- Generated fields must not contain language that references the source file or describes absent input, including `源文件`, `未提供`, `未获取`, `未记录`, or `暂无资料`. Omit unsupported facts and labels without fabricating replacements.
 
 ## Output Workbook
 

@@ -90,3 +90,4 @@ Flatten medication items in patient order and reviewed medication order. Generat
 - Keep the medication plan, cycle, and item list mutually consistent. The plan names every reviewed medication, and each item's specification, dose, frequency, and duration match its reviewed prescription segment.
 - Verify every medication confirmation timestamp is strictly later than activation, in the same month, within `06:00:00–21:59:59`, identical across that patient's medication rows, and stable across repeated generation.
 - Keep content educational and subject to clinician/pharmacist review; it is not a real prescription.
+- Generated fields must not mention the source file or describe absent input with wording such as `源文件未提供`, `未提供`, `未获取`, `未记录`, or `暂无资料`. Omit unsupported narrative instead; never fabricate a replacement.

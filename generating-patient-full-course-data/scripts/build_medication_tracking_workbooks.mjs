@@ -3,6 +3,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { generateMedicationConfirmationTime } from "./medication_confirmation_time.mjs";
+import { validateGeneratedContent } from "./generated_content_validator.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -110,6 +111,14 @@ function validateRecord(record, patient) {
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error(`${userid}记录必须为对象`);
   if (JSON.stringify(Object.keys(record)) !== JSON.stringify(recordKeys)) throw new Error(`${userid}必须且只能依次包含4个用药方案字段`);
   if (record.userid !== userid) throw new Error(`${userid}的userid被改变`);
+  validateGeneratedContent({
+    userid,
+    fields: {
+      medicationPlan: record.medicationPlan,
+      medicationCycle: record.medicationCycle,
+      medicationItems: record.medicationItems,
+    },
+  });
   if (!normalize(record.medicationPlan)) throw new Error(`${userid}的medicationPlan不能为空`);
   if (!normalize(record.medicationCycle)) throw new Error(`${userid}的medicationCycle不能为空`);
   if (activateDatePattern.test(record.medicationCycle) || (patient.activateDate && record.medicationCycle.includes(patient.activateDate))) {
