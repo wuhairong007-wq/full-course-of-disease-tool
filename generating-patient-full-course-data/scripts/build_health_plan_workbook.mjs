@@ -23,6 +23,11 @@ const recordKeys = [
   "monitoringIndicators", "lifestyleAvoid", "lifestyleRecommend", "followupPlan", "emergencyReminder",
 ];
 const contentKeys = recordKeys.slice(1);
+const pharmacologyMechanismPattern = /机制|通过|抑制|阻断|拮抗|激动|促进|调节|补充|替代|中和|结合|减少|增加|稳定|松弛|抗菌|抗炎|镇痛|保护|吸收|分泌|代谢|酶|受体/;
+const pharmacologyExecutionPattern = /服用|使用|给药|外用|涂抹|贴敷|注射|吸入|疗程|间隔|空腹|餐前|餐后|固定时间|按审核处方|遵医嘱/;
+const pharmacologySafetyPattern = /注意|避免|监测|观察|风险|不良反应|咨询|就医|复核|过敏|停用|禁用/;
+const healthPlanNumberedMarker = /^[①②③④⑤⑥]/;
+const managerIntroOpening = "你好！我是您的AI健康管理师，我将为您提供全面专业的疾病管理支持";
 
 function parseArgs(argv) {
   const args = {};
@@ -57,6 +62,52 @@ function validateMedicalRecord(userid, text) {
   }
 }
 
+function validateManagerIntro(userid, text, patient) {
+  const value = normalize(text);
+  if (!value.startsWith(managerIntroOpening)) throw new Error(`${userid}的AI健康管理师介绍必须使用统一的专业开场结构`);
+  if (!value.includes("病情监测") || !value.includes("症状观察") || !value.includes("用药管理") || !value.includes("复诊规划")) {
+    throw new Error(`${userid}的AI健康管理师介绍必须说明病情监测、症状观察、用药管理和复诊规划服务`);
+  }
+  if (!/更安全、有序|安全、有序/.test(value)) throw new Error(`${userid}的AI健康管理师介绍必须使用合规的康复与长期管理表达`);
+  const context = value.match(/【([^】]+)】/)?.[1] ?? "";
+  const expectedContext = context.includes(patient.disease) || (patient.surgeryName && context.includes(patient.surgeryName));
+  if (!expectedContext) throw new Error(`${userid}的AI健康管理师介绍必须在【】中体现实际疾病或已审核手术阶段`);
+  if (!value.includes(patient.coursePlanName)) throw new Error(`${userid}的AI健康管理师介绍必须体现全病程方案名称`);
+  if (!/每日|日常/.test(value) || !/重点|关注|管理要点/.test(value)) throw new Error(`${userid}的AI健康管理师介绍必须说明每日关注重点或日常管理要点`);
+  if (value.length < 120 || value.length > 260) throw new Error(`${userid}的AI健康管理师介绍建议控制在120至260个字符并保持内容完整`);
+  if (/帮助您安全、高效地度过康复期|保证|确保疗效|快速康复/.test(value)) throw new Error(`${userid}的AI健康管理师介绍含疗效、安全或康复速度承诺`);
+}
+
+function validatePharmacology(userid, text, patient) {
+  const lines = normalize(text).split(/\r?\n/).map(normalize).filter(Boolean);
+  for (const medication of patient.combinedMedication) {
+    const line = lines.find((value) => value.startsWith(medication));
+    if (!line) throw new Error(`${userid}的AI药理科普必须为${medication}单独分段并以药名开头`);
+    if (line.length < medication.length + 45) throw new Error(`${userid}的${medication}药理科普过于简略，必须说明机制、用途、执行要点和风险监测`);
+    if (!pharmacologyMechanismPattern.test(line)) throw new Error(`${userid}的${medication}药理科普缺少通俗药理机制`);
+    if (!pharmacologyExecutionPattern.test(line)) throw new Error(`${userid}的${medication}药理科普缺少用法或疗程执行要点`);
+    if (!pharmacologySafetyPattern.test(line)) throw new Error(`${userid}的${medication}药理科普缺少风险或监测提示`);
+  }
+  if (patient.surgeryName && !text.includes(patient.surgeryName)) throw new Error(`${userid}的AI药理科普遗漏已审核手术或器械：${patient.surgeryName}`);
+}
+
+function validateHealthPlan(userid, text) {
+  const modules = normalize(text).split(/\r?\n/).map(normalize).filter((line) => healthPlanNumberedMarker.test(line));
+  if (modules.length < 4 || modules.length > 6) throw new Error(`${userid}的AI健康管理方案必须包含4至6个①至⑥编号模块`);
+  if (modules.some((module) => module.length < 38)) throw new Error(`${userid}的AI健康管理方案各模块必须包含具体动作、频次或时机及异常处理`);
+  const domains = [
+    [/监测|观察|记录|评估/, "病情监测"],
+    [/用药|服药|药物|处方/, "用药执行"],
+    [/活动|康复|锻炼|运动|步行|功能|休息/, "活动康复"],
+    [/饮食|进食|营养|饮水/, "饮食营养"],
+    [/复诊|随访|就医|联系医生|医疗机构|急诊/, "复诊升级"],
+  ];
+  for (const [pattern, label] of domains) if (!pattern.test(text)) throw new Error(`${userid}的AI健康管理方案缺少${label}模块`);
+  const quantifiedGuidance = text.match(/每日(?:\d+次)?|每周(?:\d+次)?|每次|每\d+(?:[-～至]\d+)?小时|第\d+天|连续\d+天|目标|阈值|超过|低于|高于|≤|≥|<|>/g) ?? [];
+  if (quantifiedGuidance.length < 2) throw new Error(`${userid}的AI健康管理方案必须包含至少2个监测频次、建议目标或行动阈值`);
+  if (!/若|如|一旦|出现|持续|加重|超过|低于|高于|未改善|不缓解/.test(text)) throw new Error(`${userid}的AI健康管理方案必须说明异常或目标未达成时的处理动作`);
+}
+
 function validateRecord(record, patient) {
   const userid = patient.userid;
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error(`${userid}记录必须为对象`);
@@ -64,8 +115,10 @@ function validateRecord(record, patient) {
   if (record.userid !== userid) throw new Error(`${userid}的userid被改变`);
   for (const key of contentKeys) if (!normalize(record[key])) throw new Error(`${userid}的${key}不能为空`);
   validateGeneratedContent({ userid, fields: Object.fromEntries(contentKeys.map((key) => [key, record[key]])) });
+  validateManagerIntro(userid, record.aiManagerIntro, patient);
   validateMedicalRecord(userid, record.aiMedicalRecord);
-  if (!/[①一].*[②二].*[③三]/s.test(record.aiHealthPlan)) throw new Error(`${userid}的AI健康管理方案必须至少包含①②③`);
+  validatePharmacology(userid, record.aiPharmacology, patient);
+  validateHealthPlan(userid, record.aiHealthPlan);
   if (normalize(record.monitoringIndicators).split(/\r?\n/).filter(Boolean).length < 4) throw new Error(`${userid}的建议监测指标必须至少4行`);
   for (const [key, label] of [["lifestyleAvoid", "生活方式建议_必须避免"], ["lifestyleRecommend", "生活方式建议_建议执行"]]) {
     if (countLinesStarting(record[key], "•") < 4) throw new Error(`${userid}的${label}必须包含至少4个•分项`);
@@ -101,8 +154,10 @@ const patients = patientRows.map((row) => {
   const userid = normalize(row[indexes.userid]);
   return {
     userid,
+    disease: normalize(row[indexes["疾病"]]),
     combinedMedication: normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean),
     surgeryName: normalize(row[indexes["手术名称"]]),
+    coursePlanName: normalize(row[indexes["全病程方案名称"]]),
   };
 });
 if (new Set(patients.map(({ userid }) => userid)).size !== patients.length) throw new Error("审核后患者明细存在重复userid");

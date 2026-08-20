@@ -7,6 +7,12 @@ assert.doesNotThrow(() => validateDrugSpecification({
   prescriptionEntry: "注射用胰蛋白酶 规格5万单位/支，每次5万单位，静脉注射，每日1次，治疗期间按医嘱复核，连续3天",
 }));
 
+assert.doesNotThrow(() => validateDrugSpecification({
+  userid: "U005",
+  medication: "重组人表皮生长因子凝胶",
+  prescriptionEntry: "重组人表皮生长因子凝胶 规格10万IU/支，每次1g，外用，每日1次，每日换药时，连续14天",
+}));
+
 assert.throws(() => validateDrugSpecification({
   userid: "U003",
   medication: "注射用胰蛋白酶",

@@ -21,6 +21,7 @@ const requiredFiles = [
   "scripts/extract_health_plan_patients.mjs",
   "scripts/build_health_plan_workbook.mjs",
   "scripts/test_health_plan_workbook.mjs",
+  "scripts/test_health_plan_richness.mjs",
   "scripts/extract_medication_tracking_patients.mjs",
   "scripts/build_medication_tracking_workbooks.mjs",
   "scripts/medication_confirmation_time.mjs",

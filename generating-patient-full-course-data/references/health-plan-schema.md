@@ -51,7 +51,14 @@ Generate exactly one row for every input patient, in source order. Do not expose
 
 ### aiManagerIntro
 
-Introduce the AI health manager's monitoring, medication education, rehabilitation, diet, and follow-up support. Refer to the actual disease, reviewed surgery when present, and full-course plan. Do not promise outcomes.
+Use a consistent professional two-part introduction while personalizing the clinical context:
+
+1. Start with this structure: `你好！我是您的AI健康管理师，我将为您提供全面专业的疾病管理支持，从病情监测、症状观察、用药管理到复诊规划，协助您更安全、有序地推进康复与长期管理。`
+2. Follow with: `针对您的【个性化疾病或术后阶段】，我将结合“全病程方案名称”...` and explain that the plan organizes the current reviewed treatment, daily observation priorities, rehabilitation/lifestyle guidance, and follow-up coordination so the patient can understand and participate in the management process.
+
+The bracketed context must contain the supplied disease, or the exact reviewed surgery plus `术后`; when there is no surgery, use a clinically neutral stage such as disease management, treatment, rehabilitation, or follow-up rather than inventing severity or a disease stage. Include the exact `coursePlanName`, and tailor the daily priorities to the reviewed disease, surgery, medications, age, and allergy history where relevant. Aim for 120～220 Chinese characters so the introduction is substantive but not repetitive.
+
+Do not copy a sample disease into another patient's record. Do not use “保证”, “确保疗效”, “快速康复”, or “帮助您安全、高效地度过康复期”, because these can imply guaranteed safety, speed, or outcome. Do not describe measurements, symptoms, or treatment response as already observed.
 
 ### aiMedicalRecord
 
@@ -75,11 +82,26 @@ Never invent temperatures, pulse, respiratory rate, blood pressure, oxygen satur
 
 ### aiPharmacology
 
-Explain the common role, general mechanism/category when reliably known, and important precautions of every reviewed medication and reviewed procedure/device when present. Every reviewed medication name must appear verbatim. For an uncertain product, state conservatively that its role, dose, course, and mechanism require verification against the product instructions and clinician review. Do not claim efficacy.
+Write one separate newline-delimited paragraph for every reviewed medication, beginning with that medication's exact name. Each medication paragraph must provide all four layers below instead of a generic drug-class label:
+
+1. `药理机制` — explain in patient-friendly language how the drug acts, such as the enzyme, receptor, physiological process, microbial target, inflammatory pathway, secretion, absorption, replacement, or local tissue effect involved. State only a reliably known mechanism; do not invent one.
+2. `本方案用途` — connect that mechanism to the supplied disease, reviewed surgery, or a documented treatment role. Do not claim that the patient already had a symptom that is not in the input.
+3. `执行要点` — preserve or explain the reviewed route, timing, spacing, course, or administration technique when supplied. Do not silently change the prescription.
+4. `主要风险与监测` — give medication-specific adverse-effect signals, interaction/spacing precautions, contraindication boundaries, or monitoring needs supported by that medication and the supplied allergy history.
+
+Avoid boilerplate such as “该产品的具体作用、剂量和疗程以说明书及医生复核为准” as the whole explanation. For an uncertain product, it is acceptable to say that the mechanism requires product-instruction verification, but still explain the reviewed use, execution requirements, and observable safety signals conservatively. Explain each reviewed procedure/device in a separate paragraph when present. Every reviewed medication name must appear verbatim. Do not claim efficacy.
 
 ### aiHealthPlan
 
-Provide a staged, actionable plan based on disease, age, surgery, and reviewed medication risks. Use at least `①`, `②`, and `③`. Include monitoring, activity/rehabilitation, diet, and medication adherence. Do not invent individualized target values that require absent clinical measurements.
+Provide a staged and actionable plan based on disease, age, surgery, and reviewed medication risks. Use 4～6 newline-delimited numbered modules beginning with `①` through `⑥`; each module must describe actions, frequency or timing, an observation target, and what to do when the target is not met where clinically applicable. Across the modules, cover all of these domains:
+
+- disease/symptom or postoperative monitoring;
+- medication execution and medication-specific safety;
+- activity, rehabilitation, rest, or functional recovery;
+- diet or nutrition management appropriate to the disease;
+- follow-up or escalation when findings worsen.
+
+Include at least two quantitative frequencies, suggested targets, or action thresholds, such as “每日记录1次”, “每2～3小时活动一次”, “疼痛评分持续高于某阈值时联系医生”, or a broadly accepted safety threshold when applicable. These are prospective `建议目标` or `行动阈值`, never observed patient results. Do not create a baseline circumference, current pain score, measured vital sign, laboratory result, or promised downward trend. When a numeric target depends on absent organ function, comorbidity, examination, or clinician-set parameters, state that the target follows the treating clinician's individualized goal instead of inventing it.
 
 ### monitoringIndicators
 

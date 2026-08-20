@@ -30,7 +30,7 @@ export function validateDrugSpecification({ userid, medication, prescriptionEntr
   if (!specification) {
     throw new Error(`${normalizedUserid}的${normalizedMedication}处方缺少可识别规格`);
   }
-  if (!/\d/.test(specification) || !/\d(?:\.\d+)?(?:mg|g|μg|ug|mcg|ml|mL|L|%|万单位|单位|IU|U)/.test(specification)) {
+  if (!/\d/.test(specification) || !/\d(?:\.\d+)?(?:mg|g|μg|ug|mcg|ml|mL|L|%|万单位|单位|万IU|IU|万U|U)/.test(specification)) {
     throw new Error(`${normalizedUserid}的${normalizedMedication}规格${specification}缺少可识别的数值或计量单位`);
   }
 

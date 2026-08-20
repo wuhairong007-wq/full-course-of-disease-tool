@@ -82,7 +82,7 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
      --preview <temp>/health-plan-preview.png
    ```
 
-5. Reopen and verify the exact 13 headers, full source-order `userid` coverage, non-empty content, no prohibited missing-input placeholders, `已生成/待审核`, one table, no formula errors, and readable first/middle/last previews.
+5. Reopen and verify the exact 13 headers, full source-order `userid` coverage, non-empty content, no prohibited missing-input placeholders, `已生成/待审核`, one table, no formula errors, and readable first/middle/last previews. Reject generic pharmacology: every reviewed medication needs its own mechanism, plan-specific use, execution point, and safety/monitoring paragraph. Reject summary-only health plans: require 4～6 actionable modules covering monitoring, medication, rehabilitation, diet, and follow-up/escalation, with at least two prospective frequencies, suggested targets, or action thresholds and no fabricated observed results.
 6. Deliver only the final workbook unless the user asks for intermediates.
 
 ## Stage 3 — Medication Tracking and Medication List
