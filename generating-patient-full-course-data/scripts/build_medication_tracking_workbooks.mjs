@@ -203,7 +203,7 @@ const indexes = Object.fromEntries(actualSourceHeaders.map((header, index) => [h
 const patients = sourceRows.slice(1).filter((row) => row.some((value) => normalize(value))).map((row) => {
   const userid = normalize(row[indexes.userid]);
   const adverseReactionLevel = normalize(row[indexes["患者标签"]]);
-  if (!["轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为轻度、中度或高度`);
+  if (!["无", "轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为无、轻度、中度或高度`);
   return {
   userid,
   patientName: normalize(row[indexes["患者姓名"]]),

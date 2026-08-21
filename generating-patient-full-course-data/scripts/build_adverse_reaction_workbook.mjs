@@ -18,6 +18,8 @@ const inputHeaders = [
 ];
 const outputHeaders = ["序号", "患者ID", "疾病", "不良反应发生时间", "不良反应症状描述", "不良反应严重程度分级", "处理措施", "处理结果/转归", "是否触发人工干预", "备注"];
 const normalize = (value) => String(value ?? "").trim();
+const allowedLevels = new Set(["无", "轻度", "中度", "高度"]);
+const eligibleLevels = new Set(["轻度", "中度", "高度"]);
 
 function parseArgs(argv) {
   const args = {};
@@ -52,18 +54,23 @@ const sourceRows = sourceWorkbook.worksheets.getItemAt(0).getUsedRange(true).val
 const headers = sourceRows[0].map(normalize);
 if (JSON.stringify(headers) !== JSON.stringify(inputHeaders)) throw new Error("不良反应清单输入必须使用固定17列表头及顺序");
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
-const patients = sourceRows.slice(1).filter((row) => row.some((value) => normalize(value))).map((row) => ({
-  userid: normalize(row[indexes.userid]),
-  activateTime: normalize(row[indexes["激活时间"]]),
-  diseaseName: normalize(row[indexes["疾病"]]),
-  adverseReactionLevel: normalize(row[indexes["患者标签"]]),
-  allergyHistory: normalize(row[indexes["既往过敏史"]]) || "无",
-  combinedMedication: normalize(row[indexes["联合用药"]]),
-  prescriptionList: normalize(row[indexes["处方清单"]]),
-  surgeryName: normalize(row[indexes["手术名称"]]),
-  coursePlanName: normalize(row[indexes["全病程方案名称"]]),
-})).filter((patient) => ["中度", "高度"].includes(patient.adverseReactionLevel));
-if (patients.length < count) throw new Error(`符合条件的中度或高度患者仅${patients.length}位，少于请求数量${count}`);
+const patients = sourceRows.slice(1).filter((row) => row.some((value) => normalize(value))).map((row) => {
+  const userid = normalize(row[indexes.userid]);
+  const adverseReactionLevel = normalize(row[indexes["患者标签"]]);
+  if (!allowedLevels.has(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为无、轻度、中度或高度`);
+  return {
+    userid,
+    activateTime: normalize(row[indexes["激活时间"]]),
+    diseaseName: normalize(row[indexes["疾病"]]),
+    adverseReactionLevel,
+    allergyHistory: normalize(row[indexes["既往过敏史"]]) || "无",
+    combinedMedication: normalize(row[indexes["联合用药"]]),
+    prescriptionList: normalize(row[indexes["处方清单"]]),
+    surgeryName: normalize(row[indexes["手术名称"]]),
+    coursePlanName: normalize(row[indexes["全病程方案名称"]]),
+  };
+}).filter((patient) => eligibleLevels.has(patient.adverseReactionLevel));
+if (patients.length < count) throw new Error(`符合条件的轻度、中度或高度患者仅${patients.length}位，少于请求数量${count}`);
 const selected = patients.slice(0, count);
 
 const records = JSON.parse(await fs.readFile(args.records, "utf8"));

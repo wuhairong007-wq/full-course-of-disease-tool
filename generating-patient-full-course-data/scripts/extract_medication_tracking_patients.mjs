@@ -67,7 +67,7 @@ for (const row of rows.slice(1)) {
   if (!combinedMedication.length) throw new Error(`${userid}的联合用药不能为空`);
   if (new Set(combinedMedication).size !== combinedMedication.length) throw new Error(`${userid}的联合用药存在重复`);
   if (!prescriptionList) throw new Error(`${userid}的处方清单不能为空`);
-  if (!["轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为轻度、中度或高度`);
+  if (!["无", "轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为无、轻度、中度或高度`);
   for (const medication of combinedMedication) {
     if (!prescriptionList.includes(medication)) throw new Error(`${userid}的处方清单遗漏联合用药：${medication}`);
   }
