@@ -19,6 +19,7 @@ const requiredFiles = [
   "scripts/equivalent_medication_selector.mjs",
   "scripts/test_equivalent_medication_selector.mjs",
   "scripts/extract_health_plan_patients.mjs",
+  "scripts/health_plan_patient_normalizer.mjs",
   "scripts/build_health_plan_workbook.mjs",
   "scripts/test_health_plan_workbook.mjs",
   "scripts/test_health_plan_richness.mjs",
@@ -137,6 +138,16 @@ assert.doesNotMatch(clinicalRules, /\["无"\]/);
 const healthPlanSchema = await fs.readFile(path.join(skillDir, "references", "health-plan-schema.md"), "utf8");
 assert.match(healthPlanSchema, /Omit `主诉：` and `体征：` completely/);
 assert.match(healthPlanSchema, /Never mention the source file or describe absent input/);
+assert.match(healthPlanSchema, /numeric-only `手术名称`.*invalid placeholder.*empty `surgeryName`/s);
+assert.match(healthPlanSchema, /`（注射用胰蛋白酶支持）`.*`（穿刺引流\+注射用胰蛋白酶支持）`.*`（产品名称支持）`/s);
+
+const healthPlanPatientNormalizer = await fs.readFile(path.join(skillDir, "scripts", "health_plan_patient_normalizer.mjs"), "utf8");
+assert.match(healthPlanPatientNormalizer, /\^\\d\+\$/);
+assert.match(healthPlanPatientNormalizer, /normalizeCoursePlanNameForIntro/);
+for (const script of ["extract_health_plan_patients.mjs", "build_health_plan_workbook.mjs"]) {
+  const scriptText = await fs.readFile(path.join(skillDir, "scripts", script), "utf8");
+  assert.match(scriptText, /normalizeReviewedSurgeryName/);
+}
 
 const generatedContentValidator = await fs.readFile(path.join(skillDir, "scripts", "generated_content_validator.mjs"), "utf8");
 assert.match(generatedContentValidator, /源文件/);

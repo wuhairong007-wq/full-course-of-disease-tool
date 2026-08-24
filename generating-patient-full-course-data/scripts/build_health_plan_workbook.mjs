@@ -3,6 +3,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
+import { normalizeCoursePlanNameForIntro, normalizeReviewedSurgeryName } from "./health_plan_patient_normalizer.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -44,6 +45,7 @@ function parseArgs(argv) {
 }
 
 const normalize = (value) => String(value ?? "").trim();
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const countLinesStarting = (text, marker) => normalize(text).split(/\r?\n/).filter((line) => line.trim().startsWith(marker)).length;
 
 function parseTreatmentItemNames(text) {
@@ -72,10 +74,15 @@ function validateManagerIntro(userid, text, patient) {
   const context = value.match(/【([^】]+)】/)?.[1] ?? "";
   const expectedContext = context.includes(patient.disease) || (patient.surgeryName && context.includes(patient.surgeryName));
   if (!expectedContext) throw new Error(`${userid}的AI健康管理师介绍必须在【】中体现实际疾病或已审核手术阶段`);
-  if (!value.includes(patient.coursePlanName)) throw new Error(`${userid}的AI健康管理师介绍必须体现全病程方案名称`);
+  const introCoursePlanName = normalizeCoursePlanNameForIntro(patient.coursePlanName, patient.combinedMedication);
+  if (!introCoursePlanName || !value.includes(introCoursePlanName)) throw new Error(`${userid}的AI健康管理师介绍必须体现去除产品支持标签后的全病程方案名称`);
   if (!/每日|日常/.test(value) || !/重点|关注|管理要点/.test(value)) throw new Error(`${userid}的AI健康管理师介绍必须说明每日关注重点或日常管理要点`);
   if (value.length < 120 || value.length > 260) throw new Error(`${userid}的AI健康管理师介绍建议控制在120至260个字符并保持内容完整`);
   if (/帮助您安全、高效地度过康复期|保证|确保疗效|快速康复/.test(value)) throw new Error(`${userid}的AI健康管理师介绍含疗效、安全或康复速度承诺`);
+  for (const medication of patient.combinedMedication) {
+    const productSupportLabel = new RegExp(String.raw`[（(][^（）()\n]{0,80}${escapeRegExp(medication)}[^（）()\n]{0,40}支持\s*[）)]`);
+    if (productSupportLabel.test(value)) throw new Error(`${userid}的AI健康管理师介绍不得使用“（药品名称支持）”类标签：${medication}`);
+  }
 }
 
 function validatePharmacology(userid, text, patient) {
@@ -156,7 +163,7 @@ const patients = patientRows.map((row) => {
     userid,
     disease: normalize(row[indexes["疾病"]]),
     combinedMedication: normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean),
-    surgeryName: normalize(row[indexes["手术名称"]]),
+    surgeryName: normalizeReviewedSurgeryName(row[indexes["手术名称"]]),
     coursePlanName: normalize(row[indexes["全病程方案名称"]]),
   };
 });
