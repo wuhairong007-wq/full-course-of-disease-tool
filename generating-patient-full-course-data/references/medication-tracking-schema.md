@@ -14,7 +14,7 @@ The extractor emits:
 - `combinedMedication`: non-empty array split from the reviewed `+`-separated field
 - `prescriptionList`, `treatmentPlan`, `surgeryName`, `coursePlanName`
 
-`activateDate` is record metadata only. Never use it to calculate, anchor, or describe a medication cycle.
+Use the reviewed `activateDate` as the medication-cycle anchor when a date is written; do not substitute the service-period dates.
 
 ## Generated JSON
 
@@ -45,7 +45,8 @@ Each `medicationItems` entry must have exactly these seven keys:
 ## Medication Cycle
 
 - Derive the cycle from the reviewed prescription, disease logic, age, gender, and supplied treatment plan.
-- State each distinct finite or long-term phase clearly. Do not calculate dates from `activateDate` and do not include the activation date text.
+- Write one continuous medication-duration statement rather than a staged schedule. Do not use `阶段`, `第一阶段`, `第二阶段`, `第三阶段`, `分阶段`, or similar phase labels.
+- Write the reviewed activation date as the narrative anchor when supplied, for example: `自2026-07-19起，抗感染疗程3-5天，镇痛及胃肠道对症治疗持续5-7天，视术后恢复情况停药。` Do not replace it with the service-period start or end date, and do not calculate a relative offset such as“激活后第7天”。
 - Never extend a reviewed finite course or convert a finite course into long-term therapy without source support.
 - When the source does not provide a reliable duration, use conservative wording requiring clinician confirmation rather than inventing a duration.
 

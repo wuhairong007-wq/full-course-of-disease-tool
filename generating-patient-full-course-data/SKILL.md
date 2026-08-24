@@ -98,6 +98,7 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
    ```
 
 2. Generate exactly one four-key record per patient, in source order, following `references/medication-tracking-schema.md`. Keep `medicationItems` exactly aligned with the reviewed combined medications and prescription list; never add a medication. Write `<temp>/medication-tracking-records.json`.
+   For `medicationCycle`, write one continuous duration statement; never use multi-stage wording such as `第一阶段` or `第二阶段`. When a start date is needed, use the reviewed activation date (for example, `自2026-07-19起，抗感染疗程3-5天，镇痛及胃肠道对症治疗持续5-7天，视术后恢复情况停药。`), never the service-period dates.
 3. Set both outputs to the source directory unless the user specifies another location. Use `<source-stem>_跟踪提醒.xlsx` and `<source-stem>_用药清单.xlsx`. If the source directory is not writable, use `outputs/patient-medication-tracking/<source-stem>/`.
 4. Run:
 

@@ -86,7 +86,7 @@ assert.match(skill, /生成不良反应清单 依据文件：<source\.xlsx> 数�
 
 const medicationSchema = await fs.readFile(path.join(skillDir, "references", "medication-tracking-schema.md"), "utf8");
 assert.match(medicationSchema, /体温监测次数.*血压、心率监测次数.*用药提醒次数/s);
-assert.match(medicationSchema, /Never use it to calculate.*medication cycle/s);
+assert.match(medicationSchema, /Use the reviewed `activateDate` as the medication-cycle anchor/s);
 assert.match(medicationSchema, /must exactly equal one item in `combinedMedication`/);
 assert.match(medicationSchema, /Do not put administration routes/);
 assert.match(medicationSchema, /positive integer.*`长期` or `无限期`/s);

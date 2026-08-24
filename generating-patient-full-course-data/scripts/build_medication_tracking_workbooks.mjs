@@ -26,6 +26,7 @@ const allowedMedicationTime = /^(?:早餐前|早餐后|午餐前|午餐后|晚�
 const latinFrequency = /\b(?:qd|bid|tid|qid|q\d+h|prn)\b/i;
 const activateDatePattern = /\d{4}[-年\/]\d{1,2}[-月\/]\d{1,2}/;
 const activationAnchorPattern = /(?:从|以|自)?(?:激活|启用)(?:日期|时间|当日|当天|日|时)?[^。；，]{0,12}(?:起点|算起|开始|起|后|之日起|第\d+天|锚点)/;
+const stagedCyclePattern = /阶段/;
 
 function parseArgs(argv) {
   const args = {};
@@ -121,10 +122,16 @@ function validateRecord(record, patient) {
   });
   if (!normalize(record.medicationPlan)) throw new Error(`${userid}的medicationPlan不能为空`);
   if (!normalize(record.medicationCycle)) throw new Error(`${userid}的medicationCycle不能为空`);
-  if (activateDatePattern.test(record.medicationCycle) || (patient.activateDate && record.medicationCycle.includes(patient.activateDate))) {
-    throw new Error(`${userid}的medicationCycle不得依据激活日期推算或包含激活日期`);
+  if (stagedCyclePattern.test(record.medicationCycle)) {
+    throw new Error(`${userid}的medicationCycle不得使用阶段化表述，应写成连续用药周期`);
   }
-  if (activationAnchorPattern.test(record.medicationCycle)) throw new Error(`${userid}的medicationCycle不得以激活时间为周期锚点`);
+  const cycleDates = record.medicationCycle.match(new RegExp(activateDatePattern.source, "g")) ?? [];
+  const activationDateText = patient.activateDate.match(new RegExp(activateDatePattern.source))?.[0];
+  for (const cycleDate of cycleDates) {
+    if (activationDateText && cycleDate === activationDateText) continue;
+    throw new Error(`${userid}的medicationCycle日期必须使用激活日期，不得使用服务周期日期或其他日期`);
+  }
+  if (activationAnchorPattern.test(record.medicationCycle)) throw new Error(`${userid}的medicationCycle不得使用激活后的相对偏移作为周期锚点`);
   if (!record.medicationPlan.includes(patient.diseaseName)) throw new Error(`${userid}的medicationPlan必须体现疾病`);
   if (!record.medicationPlan.includes(String(patient.age))) throw new Error(`${userid}的medicationPlan必须体现年龄`);
   if (patient.gender && !record.medicationPlan.includes(patient.gender)) throw new Error(`${userid}的medicationPlan必须体现性别`);
