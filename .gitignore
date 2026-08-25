@@ -1,4 +1,5 @@
 .DS_Store
+.worktrees/
 outputs/
 *.inspect.ndjson
 *.xlsx~
