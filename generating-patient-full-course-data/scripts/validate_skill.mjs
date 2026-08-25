@@ -81,7 +81,7 @@ assert.match(skill, /生成健康管理方案 依据文件：<source\.xlsx>/);
 assert.match(skill, /生成跟踪提醒和用药清单 依据文件：<source\.xlsx>/);
 assert.match(skill, /service-period reminder formulas/);
 assert.match(skill, /integer response rates of 45～70/);
-assert.match(skill, /medication confirmation times strictly later than activation in the same month and within `06:00:00–21:59:59`/);
+assert.match(skill, /medication confirmation times strictly later than activation, strictly earlier than the service-period end date, in the same month, and within `06:00:00–21:59:59`/);
 assert.match(skill, /生成不良反应清单 依据文件：<source\.xlsx> 数量：N/);
 
 const medicationSchema = await fs.readFile(path.join(skillDir, "references", "medication-tracking-schema.md"), "utf8");
@@ -100,6 +100,8 @@ assert.match(medicationSchema, /`中度` or `高度` → `是`/);
 assert.match(medicationSchema, /`无` or `轻度` → `否`/);
 assert.match(medicationSchema, /strictly later than `激活时间`.*same year and month.*`06:00:00` and `21:59:59`/s);
 assert.match(medicationSchema, /same confirmation timestamp for every medication row belonging to that patient/);
+assert.match(medicationSchema, /confirmation timestamp must be strictly earlier than the service-period end date/s);
+assert.match(medicationSchema, /activation date equals the service-period end date.*stop.*修改激活日期/s);
 assert.match(medicationSchema, /must not mention the source file or describe absent input/);
 
 const adverseSchema = await fs.readFile(path.join(skillDir, "references", "adverse-reaction-schema.md"), "utf8");
