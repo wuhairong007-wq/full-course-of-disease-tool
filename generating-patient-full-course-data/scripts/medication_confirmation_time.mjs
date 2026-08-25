@@ -27,9 +27,21 @@ function formatDateTime(date) {
 
 export function generateMedicationConfirmationTime(patient) {
   const activation = parseDateTime(patient.activateTime, `${patient.userid}的激活时间`);
+  const serviceEnd = parseDateTime(patient.serviceEndDate, `${patient.userid}的服务结束日期`);
   const year = activation.getFullYear();
   const month = activation.getMonth();
-  const lastDay = new Date(year, month + 1, 0).getDate();
+  if (
+    activation.getFullYear() === serviceEnd.getFullYear()
+    && activation.getMonth() === serviceEnd.getMonth()
+    && activation.getDate() === serviceEnd.getDate()
+  ) {
+    throw new Error(`${patient.userid}的激活日期不能为服务周期最后一天，请修改激活日期`);
+  }
+  const monthEndExclusive = new Date(year, month + 1, 1);
+  const confirmationEndExclusive = serviceEnd < monthEndExclusive ? serviceEnd : monthEndExclusive;
+  const lastLegalDate = new Date(confirmationEndExclusive);
+  lastLegalDate.setDate(lastLegalDate.getDate() - 1);
+  const lastDay = lastLegalDate.getFullYear() === year && lastLegalDate.getMonth() === month ? lastLegalDate.getDate() : 0;
   const activationSeconds = activation.getHours() * 3600 + activation.getMinutes() * 60 + activation.getSeconds();
   const windows = [];
   let totalSeconds = 0;
@@ -42,8 +54,8 @@ export function generateMedicationConfirmationTime(patient) {
     totalSeconds += length;
   }
 
-  if (!totalSeconds) throw new Error(`${patient.userid}当月不存在严格晚于激活时间且位于06:00:00至21:59:59的合法确认时间`);
-  const selectedOffset = Math.floor(stableRandom(patient.userid, "medication-confirmation-after-activation-06-22") * totalSeconds);
+  if (!totalSeconds) throw new Error(`${patient.userid}在服务周期结束日前不存在严格晚于激活时间且位于06:00:00至21:59:59的合法确认时间`);
+  const selectedOffset = Math.floor(stableRandom(patient.userid, `medication-confirmation-before-${patient.serviceEndDate}-06-22`) * totalSeconds);
   const window = windows.find(({ offset, length }) => selectedOffset < offset + length);
   const secondsOfDay = window.startSeconds + selectedOffset - window.offset;
   const result = new Date(year, month, window.day, Math.floor(secondsOfDay / 3600), Math.floor((secondsOfDay % 3600) / 60), secondsOfDay % 60);
