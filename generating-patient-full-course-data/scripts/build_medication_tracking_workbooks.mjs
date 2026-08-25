@@ -209,12 +209,15 @@ if (JSON.stringify(actualSourceHeaders) !== JSON.stringify(sourceHeaders)) throw
 const indexes = Object.fromEntries(actualSourceHeaders.map((header, index) => [header, index]));
 const patients = sourceRows.slice(1).filter((row) => row.some((value) => normalize(value))).map((row) => {
   const userid = normalize(row[indexes.userid]);
+  const activateDate = normalize(row[indexes["激活时间"]]);
+  const activateCalendarDate = parseCalendarDate(activateDate, `${userid || "未知患者"}的激活时间`);
   const adverseReactionLevel = normalize(row[indexes["患者标签"]]);
+  if (activateCalendarDate.dayNumber === serviceEndDate.dayNumber) throw new Error(`${userid}的激活日期不能为服务周期最后一天，请修改激活日期`);
   if (!["无", "轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为无、轻度、中度或高度`);
   return {
   userid,
   patientName: normalize(row[indexes["患者姓名"]]),
-  activateDate: normalize(row[indexes["激活时间"]]),
+  activateDate,
   gender: normalize(row[indexes["性别"]]),
   age: Number(row[indexes["年龄"]]),
   diseaseName: normalize(row[indexes["疾病"]]),
@@ -252,7 +255,11 @@ for (let index = 0; index < patients.length; index += 1) {
     metrics.medicationReminder, record.medicationPlan, record.medicationCycle, "", metrics.patientResponseRate,
     metrics.manualIntervention,
   ]);
-  const medicationConfirmationTime = generateMedicationConfirmationTime({ userid: patient.userid, activateTime: patient.activateDate });
+  const medicationConfirmationTime = generateMedicationConfirmationTime({
+    userid: patient.userid,
+    activateTime: patient.activateDate,
+    serviceEndDate: patient.serviceEndDate,
+  });
   for (const item of record.medicationItems) {
     const treatmentDays = /^[1-9]\d*$/.test(normalize(item.treatmentDays)) ? Number(item.treatmentDays) : item.treatmentDays;
     medicationRows.push([

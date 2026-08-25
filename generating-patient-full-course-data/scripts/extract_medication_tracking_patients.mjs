@@ -38,12 +38,12 @@ function parseCalendarDate(value, label) {
   const day = Number(match[3]);
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) throw new Error(`${label}不是有效日期`);
-  return text;
+  return { text, dayNumber: Math.floor(date.getTime() / 86400000) };
 }
 const args = parseArgs(process.argv.slice(2));
 const serviceStartDate = parseCalendarDate(args["service-start"], "服务周期开始日期");
 const serviceEndDate = parseCalendarDate(args["service-end"], "服务周期结束日期");
-if (new Date(serviceStartDate).getTime() > new Date(serviceEndDate).getTime()) throw new Error("服务周期开始日期不得晚于结束日期");
+if (serviceStartDate.dayNumber > serviceEndDate.dayNumber) throw new Error("服务周期开始日期不得晚于结束日期");
 const workbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input));
 const rows = workbook.worksheets.getItemAt(0).getUsedRange(true).values;
 if (!rows.length) throw new Error("审核后患者明细为空");
@@ -62,6 +62,7 @@ for (const row of rows.slice(1)) {
   const activateDate = parseCalendarDate(row[indexes["激活时间"]], `${userid || "未知患者"}的激活时间`);
   const adverseReactionLevel = normalize(row[indexes["患者标签"]]);
   if (!userid) throw new Error("审核后患者明细存在空userid");
+  if (activateDate.dayNumber === serviceEndDate.dayNumber) throw new Error(`${userid}的激活日期不能为服务周期最后一天，请修改激活日期`);
   if (!Number.isFinite(age) || age < 0 || age > 130) throw new Error(`${userid}存在无效年龄`);
   if (!diseaseName) throw new Error(`${userid}的疾病不能为空`);
   if (!combinedMedication.length) throw new Error(`${userid}的联合用药不能为空`);
@@ -74,9 +75,9 @@ for (const row of rows.slice(1)) {
   patients.push({
     userid,
     patientName: normalize(row[indexes["患者姓名"]]),
-    activateDate,
-    serviceStartDate,
-    serviceEndDate,
+    activateDate: activateDate.text,
+    serviceStartDate: serviceStartDate.text,
+    serviceEndDate: serviceEndDate.text,
     adverseReactionLevel,
     gender: normalize(row[indexes["性别"]]),
     age,

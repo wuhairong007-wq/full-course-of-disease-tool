@@ -25,10 +25,12 @@ function parseDateTime(value) {
   return new Date(String(value).replace(" ", "T"));
 }
 
-function assertValidConfirmationTime(value, activationText, userid) {
+function assertValidConfirmationTime(value, activationText, serviceEndText, userid) {
   const activation = parseDateTime(activationText);
+  const serviceEnd = parseDateTime(`${serviceEndText} 00:00:00`);
   const confirmation = parseDateTime(value);
   assert(confirmation > activation, `${userid}用药方案确认时间必须严格晚于激活时间`);
+  assert(confirmation < serviceEnd, `${userid}用药方案确认时间不得落在服务周期最后一天`);
   assert.equal(confirmation.getFullYear(), activation.getFullYear(), `${userid}确认时间年份改变`);
   assert.equal(confirmation.getMonth(), activation.getMonth(), `${userid}确认时间月份改变`);
   const secondsOfDay = confirmation.getHours() * 3600 + confirmation.getMinutes() * 60 + confirmation.getSeconds();
@@ -75,14 +77,14 @@ const run = (script, args) => spawnSync(process.execPath, [path.join(scriptDir, 
   encoding: "utf8",
   env: { ...process.env, CODEX_NODE_MODULES: nodeModules },
 });
-const serviceArgs = ["--service-start", "2026-08-01", "--service-end", "2026-08-10"];
+const serviceArgs = ["--service-start", "2026-08-01", "--service-end", "2026-08-31"];
 const extractResult = run("extract_medication_tracking_patients.mjs", ["--input", sourcePath, ...serviceArgs, "--output", extractedPath]);
 assert.equal(extractResult.status, 0, `${extractResult.stdout}\n${extractResult.stderr}`);
 const extracted = JSON.parse(await fs.readFile(extractedPath, "utf8"));
 assert.deepEqual(extracted.map(({ userid }) => userid), ["U001", "U002"]);
 assert.deepEqual(extracted[0].combinedMedication, ["利伐沙班片", "对乙酰氨基酚片"]);
 assert.equal(extracted[0].serviceStartDate, "2026-08-01");
-assert.equal(extracted[0].serviceEndDate, "2026-08-10");
+assert.equal(extracted[0].serviceEndDate, "2026-08-31");
 assert.equal(extracted[0].adverseReactionLevel, "高度");
 assert.equal(extracted[1].adverseReactionLevel, "无");
 
@@ -102,7 +104,7 @@ const trackingRows = trackingSheet.getUsedRange(true).values;
 assert.deepEqual(trackingRows[0], ["序号", "患者ID", "姓名", "性别", "年龄", "疾病", "既往过敏史", "联合用药", "体温监测次数", "血压、心率监测次数", "用药提醒次数", "用药方案", "用药周期", "方案链接", "患者响应率", "是否触发人工干预"]);
 assert.deepEqual(trackingRows.slice(1).map((row) => row[1]), ["U001", "U002"]);
 for (const row of trackingRows.slice(1)) {
-  const days = row[1] === "U001" ? 10 : 1;
+  const days = row[1] === "U001" ? 31 : 20;
   assert(row[8] >= Math.round(2 * days * 0.4) && row[8] <= Math.round(2 * days * 0.9));
   assert(row[9] >= Math.round(days * 0.5) && row[9] <= Math.round(days * 0.85));
   assert(row[10] >= Math.round(3 * days * 0.6) && row[10] <= Math.round(3 * days * 0.85));
@@ -140,7 +142,7 @@ assert.deepEqual(medicationRows[0], ["userid", "用药方案确认时间", "药�
 assert.deepEqual(medicationRows.slice(1).map((row) => row[0]), ["U001", "U001", "U002", "U002"]);
 assert.deepEqual(medicationRows.slice(1).map((row) => row[2]), ["利伐沙班片", "对乙酰氨基酚片", "奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"]);
 const activationByUserid = new Map(sourceRows.map((row) => [row[1], row[3]]));
-for (const row of medicationRows.slice(1)) assertValidConfirmationTime(row[1], activationByUserid.get(row[0]), row[0]);
+for (const row of medicationRows.slice(1)) assertValidConfirmationTime(row[1], activationByUserid.get(row[0]), "2026-08-31", row[0]);
 const confirmationsByUserid = new Map();
 for (const row of medicationRows.slice(1)) {
   const existing = confirmationsByUserid.get(row[0]);
@@ -182,8 +184,11 @@ const noWindowSourceSheet = noWindowSourceWorkbook.worksheets.add("Sheet1");
 noWindowSourceSheet.getRange("A1:Q3").values = [sourceHeaders, ...sourceRows];
 await (await SpreadsheetFile.exportXlsx(noWindowSourceWorkbook)).save(sourcePath);
 await fs.writeFile(recordsPath, JSON.stringify(records, null, 2), "utf8");
+const serviceEndActivationExtractResult = run("extract_medication_tracking_patients.mjs", ["--input", sourcePath, ...serviceArgs, "--output", extractedPath]);
+assert.notEqual(serviceEndActivationExtractResult.status, 0);
+assert.match(`${serviceEndActivationExtractResult.stdout}\n${serviceEndActivationExtractResult.stderr}`, /U001的激活日期不能为服务周期最后一天，请修改激活日期/);
 const noConfirmationWindowResult = run("build_medication_tracking_workbooks.mjs", buildArgs);
 assert.notEqual(noConfirmationWindowResult.status, 0);
-assert.match(`${noConfirmationWindowResult.stdout}\n${noConfirmationWindowResult.stderr}`, /U001当月不存在严格晚于激活时间且位于06:00:00至21:59:59的合法确认时间/);
+assert.match(`${noConfirmationWindowResult.stdout}\n${noConfirmationWindowResult.stderr}`, /U001的激活日期不能为服务周期最后一天，请修改激活日期/);
 
 console.log(JSON.stringify({ status: "passed", patients: 2, trackingRows: trackingRows.length, medicationRows: medicationRows.length }));
