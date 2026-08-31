@@ -1,6 +1,8 @@
 ---
 name: generating-patient-full-course-data
 description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单或不良反应清单, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, and “生成不良反应清单 依据文件：Excel路径 数量：N”.
+metadata:
+  version: "1.0.0"
 ---
 
 # Generating Patient Full-Course Data

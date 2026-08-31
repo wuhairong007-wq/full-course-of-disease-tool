@@ -48,7 +48,10 @@ const requiredFiles = [
 for (const file of requiredFiles) await fs.access(path.join(skillDir, file));
 
 const skill = await fs.readFile(path.join(skillDir, "SKILL.md"), "utf8");
-assert.match(skill, /^---\nname: generating-patient-full-course-data\ndescription: .+\n---\n/);
+assert.match(skill, /^---\nname: generating-patient-full-course-data\ndescription: .+\nmetadata:\n  version: "[^"]+"\n---\n/);
+const version = skill.match(/^  version: "([^"]+)"$/m)?.[1];
+assert(version, "SKILL.md必须声明metadata.version");
+assert.match(version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/, "metadata.version必须使用x.y.z语义化版本");
 assert.match(skill, /^description: .*生成患者明细.*依据文件.*Excel路径.*$/m);
 assert.doesNotMatch(skill, /TODO|TBD|\[TODO/);
 assert.match(skill, /references\/clinical-rules\.md/);

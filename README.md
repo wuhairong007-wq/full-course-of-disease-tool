@@ -13,6 +13,16 @@ https://github.com/wuhairong007-wq/full-course-of-disease-tool/tree/main/generat
 
 The skill is installed into `~/.codex/skills/generating-patient-full-course-data` and becomes available on the next turn.
 
+## Check Installed Version
+
+Read the installed semantic version:
+
+```bash
+sed -n 's/^  version: "\(.*\)"/\1/p' ~/.codex/skills/generating-patient-full-course-data/SKILL.md
+```
+
+Compare it with `metadata.version` in the latest GitHub `SKILL.md`. Reinstall the skill when the installed value is lower.
+
 ## Supported Triggers
 
 ```text
