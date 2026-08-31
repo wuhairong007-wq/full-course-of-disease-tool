@@ -27,8 +27,6 @@ function parseArgs(argv) {
 }
 
 const normalize = (value) => String(value ?? "").trim();
-const allowedLevels = new Set(["无", "轻度", "中度", "高度"]);
-const eligibleLevels = new Set(["轻度", "中度", "高度"]);
 function parseCount(value) {
   if (!/^[1-9]\d*$/.test(normalize(value))) throw new Error("数量必须为正整数");
   return Number(value);
@@ -67,9 +65,9 @@ for (const row of rows.slice(1)) {
   allUserids.add(userid);
   if (!diseaseName) throw new Error(`${userid}的疾病不能为空`);
   if (!Number.isFinite(age) || age < 0 || age > 130) throw new Error(`${userid}存在无效年龄`);
-  if (!allowedLevels.has(level)) throw new Error(`${userid}的不良反应分层必须为无、轻度、中度或高度`);
+  if (!["轻度", "中度", "高度"].includes(level)) throw new Error(`${userid}的不良反应分层必须为轻度、中度或高度`);
   const activateTime = parseDateTime(row[indexes["激活时间"]], `${userid}的激活时间`);
-  if (!eligibleLevels.has(level)) continue;
+  if (!["中度", "高度"].includes(level)) continue;
   const combinedMedication = normalize(row[indexes["联合用药"]]);
   const prescriptionList = normalize(row[indexes["处方清单"]]);
   if (!combinedMedication) throw new Error(`${userid}的联合用药不能为空`);
@@ -89,7 +87,7 @@ for (const row of rows.slice(1)) {
     coursePlanName: normalize(row[indexes["全病程方案名称"]]),
   });
 }
-if (eligible.length < count) throw new Error(`符合条件的轻度、中度或高度患者仅${eligible.length}位，少于请求数量${count}`);
+if (eligible.length < count) throw new Error(`符合条件的中度或高度患者仅${eligible.length}位，少于请求数量${count}`);
 const selected = eligible.slice(0, count);
 await fs.mkdir(path.dirname(args.output), { recursive: true });
 await fs.writeFile(args.output, JSON.stringify(selected, null, 2), "utf8");

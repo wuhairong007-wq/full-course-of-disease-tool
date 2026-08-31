@@ -6,7 +6,7 @@ Accept the reviewed patient workbook with these required headers in this exact o
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
 
-For stage 3, keep the reviewed 17-column workbook unchanged. Read adverse-reaction level from `患者标签`; its value must be `无 | 轻度 | 中度 | 高度`. Require the trigger to include `服务周期 YYYY-MM-DD 至 YYYY-MM-DD`, parse both dates, and reject missing/invalid periods or a start after the end. Preserve every non-empty row, `userid`, source order, patient name, activation time, gender, age, disease, allergy history, combined medication, and prescription list. Reject blank or duplicate `userid`, invalid age or activation date, invalid patient labels, blank disease, blank combined medication, blank prescription list, or reordered headers. Do not substitute medication duration for the service period.
+For stage 3, keep the reviewed 17-column workbook unchanged. Read adverse-reaction level from `患者标签`; its value must be `轻度 | 中度 | 高度`. Require the trigger to include `服务周期 YYYY-MM-DD 至 YYYY-MM-DD`, parse both dates, and reject missing/invalid periods or a start after the end. Preserve every non-empty row, `userid`, source order, patient name, activation time, gender, age, disease, allergy history, combined medication, and prescription list. Reject blank or duplicate `userid`, invalid age or activation date, invalid patient labels, blank disease, blank combined medication, blank prescription list, or reordered headers. Do not substitute medication duration for the service period.
 
 The extractor emits:
 
@@ -72,7 +72,7 @@ Generate one row per input patient in source order. Validate the full trigger-su
 - `血压、心率监测次数 = round(D × random[0.5, 0.85))`
 - `用药提醒次数 = round(3 × D × random[0.6, 0.85))`
 - `患者响应率`: integer from 45 through 70 inclusive; store the integer and let the page display it with `%`.
-- `是否触发人工干预`: `中度` or `高度` → `是`; `无` or `轻度` → `否`.
+- `是否触发人工干预`: `中度` or `高度` → `是`; `轻度` → `否`.
 
 Leave `方案链接` blank because the input does not establish it.
 

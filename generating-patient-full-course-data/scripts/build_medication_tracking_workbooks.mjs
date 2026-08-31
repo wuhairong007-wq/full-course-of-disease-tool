@@ -96,7 +96,8 @@ function getPrescriptionSegment(prescriptionList, medication, nextMedication) {
 }
 
 function getExpectedTreatmentDays(segment) {
-  const finite = segment.match(/(?:连续|疗程(?:为|共)?|使用)(\d+)天/);
+  const finite = segment.match(/(?:连续|疗程(?:为|共)?|使用)(\d+)(天|日|周)/);
+  if (finite?.[2] === "周") return Number(finite[1]) * 7;
   if (finite) return Number(finite[1]);
   if (/无限期/.test(segment)) return "无限期";
   if (/长期|长期维持|持续用药/.test(segment)) return "长期";
@@ -105,6 +106,32 @@ function getExpectedTreatmentDays(segment) {
 
 function getReviewedField(segment, pattern) {
   return normalize(segment.match(pattern)?.[1]);
+}
+
+function getExpectedSpecification(segment, medication) {
+  const explicit = getReviewedField(segment, /规格\s*([^，；+]+)/);
+  if (explicit) return explicit;
+  const medicationIndex = segment.indexOf(medication);
+  if (medicationIndex < 0) return "";
+  const remainder = segment.slice(medicationIndex + medication.length);
+  const doseBoundary = remainder.search(/(?:每次|适量)/);
+  if (doseBoundary < 0) return "";
+  return normalize(remainder.slice(0, doseBoundary)).replace(/^（|）$/g, "");
+}
+
+function getExpectedSingleDose(segment) {
+  const perDose = getReviewedField(segment, /每次\s*([^，；+]+?)(?=\s+(?:口服|局部外用|局部涂抹|肌内注射|静脉注射|静脉滴注|吸入|每日|一日|每\d+小时|每周|隔日))/);
+  if (perDose) return perDose;
+  return /(?:^|\s)适量(?:\s|$)/.test(segment) ? "适量" : "";
+}
+
+function getExpectedFrequency(segment) {
+  const match = segment.match(/(?:每日|一日)(\d+)(?:[-～至](\d+))?次|每(\d+)小时1次|每周(\d+)次|隔日1次/);
+  if (!match) return "";
+  if (/隔日1次/.test(match[0])) return "隔日1次";
+  if (match[3]) return `每${match[3]}小时1次`;
+  if (match[4]) return `每周${match[4]}次`;
+  return match[2] ? `每日${match[1]}至${match[2]}次` : `每日${match[1]}次`;
 }
 
 function validateRecord(record, patient) {
@@ -150,7 +177,7 @@ function validateRecord(record, patient) {
     if (JSON.stringify(Object.keys(item)) !== JSON.stringify(itemKeys)) throw new Error(`${userid}的每个用药项目必须且只能依次包含7个字段`);
     for (const key of itemKeys) if (!normalize(item[key])) throw new Error(`${userid}的${item.drugName || "用药项目"}.${key}不能为空`);
     if (!patient.prescriptionList.includes(item.drugName)) throw new Error(`${userid}含处方清单之外的药物：${item.drugName}`);
-    if (latinFrequency.test(item.frequency) || !/^(?:每日[1-9]\d*次|每[1-9]\d*小时1次|每周[1-9]\d*次|隔日1次)$/.test(item.frequency)) {
+    if (latinFrequency.test(item.frequency) || !/^(?:每日[1-9]\d*(?:至[1-9]\d*)?次|每[1-9]\d*小时1次|每周[1-9]\d*次|隔日1次)$/.test(item.frequency)) {
       throw new Error(`${userid}的${item.drugName}用药频率必须使用中文量化格式`);
     }
     if (!allowedMedicationTime.test(item.medicationTime)) throw new Error(`${userid}的${item.drugName}用药时间必须仅包含规范服药时机`);
@@ -160,10 +187,10 @@ function validateRecord(record, patient) {
     if (expectedTreatmentDays === null) throw new Error(`${userid}的${item.drugName}处方未提供可验证疗程`);
     const actualTreatmentDays = /^[1-9]\d*$/.test(normalize(item.treatmentDays)) ? Number(item.treatmentDays) : item.treatmentDays;
     if (actualTreatmentDays !== expectedTreatmentDays) throw new Error(`${userid}的${item.drugName}疗程必须与审核处方一致`);
-    const expectedFrequency = segment.match(/(?:每日[1-9]\d*次|每[1-9]\d*小时1次|每周[1-9]\d*次|隔日1次)/)?.[0];
+    const expectedFrequency = getExpectedFrequency(segment);
     if (!expectedFrequency || item.frequency !== expectedFrequency) throw new Error(`${userid}的${item.drugName}频率必须与审核处方一致`);
-    const expectedSpecification = getReviewedField(segment, /规格\s*([^，；+]+)/);
-    const expectedSingleDose = getReviewedField(segment, /每次\s*([^，；+]+)/);
+    const expectedSpecification = getExpectedSpecification(segment, item.drugName);
+    const expectedSingleDose = getExpectedSingleDose(segment);
     if (!expectedSpecification || item.specification !== expectedSpecification) throw new Error(`${userid}的${item.drugName}规格必须与审核处方一致`);
     if (!expectedSingleDose || item.singleDose !== expectedSingleDose) throw new Error(`${userid}的${item.drugName}单次剂量必须与审核处方一致`);
     if (patient.allergyHistory !== "无" && !item.precautions.includes(patient.allergyHistory)) {
@@ -213,7 +240,7 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   const activateCalendarDate = parseCalendarDate(activateDate, `${userid || "未知患者"}的激活时间`);
   const adverseReactionLevel = normalize(row[indexes["患者标签"]]);
   if (activateCalendarDate.dayNumber === serviceEndDate.dayNumber) throw new Error(`${userid}的激活日期不能为服务周期最后一天，请修改激活日期`);
-  if (!["无", "轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为无、轻度、中度或高度`);
+  if (!["轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为轻度、中度或高度`);
   return {
   userid,
   patientName: normalize(row[indexes["患者姓名"]]),

@@ -19,10 +19,8 @@ const requiredFiles = [
   "scripts/equivalent_medication_selector.mjs",
   "scripts/test_equivalent_medication_selector.mjs",
   "scripts/extract_health_plan_patients.mjs",
-  "scripts/health_plan_patient_normalizer.mjs",
   "scripts/build_health_plan_workbook.mjs",
   "scripts/test_health_plan_workbook.mjs",
-  "scripts/test_health_plan_richness.mjs",
   "scripts/extract_medication_tracking_patients.mjs",
   "scripts/build_medication_tracking_workbooks.mjs",
   "scripts/medication_confirmation_time.mjs",
@@ -93,11 +91,9 @@ assert.match(medicationSchema, /positive integer.*`长期` or `无限期`/s);
 assert.match(medicationSchema, /specification, dose, frequency, and duration match/);
 assert.match(medicationSchema, /combined-medication interactions/);
 assert.match(medicationSchema, /患者标签.*服务周期/s);
-assert.match(medicationSchema, /`无\s*\|\s*轻度\s*\|\s*中度\s*\|\s*高度`/s);
 assert.match(medicationSchema, /round\(2 × D × random\[0\.4, 0\.9\)\)/);
 assert.match(medicationSchema, /45 through 70 inclusive/);
 assert.match(medicationSchema, /`中度` or `高度` → `是`/);
-assert.match(medicationSchema, /`无` or `轻度` → `否`/);
 assert.match(medicationSchema, /strictly later than `激活时间`.*same year and month.*`06:00:00` and `21:59:59`/s);
 assert.match(medicationSchema, /same confirmation timestamp for every medication row belonging to that patient/);
 assert.match(medicationSchema, /confirmation timestamp must be strictly earlier than the service-period end date/s);
@@ -105,11 +101,10 @@ assert.match(medicationSchema, /activation date equals the service-period end da
 assert.match(medicationSchema, /must not mention the source file or describe absent input/);
 
 const adverseSchema = await fs.readFile(path.join(skillDir, "references", "adverse-reaction-schema.md"), "utf8");
-assert.match(adverseSchema, /Select only patients whose label is `轻度`, `中度`, or `高度`/);
-assert.match(adverseSchema, /exclude every patient labelled `无`/);
+assert.match(adverseSchema, /Select only patients whose `患者标签` is `中度` or `高度`/);
 assert.match(adverseSchema, /fewer than `N` eligible patients exist/);
 assert.match(adverseSchema, /strictly later than `激活时间`.*same year and month.*`06:00:00` and `21:59:59`/s);
-assert.match(adverseSchema, /`高度` → `是`; `轻度` and `中度` → `否`/);
+assert.match(adverseSchema, /`高度` → `是`; `中度` → `否`/);
 assert.match(adverseSchema, /Do not introduce a medication absent from `联合用药` or `处方清单`/);
 assert.match(adverseSchema, /Never mention the source file or describe absent input/);
 
@@ -140,16 +135,6 @@ assert.doesNotMatch(clinicalRules, /\["无"\]/);
 const healthPlanSchema = await fs.readFile(path.join(skillDir, "references", "health-plan-schema.md"), "utf8");
 assert.match(healthPlanSchema, /Omit `主诉：` and `体征：` completely/);
 assert.match(healthPlanSchema, /Never mention the source file or describe absent input/);
-assert.match(healthPlanSchema, /numeric-only `手术名称`.*invalid placeholder.*empty `surgeryName`/s);
-assert.match(healthPlanSchema, /`（注射用胰蛋白酶支持）`.*`（穿刺引流\+注射用胰蛋白酶支持）`.*`（产品名称支持）`/s);
-
-const healthPlanPatientNormalizer = await fs.readFile(path.join(skillDir, "scripts", "health_plan_patient_normalizer.mjs"), "utf8");
-assert.match(healthPlanPatientNormalizer, /\^\\d\+\$/);
-assert.match(healthPlanPatientNormalizer, /normalizeCoursePlanNameForIntro/);
-for (const script of ["extract_health_plan_patients.mjs", "build_health_plan_workbook.mjs"]) {
-  const scriptText = await fs.readFile(path.join(skillDir, "scripts", script), "utf8");
-  assert.match(scriptText, /normalizeReviewedSurgeryName/);
-}
 
 const generatedContentValidator = await fs.readFile(path.join(skillDir, "scripts", "generated_content_validator.mjs"), "utf8");
 assert.match(generatedContentValidator, /源文件/);

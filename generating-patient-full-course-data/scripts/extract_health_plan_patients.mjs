@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
-import { normalizeReviewedSurgeryName } from "./health_plan_patient_normalizer.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -61,7 +60,7 @@ for (const row of rows.slice(1)) {
     allergyHistory: normalize(row[indexes["既往过敏史"]]) || "无",
     combinedMedication,
     prescriptionList: normalize(row[indexes["处方清单"]]),
-    surgeryName: normalizeReviewedSurgeryName(row[indexes["手术名称"]]),
+    surgeryName: normalize(row[indexes["手术名称"]]),
     coursePlanName,
   });
 }

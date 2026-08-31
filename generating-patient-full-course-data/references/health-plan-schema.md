@@ -21,8 +21,6 @@ The extractor emits these normalized keys:
 - `surgeryName`
 - `coursePlanName`
 
-Treat a numeric-only `手术名称` value such as `29` as an invalid placeholder and normalize it to an empty `surgeryName`. Never generate a treatment or pharmacology item from a numeric-only surgery value. Preserve every non-numeric reviewed surgery name unchanged.
-
 ## Generated JSON Record
 
 Generate exactly these 11 keys in this order, with no additions:
@@ -58,11 +56,9 @@ Use a consistent professional two-part introduction while personalizing the clin
 1. Start with this structure: `你好！我是您的AI健康管理师，我将为您提供全面专业的疾病管理支持，从病情监测、症状观察、用药管理到复诊规划，协助您更安全、有序地推进康复与长期管理。`
 2. Follow with: `针对您的【个性化疾病或术后阶段】，我将结合“全病程方案名称”...` and explain that the plan organizes the current reviewed treatment, daily observation priorities, rehabilitation/lifestyle guidance, and follow-up coordination so the patient can understand and participate in the management process.
 
-The bracketed context must contain the supplied disease, or the exact reviewed surgery plus `术后`; when there is no surgery, use a clinically neutral stage such as disease management, treatment, rehabilitation, or follow-up rather than inventing severity or a disease stage. Include the reviewed `coursePlanName`, but remove any parenthetical medication/product support label from its display text before placing it in the introduction; do not alter the source workbook value. Tailor the daily priorities to the reviewed disease, surgery, medications, age, and allergy history where relevant. Aim for 120～220 Chinese characters so the introduction is substantive but not repetitive.
+The bracketed context must contain the supplied disease, or the exact reviewed surgery plus `术后`; when there is no surgery, use a clinically neutral stage such as disease management, treatment, rehabilitation, or follow-up rather than inventing severity or a disease stage. Include the exact `coursePlanName`, and tailor the daily priorities to the reviewed disease, surgery, medications, age, and allergy history where relevant. Aim for 120～220 Chinese characters so the introduction is substantive but not repetitive.
 
 Do not copy a sample disease into another patient's record. Do not use “保证”, “确保疗效”, “快速康复”, or “帮助您安全、高效地度过康复期”, because these can imply guaranteed safety, speed, or outcome. Do not describe measurements, symptoms, or treatment response as already observed.
-
-Do not insert a reviewed medication or product name into a parenthetical support label such as `（注射用胰蛋白酶支持）`, `（穿刺引流+注射用胰蛋白酶支持）`, `(奥美拉唑肠溶胶囊支持)`, or the generic pattern `（产品名称支持）`. Reject the label even when other treatment wording appears before or after the medication name inside the same parentheses. Mention reviewed treatment naturally when clinically relevant, and reserve medication-specific explanation for `treatmentPlan` and `aiPharmacology`. Natural service wording such as `为您提供用药管理支持` remains allowed.
 
 ### aiMedicalRecord
 

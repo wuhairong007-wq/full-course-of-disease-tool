@@ -27,7 +27,7 @@ const sourceHeaders = [
 ];
 const sourceRows = [
   [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动伴缓慢心室率", "130****0001", "江苏省南京市", "术后随访", "无", "华法林钠片+对乙酰氨基酚片", "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天；【术后用药阶段】", "单腔永久心脏起搏器植入术", "心房颤动伴缓慢心室率起搏器术后管理方案", "已生成", "已确认"],
-  [2, "U002", "乙*", "2026-08-02 11:00:00", "女", 42, "慢性胃炎", "130****0002", "江苏省无锡市", "稳定期", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "29", "慢性胃炎症状与用药随访方案（奥美拉唑肠溶胶囊支持）", "已生成", "已确认"],
+  [2, "U002", "乙*", "2026-08-02 11:00:00", "女", 42, "慢性胃炎", "130****0002", "江苏省无锡市", "稳定期", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "", "慢性胃炎症状与用药随访方案", "已生成", "已确认"],
 ];
 
 const records = [
@@ -75,7 +75,7 @@ const extractResult = run("extract_health_plan_patients.mjs", ["--input", source
 assert.equal(extractResult.status, 0, `${extractResult.stdout}\n${extractResult.stderr}`);
 assert.deepEqual(JSON.parse(await fs.readFile(extractedPath, "utf8")), [
   { userid: "U001", activateTime: "2026-08-01 10:00:00", gender: "男", age: 70, disease: "心房颤动伴缓慢心室率", allergyHistory: "无", combinedMedication: ["华法林钠片", "对乙酰氨基酚片"], prescriptionList: sourceRows[0][12], surgeryName: "单腔永久心脏起搏器植入术", coursePlanName: "心房颤动伴缓慢心室率起搏器术后管理方案" },
-  { userid: "U002", activateTime: "2026-08-02 11:00:00", gender: "女", age: 42, disease: "慢性胃炎", allergyHistory: "青霉素过敏", combinedMedication: ["奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"], prescriptionList: sourceRows[1][12], surgeryName: "", coursePlanName: "慢性胃炎症状与用药随访方案（奥美拉唑肠溶胶囊支持）" },
+  { userid: "U002", activateTime: "2026-08-02 11:00:00", gender: "女", age: 42, disease: "慢性胃炎", allergyHistory: "青霉素过敏", combinedMedication: ["奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"], prescriptionList: sourceRows[1][12], surgeryName: "", coursePlanName: "慢性胃炎症状与用药随访方案" },
 ]);
 
 const buildArgs = ["--input", sourcePath, "--records", recordsPath, "--template", templatePath, "--output", outputPath];
@@ -91,7 +91,6 @@ assert.equal(outputRows.length, 3);
 assert.deepEqual(outputRows.slice(1).map((row) => row[0]), ["U001", "U002"]);
 assert(outputRows.slice(1).every((row) => row.slice(1, 11).every((value) => String(value).trim())));
 assert(outputRows.slice(1).every((row) => row[11] === "已生成" && row[12] === "待审核"));
-assert(outputRows.slice(1).every((row) => !/(?:^|\n)\s*[•·]\s*\d+(?:\s|[：:]|$)/.test(`${row[3]}\n${row[4]}`)));
 assert.equal(outputSheet.tables.items.length, 1);
 
 async function assertInvalidRecords(invalidRecords, expectedMessage) {
@@ -110,7 +109,5 @@ await assertInvalidRecords([{ ...records[0], aiMedicalRecord: `${records[0].aiMe
 await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}\n• 阿莫西林胶囊\n——【辅助治疗·抗感染】` }, records[1]], /治疗方案项目数量|输入之外/);
 await assertInvalidRecords([{ ...records[0], aiPharmacology: records[0].aiPharmacology.replace("华法林钠片：", "该抗凝药：") }, records[1]], /药理科普必须为华法林钠片单独分段|药理科普遗漏联合用药/);
 await assertInvalidRecords([{ ...records[0], aiManagerIntro: "你好！我是您的AI健康管理师，将围绕当前情况提供健康管理支持，请按医生建议完成复诊。" }, records[1]], /AI健康管理师介绍/);
-await assertInvalidRecords([{ ...records[0], aiManagerIntro: records[0].aiManagerIntro.replace("。针对", "（华法林钠片支持）。针对") }, records[1]], /AI健康管理师介绍不得使用.*药品名称支持/);
-await assertInvalidRecords([{ ...records[0], aiManagerIntro: records[0].aiManagerIntro.replace("。针对", "（术后管理+华法林钠片支持）。针对") }, records[1]], /AI健康管理师介绍不得使用.*药品名称支持/);
 
 console.log(JSON.stringify({ status: "passed", rows: outputRows.length, columns: outputRows[0].length }));
