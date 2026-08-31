@@ -77,6 +77,8 @@ assert.match(skill, /Never emit language that describes absent input or referenc
 assert.match(skill, /symptom-supportive medication/i);
 assert.match(skill, /equivalent_medication_selector\.mjs/);
 assert.match(skill, /userid \+ disease \+ therapy role/i);
+assert.match(skill, /same-disease cohort.*multiple eligible equivalents.*stable selector/s);
+assert.match(skill, /Never change treatment roles, medication counts, doses, or durations merely to create diversity/);
 assert.match(skill, /生成患者明细 依据文件：<source\.xlsx>/);
 assert.match(skill, /生成健康管理方案 依据文件：<source\.xlsx>/);
 assert.match(skill, /生成跟踪提醒和用药清单 依据文件：<source\.xlsx>/);
@@ -121,6 +123,8 @@ assert.match(schema, /fewer than three medications are supportable.*stop and rep
 assert.match(schema, /must not contain language that references the source file or describes absent input/);
 assert.match(schema, /替换后.*规格.*剂量.*频次.*疗程/s);
 assert.match(schema, /不得同时开具同一治疗作用的多个等效候选药物/);
+assert.match(schema, /same-disease cohort.*multiple eligible equivalents.*stable selector/s);
+assert.match(schema, /identical regimens.*only one safe candidate remains/si);
 assert.match(schema, /注射用胰蛋白酶.*5万单位.*5mg/s);
 
 const clinicalRules = await fs.readFile(path.join(skillDir, "references", "clinical-rules.md"), "utf8");
@@ -132,6 +136,8 @@ assert.match(clinicalRules, /有明确依据的对症支持药物/);
 assert.match(clinicalRules, /Never describe absent input or mention the source file in generated content/);
 assert.match(clinicalRules, /userid.*疾病.*治疗作用/s);
 assert.match(clinicalRules, /同一治疗作用只选择一种/);
+assert.match(clinicalRules, /same-disease cohort.*multiple eligible equivalents.*stable selector/s);
+assert.match(clinicalRules, /Never change treatment roles, medication counts, doses, or durations merely to create diversity/);
 assert.match(clinicalRules, /注射用胰蛋白酶.*5万单位.*5mg/s);
 assert.doesNotMatch(clinicalRules, /\["无"\]/);
 

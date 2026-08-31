@@ -26,6 +26,12 @@ Use `userid + 疾病 + 治疗作用` as the stable selection key with `scripts/e
 
 First finalize `combinedMedication`, including all equivalent selections, then derive `prescriptionList` from it in the same order with exactly one complete prescription entry per medication. Every medication added by AI must receive a complete matching prescription entry; never add a prescription drug absent from `combinedMedication`. After a substitution, regenerate all prescription parameters and warnings from the selected candidate; never retain parameters from a discarded alternative.
 
+## Same-Disease Cohort Diversity Review
+
+After drafting all Stage 1 records, group patients by disease and review every same-disease cohort containing at least two patients. For each treatment role with multiple eligible equivalents after patient-specific indication, treatment-line, route, phase, age, allergy, contraindication, interaction, product, and surgery filtering, verify that every eligible patient used the stable selector. Do not let the first generated regimen become an unreviewed default for the whole disease group. When an equivalent choice changes, regenerate the medication name, specification, dose, route, frequency, timing, duration, and warnings as one candidate-owned prescription set.
+
+An all-identical cohort is acceptable when only one safe candidate remains for each role or patient-specific facts independently support the same choice. Stable hash collisions may also occur in small groups; diversity means opening clinically equivalent choices, not forcing every row to be unique. Never change treatment roles, medication counts, doses, or durations merely to create diversity, and never introduce a non-equivalent or less appropriate drug for cosmetic variation.
+
 ## Allergy
 
 Preserve source allergy history exactly. If `无` or blank, use `无`; do not infer a new allergy. Exclude the allergen and its drug class. When an allergy changes drug selection, state `因XX过敏，改用XX` or a precise equivalent.
