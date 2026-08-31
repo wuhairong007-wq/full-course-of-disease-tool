@@ -4,6 +4,9 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { generateMedicationConfirmationTime } from "./medication_confirmation_time.mjs";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
+import { validateMedicationTrackingWording } from "./medication_tracking_wording_validator.mjs";
+import { extractMedicationSpecification, validateMedicationListSpecification } from "./medication_specification.mjs";
+import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -26,7 +29,6 @@ const allowedMedicationTime = /^(?:早餐前|早餐后|午餐前|午餐后|晚�
 const latinFrequency = /\b(?:qd|bid|tid|qid|q\d+h|prn)\b/i;
 const activateDatePattern = /\d{4}[-年\/]\d{1,2}[-月\/]\d{1,2}/;
 const activationAnchorPattern = /(?:从|以|自)?(?:激活|启用)(?:日期|时间|当日|当天|日|时)?[^。；，]{0,12}(?:起点|算起|开始|起|后|之日起|第\d+天|锚点)/;
-const stagedCyclePattern = /阶段/;
 
 function parseArgs(argv) {
   const args = {};
@@ -108,19 +110,8 @@ function getReviewedField(segment, pattern) {
   return normalize(segment.match(pattern)?.[1]);
 }
 
-function getExpectedSpecification(segment, medication) {
-  const explicit = getReviewedField(segment, /规格\s*([^，；+]+)/);
-  if (explicit) return explicit;
-  const medicationIndex = segment.indexOf(medication);
-  if (medicationIndex < 0) return "";
-  const remainder = segment.slice(medicationIndex + medication.length);
-  const doseBoundary = remainder.search(/(?:每次|适量)/);
-  if (doseBoundary < 0) return "";
-  return normalize(remainder.slice(0, doseBoundary)).replace(/^（|）$/g, "");
-}
-
 function getExpectedSingleDose(segment) {
-  const perDose = getReviewedField(segment, /每次\s*([^，；+]+?)(?=\s+(?:口服|局部外用|局部涂抹|肌内注射|静脉注射|静脉滴注|吸入|每日|一日|每\d+小时|每周|隔日))/);
+  const perDose = getReviewedField(segment, /每次\s*([^，；+]+)/);
   if (perDose) return perDose;
   return /(?:^|\s)适量(?:\s|$)/.test(segment) ? "适量" : "";
 }
@@ -139,6 +130,7 @@ function validateRecord(record, patient) {
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error(`${userid}记录必须为对象`);
   if (JSON.stringify(Object.keys(record)) !== JSON.stringify(recordKeys)) throw new Error(`${userid}必须且只能依次包含4个用药方案字段`);
   if (record.userid !== userid) throw new Error(`${userid}的userid被改变`);
+  validateMedicationTrackingWording(record);
   validateGeneratedContent({
     userid,
     fields: {
@@ -149,9 +141,6 @@ function validateRecord(record, patient) {
   });
   if (!normalize(record.medicationPlan)) throw new Error(`${userid}的medicationPlan不能为空`);
   if (!normalize(record.medicationCycle)) throw new Error(`${userid}的medicationCycle不能为空`);
-  if (stagedCyclePattern.test(record.medicationCycle)) {
-    throw new Error(`${userid}的medicationCycle不得使用阶段化表述，应写成连续用药周期`);
-  }
   const cycleDates = record.medicationCycle.match(new RegExp(activateDatePattern.source, "g")) ?? [];
   const activationDateText = patient.activateDate.match(new RegExp(activateDatePattern.source))?.[0];
   for (const cycleDate of cycleDates) {
@@ -189,8 +178,9 @@ function validateRecord(record, patient) {
     if (actualTreatmentDays !== expectedTreatmentDays) throw new Error(`${userid}的${item.drugName}疗程必须与审核处方一致`);
     const expectedFrequency = getExpectedFrequency(segment);
     if (!expectedFrequency || item.frequency !== expectedFrequency) throw new Error(`${userid}的${item.drugName}频率必须与审核处方一致`);
-    const expectedSpecification = getExpectedSpecification(segment, item.drugName);
+    const expectedSpecification = extractMedicationSpecification(segment, item.drugName);
     const expectedSingleDose = getExpectedSingleDose(segment);
+    validateMedicationListSpecification({ userid, medication: item.drugName, specification: item.specification });
     if (!expectedSpecification || item.specification !== expectedSpecification) throw new Error(`${userid}的${item.drugName}规格必须与审核处方一致`);
     if (!expectedSingleDose || item.singleDose !== expectedSingleDose) throw new Error(`${userid}的${item.drugName}单次剂量必须与审核处方一致`);
     if (patient.allergyHistory !== "无" && !item.precautions.includes(patient.allergyHistory)) {
@@ -238,9 +228,9 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   const userid = normalize(row[indexes.userid]);
   const activateDate = normalize(row[indexes["激活时间"]]);
   const activateCalendarDate = parseCalendarDate(activateDate, `${userid || "未知患者"}的激活时间`);
-  const adverseReactionLevel = normalize(row[indexes["患者标签"]]);
+  const adverseReactionLevel = normalizeAdverseReactionLevel(row[indexes["患者标签"]]);
   if (activateCalendarDate.dayNumber === serviceEndDate.dayNumber) throw new Error(`${userid}的激活日期不能为服务周期最后一天，请修改激活日期`);
-  if (!["轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为轻度、中度或高度`);
+  if (!["无", "轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为无、轻度、中度或高度`);
   return {
   userid,
   patientName: normalize(row[indexes["患者姓名"]]),
@@ -285,6 +275,7 @@ for (let index = 0; index < patients.length; index += 1) {
   const medicationConfirmationTime = generateMedicationConfirmationTime({
     userid: patient.userid,
     activateTime: patient.activateDate,
+    serviceStartDate: patient.serviceStartDate,
     serviceEndDate: patient.serviceEndDate,
   });
   for (const item of record.medicationItems) {

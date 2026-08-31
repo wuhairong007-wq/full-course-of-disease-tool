@@ -2,7 +2,7 @@
 name: generating-patient-full-course-data
 description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单或不良反应清单, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, and “生成不良反应清单 依据文件：Excel路径 数量：N”.
 metadata:
-  version: "1.1.0"
+  version: "1.1.5"
 ---
 
 # Generating Patient Full-Course Data
@@ -85,7 +85,7 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
      --preview <temp>/health-plan-preview.png
    ```
 
-5. Reopen and verify the exact 13 headers, full source-order `userid` coverage, non-empty content, no prohibited missing-input placeholders, `已生成/待审核`, one table, no formula errors, and readable first/middle/last previews. Reject generic pharmacology: every reviewed medication needs its own mechanism, plan-specific use, execution point, and safety/monitoring paragraph. Reject summary-only health plans: require 4～6 actionable modules covering monitoring, medication, rehabilitation, diet, and follow-up/escalation, with at least two prospective frequencies, suggested targets, or action thresholds and no fabricated observed results.
+5. Reopen and verify the exact 13 headers, full source-order `userid` coverage, non-empty content, no prohibited missing-input placeholders, `已生成/待审核`, one table, no formula errors, and readable first/middle/last previews. Reject generic or unrelated pharmacology: every reviewed medication needs its own medication-specific mechanism, patient/disease or surgery use, at least one recognizable detail from that medication's reviewed prescription, execution point, and safety/monitoring paragraph; reject paragraphs that describe another drug or unrelated diet/exercise content. Reject external-basis wording in every output field, including `按审核处方` and similar phrases; write the supported action directly. Reject summary-only health plans: require 4～6 actionable modules covering monitoring, medication, rehabilitation, diet, and follow-up/escalation, with at least two prospective frequencies, suggested targets, or action thresholds and no fabricated observed results.
 6. Deliver only the final workbook unless the user asks for intermediates.
 
 ## Stage 3 — Medication Tracking and Medication List
@@ -101,6 +101,8 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
    ```
 
 2. Generate exactly one four-key record per patient, in source order, following `references/medication-tracking-schema.md`. Keep `medicationItems` exactly aligned with the reviewed combined medications and prescription list; never add a medication. Write `<temp>/medication-tracking-records.json`.
+   Write the actual medication arrangement directly. Do not use `按已审核处方执行`, `按审核方案`, `依据经审定方案`, `根据已确认处方`, or similar external-basis wording in the medication plan, medication cycle, or medication items.
+   For every medication item, output only the normalized specification value beginning with a number. Strip a source label separator such as `规格：` to produce `5mg/支`; never output `：5mg/支`, `规格5mg/支`, or explanatory specification prose. Preserve and validate the supported unit and dosage-form package convention.
    For `medicationCycle`, write one continuous duration statement; never use multi-stage wording such as `第一阶段` or `第二阶段`. When a start date is needed, use the reviewed activation date (for example, `自2026-07-19起，抗感染疗程3-5天，镇痛及胃肠道对症治疗持续5-7天，视术后恢复情况停药。`), never the service-period dates.
 3. Set both outputs to the source directory unless the user specifies another location. Use `<source-stem>_跟踪提醒.xlsx` and `<source-stem>_用药清单.xlsx`. If the source directory is not writable, use `outputs/patient-medication-tracking/<source-stem>/`.
 4. Run:
@@ -119,7 +121,7 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
      --medication-preview <temp>/medication-preview.png
    ```
 
-5. Reopen and verify exact headers, full source-order patient coverage, no prohibited missing-input placeholders, service-period reminder formulas and allowed ranges, integer response rates of 45～70, intervention mapping from adverse-reaction level, medication confirmation times strictly later than activation, strictly earlier than the service-period end date, in the same month, and within `06:00:00–21:59:59`, one stable confirmation time shared by all medication rows for a patient, medication whitelist and order, Chinese frequency format, timing-only medication times, valid treatment days, one table per workbook, no formula errors, and readable first/middle/last previews of both workbooks.
+5. Reopen and verify exact headers, full source-order patient coverage, no prohibited missing-input placeholders, service-period reminder formulas and allowed ranges, integer response rates of 45～70, intervention mapping from adverse-reaction level, medication confirmation times on or after the service-period start date, strictly later than activation, strictly earlier than the service-period end date, and within `07:00:00–21:59:59`, one stable confirmation time shared by all medication rows for a patient, medication whitelist and order, Chinese frequency format, timing-only medication times, valid treatment days, one table per workbook, no formula errors, and readable first/middle/last previews of both workbooks.
 6. Deliver both final workbooks and no intermediate files unless requested.
 
 ## Stage 4 — Adverse Reaction List
@@ -156,6 +158,6 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
 - Stop on duplicate/blank `userid`, invalid age, empty disease or plan name, unsupported product type, malformed records, or patient coverage mismatch.
 - In stage 1, stop and report every affected `userid` when fewer than three distinct medications can be supported safely after the complete disease, procedure, age, sex, allergy, product, surgery, and symptom-support assessment. Never output one or two medications, omit a supportable first-line medication, force every patient to the same count, randomize the count, or pad the list with unrelated drugs. If more than five clinically indispensable roles remain after deduplication, stop and report the patient instead of silently dropping core therapy. Stop and report the affected `userid`, medication, and specification when a drug-specific unit is invalid or an exact approved specification cannot be supported; never repair it by guessing or silent unit conversion.
 - In stage 2, stop if treatment or pharmacology content omits a reviewed medication, or if treatment content introduces a medication or procedure not present in the reviewed input.
-- In stage 3, stop if the trigger omits an invalid `服务周期 YYYY-MM-DD 至 YYYY-MM-DD`, if the start is after the end, or if `患者标签` is not `轻度 | 中度 | 高度`; when an activation date equals the service-period end date, stop and report `<userid>的激活日期不能为服务周期最后一天，请修改激活日期` instead of omitting the patient; stop and report the affected `userid` if no same-month confirmation timestamp exists strictly after activation, strictly before the service-period end date, and within `06:00:00–21:59:59`; stop for the existing medication, prescription, timing, cycle, and allergy validation failures.
-- In stage 4, stop if `数量：N` is missing or invalid, if fewer than `N` patients have a `中度` or `高度` label, if a selected patient has no same-month timestamp strictly after activation within `06:00:00–21:59:59`, or if the fixed input/output schema, selected-patient order, occurrence-time boundary, or generated narrative contract fails.
+- In stage 3, accept `患者标签` values `无 | 轻度 | 中度 | 高度 | 重度`, normalize `重度` to `高度`, and keep `无` distinct from `轻度` while mapping both to no manual intervention; stop if the trigger omits an invalid `服务周期 YYYY-MM-DD 至 YYYY-MM-DD`, if the start is after the end, or if another label is used; when an activation date equals the service-period end date, stop and report `<userid>的激活日期不能为服务周期最后一天，请修改激活日期` instead of omitting the patient; stop and report the affected `userid` if no confirmation timestamp exists on or after the service-period start date, strictly after activation, strictly before the service-period end date, and within `07:00:00–21:59:59`; stop for the existing medication, prescription, timing, cycle, and allergy validation failures.
+- In stage 4, normalize `重度` to `高度`; stop if `数量：N` is missing or invalid, if fewer than `N` patients have a normalized `中度` or `高度` label, if a selected patient has no same-month timestamp strictly after activation within `06:00:00–21:59:59`, or if the fixed input/output schema, selected-patient order, occurrence-time boundary, or generated narrative contract fails.
 - Never overwrite either the source workbook or the user's reviewed workbook.

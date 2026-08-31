@@ -25,16 +25,16 @@ function parseDateTime(value) {
   return new Date(String(value).replace(" ", "T"));
 }
 
-function assertValidConfirmationTime(value, activationText, serviceEndText, userid) {
+function assertValidConfirmationTime(value, activationText, serviceStartText, serviceEndText, userid) {
   const activation = parseDateTime(activationText);
+  const serviceStart = parseDateTime(`${serviceStartText} 00:00:00`);
   const serviceEnd = parseDateTime(`${serviceEndText} 00:00:00`);
   const confirmation = parseDateTime(value);
   assert(confirmation > activation, `${userid}用药方案确认时间必须严格晚于激活时间`);
+  assert(confirmation >= serviceStart, `${userid}用药方案确认时间不得早于服务周期开始日期`);
   assert(confirmation < serviceEnd, `${userid}用药方案确认时间不得落在服务周期最后一天`);
-  assert.equal(confirmation.getFullYear(), activation.getFullYear(), `${userid}确认时间年份改变`);
-  assert.equal(confirmation.getMonth(), activation.getMonth(), `${userid}确认时间月份改变`);
   const secondsOfDay = confirmation.getHours() * 3600 + confirmation.getMinutes() * 60 + confirmation.getSeconds();
-  assert(secondsOfDay >= 6 * 3600, `${userid}确认时间早于06:00:00`);
+  assert(secondsOfDay >= 7 * 3600, `${userid}确认时间早于07:00:00`);
   assert(secondsOfDay <= 21 * 3600 + 59 * 60 + 59, `${userid}确认时间晚于21:59:59`);
 }
 
@@ -43,22 +43,22 @@ const sourceHeaders = [
   "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "全病程方案名称", "AI状态", "确认状态",
 ];
 const sourceRows = [
-  [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动", "", "", "高度", "无", "利伐沙班片+对乙酰氨基酚片", "利伐沙班片 规格10mg/片，每次10mg，口服，每日1次，晚餐中服用，长期 + 对乙酰氨基酚片 规格0.5g/片，每次0.5g，口服，每8小时1次，餐后服用，连续3天", "", "心房颤动用药管理方案", "已生成", "已确认"],
-  [2, "U002", "乙*", "2026-08-12 11:00:00", "女", 42, "慢性胃炎", "", "", "轻度", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "", "慢性胃炎用药随访方案", "已生成", "已确认"],
+  [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动", "", "", "重度", "无", "利伐沙班片+对乙酰氨基酚片", "利伐沙班片 规格10mg/片，每次10mg，口服，每日1次，晚餐中服用，长期 + 对乙酰氨基酚片 规格0.5g/片，每次0.5g，口服，每8小时1次，餐后服用，连续3天", "", "心房颤动用药管理方案", "已生成", "已确认"],
+  [2, "U002", "乙*", "2026-08-12 11:00:00", "女", 42, "慢性胃炎", "", "", "无", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "", "慢性胃炎用药随访方案", "已生成", "已确认"],
 ];
 const records = [
   {
     userid: "U001",
-    medicationPlan: "针对70岁男性心房颤动患者，按审核处方使用利伐沙班片进行抗凝管理，并短期使用对乙酰氨基酚片进行疼痛或发热对症管理；固定时间核对用药，关注出血及肝脏相关风险，调整前由医生或药师复核。",
-    medicationCycle: "自2026-08-01起，利伐沙班片按审核方案长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。",
+    medicationPlan: "针对70岁男性心房颤动患者，使用利伐沙班片进行抗凝管理，并短期使用对乙酰氨基酚片进行疼痛或发热对症管理；固定时间核对用药，关注出血及肝脏相关风险，调整前由医生或药师复核。",
+    medicationCycle: "自2026-08-01起，利伐沙班片长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。",
     medicationItems: [
       { drugName: "利伐沙班片", specification: "10mg/片", singleDose: "10mg", frequency: "每日1次", medicationTime: "晚餐中", treatmentDays: "长期", precautions: "随餐服用并观察牙龈出血、血尿、黑便或异常瘀斑；联合用药或新增药物前由医生或药师核对相互作用。" },
-      { drugName: "对乙酰氨基酚片", specification: "0.5g/片", singleDose: "0.5g", frequency: "每8小时1次", medicationTime: "餐后", treatmentDays: 3, precautions: "每日总量不得超过审核处方限量，避免与含同成分复方制剂同服；联合用药期间新增药物前咨询医生。" },
+      { drugName: "对乙酰氨基酚片", specification: "0.5g/片", singleDose: "0.5g", frequency: "每8小时1次", medicationTime: "餐后", treatmentDays: 3, precautions: "每日总量不得超过2g，避免与含同成分复方制剂同服；联合用药期间新增药物前咨询医生。" },
     ],
   },
   {
     userid: "U002",
-    medicationPlan: "针对42岁女性慢性胃炎患者，按审核处方使用奥美拉唑肠溶胶囊和铝碳酸镁咀嚼片，规范餐前与餐后时机并保持药物间隔；结合青霉素过敏史核对新增药物，由医生或药师复核疗程。",
+    medicationPlan: "针对42岁女性慢性胃炎患者，使用奥美拉唑肠溶胶囊和铝碳酸镁咀嚼片，规范餐前与餐后时机并保持药物间隔；结合青霉素过敏史核对新增药物，由医生或药师复核疗程。",
     medicationCycle: "自2026-08-12起，奥美拉唑肠溶胶囊与铝碳酸镁咀嚼片均连续14天，疗程结束后根据症状和复诊意见决定是否调整。",
     medicationItems: [
       { drugName: "奥美拉唑肠溶胶囊", specification: "20mg/粒", singleDose: "20mg", frequency: "每日1次", medicationTime: "早餐前", treatmentDays: 14, precautions: "整粒吞服，不自行延长疗程；既往青霉素过敏，联合用药期间新增药物前由医生或药师核对。" },
@@ -141,7 +141,7 @@ assert.deepEqual(medicationRows[0], ["userid", "用药方案确认时间", "药�
 assert.deepEqual(medicationRows.slice(1).map((row) => row[0]), ["U001", "U001", "U002", "U002"]);
 assert.deepEqual(medicationRows.slice(1).map((row) => row[2]), ["利伐沙班片", "对乙酰氨基酚片", "奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"]);
 const activationByUserid = new Map(sourceRows.map((row) => [row[1], row[3]]));
-for (const row of medicationRows.slice(1)) assertValidConfirmationTime(row[1], activationByUserid.get(row[0]), "2026-08-31", row[0]);
+for (const row of medicationRows.slice(1)) assertValidConfirmationTime(row[1], activationByUserid.get(row[0]), "2026-08-01", "2026-08-31", row[0]);
 const confirmationsByUserid = new Map();
 for (const row of medicationRows.slice(1)) {
   const existing = confirmationsByUserid.get(row[0]);
@@ -172,12 +172,13 @@ await assertInvalid([{ ...records[0], medicationCycle: "激活后第7天开始�
 await assertInvalid([{ ...records[0], medicationPlan: records[0].medicationPlan.replace("利伐沙班片", "抗凝药"), medicationItems: records[0].medicationItems }, records[1]], /medicationPlan遗漏联合用药/);
 await assertInvalid([{ ...records[0], medicationCycle: "以激活日为起点长期治疗", medicationItems: records[0].medicationItems }, records[1]], /不得使用激活后的相对偏移/);
 await assertInvalid([{ ...records[0], medicationCycle: "第一阶段抗感染3天，第二阶段镇痛5天", medicationItems: records[0].medicationItems }, records[1]], /不得使用阶段化表述/);
+await assertInvalid([{ ...records[0], medicationPlan: `${records[0].medicationPlan}按已审核处方执行。`, medicationItems: records[0].medicationItems }, records[1]], /不得引用已审核、已审定或已确认的处方或方案/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], singleDose: "0mg" }, records[0].medicationItems[1]] }, records[1]], /单次剂量必须与审核处方一致/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], precautions: "观察出血。" }, records[0].medicationItems[1]] }, records[1]], /联合用药核对或相互作用风险/);
 await assertInvalid([{ ...records[0], medicationCycle: "源文件未提供明确周期，需医生确认", medicationItems: records[0].medicationItems }, records[1]], /占位文案/);
 
 sourceRows[0][3] = "2026-08-31 21:59:59";
-records[0].medicationCycle = "自2026-08-31起，利伐沙班片按审核方案长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。";
+records[0].medicationCycle = "自2026-08-31起，利伐沙班片长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。";
 const noWindowSourceWorkbook = Workbook.create();
 const noWindowSourceSheet = noWindowSourceWorkbook.worksheets.add("Sheet1");
 noWindowSourceSheet.getRange("A1:Q3").values = [sourceHeaders, ...sourceRows];

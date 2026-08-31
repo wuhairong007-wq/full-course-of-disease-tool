@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
+import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -60,7 +61,7 @@ for (const row of rows.slice(1)) {
   const combinedMedication = normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean);
   const prescriptionList = normalize(row[indexes["处方清单"]]);
   const activateDate = parseCalendarDate(row[indexes["激活时间"]], `${userid || "未知患者"}的激活时间`);
-  const adverseReactionLevel = normalize(row[indexes["患者标签"]]);
+  const adverseReactionLevel = normalizeAdverseReactionLevel(row[indexes["患者标签"]]);
   if (!userid) throw new Error("审核后患者明细存在空userid");
   if (activateDate.dayNumber === serviceEndDate.dayNumber) throw new Error(`${userid}的激活日期不能为服务周期最后一天，请修改激活日期`);
   if (!Number.isFinite(age) || age < 0 || age > 130) throw new Error(`${userid}存在无效年龄`);
@@ -68,7 +69,7 @@ for (const row of rows.slice(1)) {
   if (!combinedMedication.length) throw new Error(`${userid}的联合用药不能为空`);
   if (new Set(combinedMedication).size !== combinedMedication.length) throw new Error(`${userid}的联合用药存在重复`);
   if (!prescriptionList) throw new Error(`${userid}的处方清单不能为空`);
-  if (!["轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为轻度、中度或高度`);
+  if (!["无", "轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为无、轻度、中度或高度`);
   for (const medication of combinedMedication) {
     if (!prescriptionList.includes(medication)) throw new Error(`${userid}的处方清单遗漏联合用药：${medication}`);
   }

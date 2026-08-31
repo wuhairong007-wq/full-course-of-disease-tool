@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
+import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -57,7 +58,7 @@ const eligible = [];
 for (const row of rows.slice(1)) {
   if (row.every((value) => !normalize(value))) continue;
   const userid = normalize(row[indexes.userid]);
-  const level = normalize(row[indexes["患者标签"]]);
+  const level = normalizeAdverseReactionLevel(row[indexes["患者标签"]]);
   const diseaseName = normalize(row[indexes["疾病"]]);
   const age = Number(row[indexes["年龄"]]);
   if (!userid) throw new Error("审核后患者明细存在空userid");
@@ -65,7 +66,7 @@ for (const row of rows.slice(1)) {
   allUserids.add(userid);
   if (!diseaseName) throw new Error(`${userid}的疾病不能为空`);
   if (!Number.isFinite(age) || age < 0 || age > 130) throw new Error(`${userid}存在无效年龄`);
-  if (!["轻度", "中度", "高度"].includes(level)) throw new Error(`${userid}的不良反应分层必须为轻度、中度或高度`);
+  if (!["无", "轻度", "中度", "高度"].includes(level)) throw new Error(`${userid}的不良反应分层必须为无、轻度、中度或高度`);
   const activateTime = parseDateTime(row[indexes["激活时间"]], `${userid}的激活时间`);
   if (!["中度", "高度"].includes(level)) continue;
   const combinedMedication = normalize(row[indexes["联合用药"]]);

@@ -3,6 +3,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
+import { validateHealthPlanContent, validatePharmacologyContent, validatePharmacologyParagraph } from "./health_plan_content_validator.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -79,10 +80,12 @@ function validateManagerIntro(userid, text, patient) {
 }
 
 function validatePharmacology(userid, text, patient) {
+  validatePharmacologyContent(text, patient);
   const lines = normalize(text).split(/\r?\n/).map(normalize).filter(Boolean);
   for (const medication of patient.combinedMedication) {
     const line = lines.find((value) => value.startsWith(medication));
     if (!line) throw new Error(`${userid}的AI药理科普必须为${medication}单独分段并以药名开头`);
+    validatePharmacologyParagraph(line, patient, medication);
     if (line.length < medication.length + 45) throw new Error(`${userid}的${medication}药理科普过于简略，必须说明机制、用途、执行要点和风险监测`);
     if (!pharmacologyMechanismPattern.test(line)) throw new Error(`${userid}的${medication}药理科普缺少通俗药理机制`);
     if (!pharmacologyExecutionPattern.test(line)) throw new Error(`${userid}的${medication}药理科普缺少用法或疗程执行要点`);
@@ -113,6 +116,7 @@ function validateRecord(record, patient) {
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error(`${userid}记录必须为对象`);
   if (JSON.stringify(Object.keys(record)) !== JSON.stringify(recordKeys)) throw new Error(`${userid}必须且只能依次包含11个健康方案字段`);
   if (record.userid !== userid) throw new Error(`${userid}的userid被改变`);
+  validateHealthPlanContent({ userid, ...Object.fromEntries(contentKeys.map((key) => [key, record[key]])) });
   for (const key of contentKeys) if (!normalize(record[key])) throw new Error(`${userid}的${key}不能为空`);
   validateGeneratedContent({ userid, fields: Object.fromEntries(contentKeys.map((key) => [key, record[key]])) });
   validateManagerIntro(userid, record.aiManagerIntro, patient);
@@ -156,6 +160,7 @@ const patients = patientRows.map((row) => {
     userid,
     disease: normalize(row[indexes["疾病"]]),
     combinedMedication: normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean),
+    prescriptionList: normalize(row[indexes["处方清单"]]),
     surgeryName: normalize(row[indexes["手术名称"]]),
     coursePlanName: normalize(row[indexes["全病程方案名称"]]),
   };

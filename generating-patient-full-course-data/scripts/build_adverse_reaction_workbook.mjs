@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { validateAdverseReactionRecord } from "./adverse_reaction_validation.mjs";
 import { generateAdverseReactionTime } from "./adverse_reaction_time.mjs";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
+import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -56,7 +57,7 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   userid: normalize(row[indexes.userid]),
   activateTime: normalize(row[indexes["激活时间"]]),
   diseaseName: normalize(row[indexes["疾病"]]),
-  adverseReactionLevel: normalize(row[indexes["患者标签"]]),
+  adverseReactionLevel: normalizeAdverseReactionLevel(row[indexes["患者标签"]]),
   allergyHistory: normalize(row[indexes["既往过敏史"]]) || "无",
   combinedMedication: normalize(row[indexes["联合用药"]]),
   prescriptionList: normalize(row[indexes["处方清单"]]),
