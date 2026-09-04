@@ -32,6 +32,14 @@ After drafting all Stage 1 records, group patients by disease and review every s
 
 An all-identical cohort is acceptable when only one safe candidate remains for each role or patient-specific facts independently support the same choice. Stable hash collisions may also occur in small groups; diversity means opening clinically equivalent choices, not forcing every row to be unique. Never change treatment roles, medication counts, doses, or durations merely to create diversity, and never introduce a non-equivalent or less appropriate drug for cosmetic variation.
 
+## Disease-Aware Route Judgment
+
+给药途径必须由 AI 结合疾病解剖部位、具体治疗作用、治疗场景、药品剂型、药品说明书或已审核药品允许的途径，以及患者年龄、过敏史和其他已知安全信息综合判断。不得建立“疾病名称→固定给药途径”的硬编码映射，也不得因为药品是注射剂就默认使用肌内注射。
+
+先判断药物是在进行气道廓清、眼科局部治疗、软组织局部处理、全身抗感染、镇痛还是其他治疗，再从该药物被支持的途径中选择与目标最匹配的一种。例如，呼吸系统疾病涉及气道廓清时，AI 应评估雾化吸入是否比肌内注射更符合目标；眼科疾病应评估眼科局部用药；软组织损伤应评估局部注射或外用。上述仅是推理线索，不是疾病到途径的一对一规则；同一药物在不同疾病或治疗目标下可以有不同合理途径。
+
+如果草拟途径与疾病部位、治疗目标或药品允许途径冲突，必须重新选择候选并同步重建规格、每次用量、给药途径、频次、时机、疗程和专项警示，禁止只改处方中的途径字段。若在现有已审核依据下无法确认安全且适用的途径，停止该患者生成并报告患者、药物和冲突原因，不能用“肌内注射”作为默认兜底。
+
 ## Allergy
 
 Preserve source allergy history exactly. If `无` or blank, use `无`; do not infer a new allergy. Exclude the allergen and its drug class. When an allergy changes drug selection, state `因XX过敏，改用XX` or a precise equivalent.

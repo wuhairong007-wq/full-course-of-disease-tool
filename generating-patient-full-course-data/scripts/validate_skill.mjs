@@ -14,6 +14,7 @@ const requiredFiles = [
   "scripts/test_generated_content_validator.mjs",
   "scripts/clinical_medication_validator.mjs",
   "scripts/test_clinical_medication_validator.mjs",
+  "scripts/test_route_judgment_rules.mjs",
   "scripts/drug_specification_validator.mjs",
   "scripts/test_drug_specification_validator.mjs",
   "scripts/equivalent_medication_selector.mjs",
@@ -157,6 +158,11 @@ assert.match(clinicalRules, /same-disease cohort.*multiple eligible equivalents.
 assert.match(clinicalRules, /Never change treatment roles, medication counts, doses, or durations merely to create diversity/);
 assert.match(clinicalRules, /注射用胰蛋白酶.*5万单位.*5mg/s);
 assert.doesNotMatch(clinicalRules, /\["无"\]/);
+assert.match(clinicalRules, /Disease-Aware Route Judgment/);
+assert.match(clinicalRules, /结合疾病解剖部位.*治疗作用.*药品剂型/s);
+assert.match(clinicalRules, /不得建立“疾病名称→固定给药途径”的硬编码映射/);
+assert.match(clinicalRules, /雾化吸入.*推理线索/);
+assert.match(clinicalRules, /停止该患者生成并报告患者、药物和冲突原因/);
 
 const healthPlanSchema = await fs.readFile(path.join(skillDir, "references", "health-plan-schema.md"), "utf8");
 assert.match(healthPlanSchema, /Omit `主诉：` and `体征：` completely/);
