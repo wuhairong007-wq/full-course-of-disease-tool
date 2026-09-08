@@ -15,6 +15,14 @@ const requiredFiles = [
   "scripts/clinical_medication_validator.mjs",
   "scripts/test_clinical_medication_validator.mjs",
   "scripts/test_route_judgment_rules.mjs",
+  "scripts/build_insight_report.py",
+  "scripts/extract_insight_sources.py",
+  "scripts/generate_insight_charts.py",
+  "scripts/insight_request_parser.mjs",
+  "scripts/test_extract_insight_sources.py",
+  "scripts/test_generate_insight_charts.py",
+  "scripts/test_insight_request_parser.mjs",
+  "scripts/validate_insight_report.py",
   "scripts/drug_specification_validator.mjs",
   "scripts/test_drug_specification_validator.mjs",
   "scripts/equivalent_medication_selector.mjs",
@@ -46,11 +54,15 @@ const requiredFiles = [
   "references/health-plan-schema.md",
   "references/medication-tracking-schema.md",
   "references/adverse-reaction-schema.md",
+  "references/insight-report-schema.md",
+  "references/insight-report-writing.md",
+  "references/insight-report-template-contract.md",
   "assets/patient-full-course-template.xlsx",
   "assets/health-management-plan-template.xlsx",
   "assets/medication-tracking-template.xlsx",
   "assets/medication-list-template.xlsx",
   "assets/adverse-reaction-list-template.xlsx",
+  "assets/patient-insight-report-generation-prompt-template.md.docx",
 ];
 for (const file of requiredFiles) await fs.access(path.join(skillDir, file));
 
@@ -97,6 +109,14 @@ assert.match(skill, /Do not use `按已审核处方执行`.*similar external-bas
 assert.match(skill, /Strip a source label separator such as `规格：` to produce `5mg\/支`/);
 assert.match(skill, /medication confirmation times on or after the service-period start date, strictly later than activation, strictly earlier than the service-period end date, and within `07:00:00–21:59:59`/);
 assert.match(skill, /生成不良反应清单 依据文件：<source\.xlsx> 数量：N/);
+assert.match(skill, /生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD/);
+assert.match(skill, /Stage 5 — Patient Insight Report/);
+assert.match(skill, /scripts\/extract_insight_sources\.py/);
+assert.match(skill, /scripts\/build_insight_report\.py/);
+assert.match(skill, /documents skill `render_docx\.py`/);
+assert.match(skill, /patient-insight-report-generation-prompt-template\.md\.docx/);
+assert.match(skill, /insight-report-template-contract\.md/);
+assert.match(skill, /输出Word文件模板.*visual|输出Word文件模板.*视觉/s);
 
 const medicationSchema = await fs.readFile(path.join(skillDir, "references", "medication-tracking-schema.md"), "utf8");
 assert.match(medicationSchema, /体温监测次数.*血压、心率监测次数.*用药提醒次数/s);
@@ -163,6 +183,27 @@ assert.match(clinicalRules, /结合疾病解剖部位.*治疗作用.*药品剂�
 assert.match(clinicalRules, /不得建立“疾病名称→固定给药途径”的硬编码映射/);
 assert.match(clinicalRules, /雾化吸入.*推理线索/);
 assert.match(clinicalRules, /停止该患者生成并报告患者、药物和冲突原因/);
+
+const insightSchema = await fs.readFile(path.join(skillDir, "references", "insight-report-schema.md"), "utf8");
+assert.match(insightSchema, /七类工作簿/);
+assert.match(insightSchema, /服务响应率/);
+const insightWriting = await fs.readFile(path.join(skillDir, "references", "insight-report-writing.md"), "utf8");
+assert.match(insightWriting, /正文叙述密度/);
+assert.match(insightWriting, /固定 28 磅行距/);
+assert.match(insightWriting, /insight-report-template-contract\.md/);
+const insightTemplateContract = await fs.readFile(path.join(skillDir, "references", "insight-report-template-contract.md"), "utf8");
+assert.match(insightTemplateContract, /一、报告概述/);
+assert.match(insightTemplateContract, /九、总结/);
+assert.match(insightTemplateContract, /固定 28 磅行距/);
+const insightParser = await fs.readFile(path.join(skillDir, "scripts", "insight_request_parser.mjs"), "utf8");
+assert.match(insightParser, /sourcePaths\.length !== 7/);
+assert.match(insightParser, /templatePath.*null/);
+const insightExtractor = await fs.readFile(path.join(skillDir, "scripts", "extract_insight_sources.py"), "utf8");
+assert.match(insightExtractor, /ROLE_RULES/);
+const insightBuilder = await fs.readFile(path.join(skillDir, "scripts", "build_insight_report.py"), "utf8");
+assert.match(insightBuilder, /bundled report contract/);
+assert.match(insightBuilder, /if template_path else Document\(\)/);
+assert.match(insightBuilder, /DEFAULT_REPORT_RULE_TEMPLATE/);
 
 const healthPlanSchema = await fs.readFile(path.join(skillDir, "references", "health-plan-schema.md"), "utf8");
 assert.match(healthPlanSchema, /Omit `主诉：` and `体征：` completely/);
