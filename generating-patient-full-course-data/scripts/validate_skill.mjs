@@ -88,10 +88,13 @@ assert.match(skill, /references\/adverse-reaction-schema\.md/);
 assert.match(skill, /scripts\/extract_adverse_reaction_patients\.mjs/);
 assert.match(skill, /scripts\/build_adverse_reaction_workbook\.mjs/);
 assert.match(skill, /1～5/);
-assert.match(skill, /build treatment roles in this order/);
+assert.match(skill, /Build the remaining treatment roles in this order/);
 assert.match(skill, /Select 1～5 distinct, directly indicated medications according to clinical need/);
 assert.match(skill, /monotherapy or dual therapy/);
 assert.match(skill, /no safe, directly indicated medication can be supported/);
+assert.match(skill, /first normalize and review `既往过敏史`/);
+assert.match(skill, /no medication in `联合用药` or as an active prescription item in `处方清单` conflicts with `既往过敏史`/);
+assert.match(skill, /supplied medicinal product conflicts with `既往过敏史`/);
 assert.match(skill, /Never emit language that describes absent input or references the source file/);
 assert.match(skill, /symptom-supportive medication/i);
 assert.match(skill, /equivalent_medication_selector\.mjs/);
@@ -159,6 +162,8 @@ assert.doesNotMatch(schema, /3–5/);
 assert.match(schema, /include the supplied product first/);
 assert.match(schema, /monotherapy or dual therapy/);
 assert.match(schema, /If no medication is supportable.*stop and report/s);
+assert.match(schema, /exclude every explicitly documented allergen and every member of an explicitly documented allergy class/);
+assert.match(schema, /no medication conflicting with `allergyHistory` may appear in `combinedMedication` or as an active prescription item in `prescriptionList`/);
 assert.match(schema, /must not contain language that references the source file or describes absent input/);
 assert.match(schema, /替换后.*规格.*剂量.*频次.*疗程/s);
 assert.match(schema, /不得同时开具同一治疗作用的多个等效候选药物/);
@@ -172,6 +177,8 @@ assert.doesNotMatch(clinicalRules, /3–5/);
 assert.match(clinicalRules, /treat the supplied `产品名称` as a source-reviewed medication and include it first/);
 assert.match(clinicalRules, /monotherapy or dual therapy/);
 assert.match(clinicalRules, /If no safe, directly indicated medication remains.*stop and report/s);
+assert.match(clinicalRules, /parse explicit drug names and explicitly named drug classes from `既往过敏史`/);
+assert.match(clinicalRules, /A medicinal `产品名称` does not override allergy safety/);
 assert.match(clinicalRules, /有明确依据的对症支持药物/);
 assert.match(clinicalRules, /Never describe absent input or mention the source file in generated content/);
 assert.match(clinicalRules, /userid.*疾病.*治疗作用/s);
@@ -229,6 +236,9 @@ const clinicalMedicationValidator = await fs.readFile(path.join(skillDir, "scrip
 assert.match(clinicalMedicationValidator, /药品类产品必须作为联合用药第一项/);
 assert.match(clinicalMedicationValidator, /未满18岁/);
 assert.match(clinicalMedicationValidator, /过敏/);
+assert.match(clinicalMedicationValidator, /extractAllergyTerms/);
+assert.match(clinicalMedicationValidator, /喹诺酮/);
+assert.match(clinicalMedicationValidator, /非甾体抗炎药/);
 for (const builder of [
   "build_workbook.mjs",
   "build_health_plan_workbook.mjs",

@@ -29,5 +29,47 @@ assert.throws(
   () => validateClinicalMedicationSelection({ ...base, allergyHistory: "布洛芬过敏", medications: ["硫酸氨基葡萄糖胶囊", "布洛芬缓释胶囊", "对乙酰氨基酚片"] }),
   /布洛芬过敏.*布洛芬缓释胶囊/,
 );
+assert.throws(
+  () => validateClinicalMedicationSelection({ ...base, allergyHistory: "对布洛芬过敏", medications: ["硫酸氨基葡萄糖胶囊", "布洛芬缓释胶囊"] }),
+  /对布洛芬过敏.*布洛芬缓释胶囊/,
+);
+assert.throws(
+  () => validateClinicalMedicationSelection({ ...base, allergyHistory: "对布洛芬、双氯芬酸过敏", medications: ["硫酸氨基葡萄糖胶囊", "布洛芬缓释胶囊"] }),
+  /对布洛芬、双氯芬酸过敏.*布洛芬缓释胶囊/,
+);
+assert.throws(
+  () => validateClinicalMedicationSelection({ ...base, allergyHistory: "喹诺酮类药物过敏", medications: ["硫酸氨基葡萄糖胶囊", "左氧氟沙星片"] }),
+  /喹诺酮类药物过敏.*左氧氟沙星片/,
+);
+assert.throws(
+  () => validateClinicalMedicationSelection({
+    ...base,
+    allergyHistory: "对布洛芬过敏",
+    productName: "布洛芬缓释胶囊",
+    medications: ["对乙酰氨基酚片"],
+  }),
+  /对布洛芬过敏.*产品名称.*布洛芬缓释胶囊/,
+);
+assert.doesNotThrow(() => validateClinicalMedicationSelection({
+  ...base,
+  allergyHistory: "否认药物过敏",
+  medications: ["硫酸氨基葡萄糖胶囊", "布洛芬缓释胶囊"],
+}));
+assert.throws(
+  () => validateClinicalMedicationSelection({
+    ...base,
+    allergyHistory: "否认其他药物过敏，青霉素过敏",
+    medications: ["硫酸氨基葡萄糖胶囊", "阿莫西林胶囊"],
+  }),
+  /青霉素过敏.*阿莫西林胶囊/,
+);
+assert.throws(
+  () => validateClinicalMedicationSelection({
+    ...base,
+    allergyHistory: "布洛芬缓释胶囊过敏",
+    medications: ["硫酸氨基葡萄糖胶囊", "布洛芬片"],
+  }),
+  /布洛芬缓释胶囊过敏.*布洛芬片/,
+);
 
-console.log(JSON.stringify({ status: "passed", cases: 5 }));
+console.log(JSON.stringify({ status: "passed", cases: 12 }));

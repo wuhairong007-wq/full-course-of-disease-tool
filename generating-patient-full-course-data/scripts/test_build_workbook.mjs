@@ -169,6 +169,16 @@ await assertInvalidRecords([
 ], /药品类产品必须作为联合用药第一项/);
 
 await assertInvalidRecords([
+  records[0],
+  {
+    ...records[1],
+    combinedMedication: ["硫酸氨基葡萄糖胶囊", "阿莫西林胶囊"],
+    prescriptionList: "硫酸氨基葡萄糖胶囊 规格0.25g/粒，每次0.5g，口服，每日3次，餐后服用，连续84天 + 阿莫西林胶囊 规格0.25g/粒，每次0.5g，口服，每日3次，餐后服用，连续7天",
+  },
+  ...records.slice(2),
+], /U002.*青霉素过敏.*阿莫西林胶囊/);
+
+await assertInvalidRecords([
   { ...records[0], coursePlanName: "源文件未提供方案名称" },
   ...records.slice(1),
 ], /占位文案/);

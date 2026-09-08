@@ -42,7 +42,9 @@ An all-identical cohort is acceptable when only one safe candidate remains for e
 
 ## Allergy
 
-Preserve source allergy history exactly. If `无` or blank, use `无`; do not infer a new allergy. Exclude the allergen and its drug class. When an allergy changes drug selection, state `因XX过敏，改用XX` or a precise equivalent.
+Preserve source allergy history exactly. If `无` or blank, use `无`; do not infer a new allergy. Before creating treatment roles, parse explicit drug names and explicitly named drug classes from `既往过敏史`. Exclude a documented allergen wherever it appears as an active ingredient, dosage-form name, salt name, or combination-product component. When the history explicitly states a class allergy, exclude every selected medication belonging to that class. Do not infer a broad class allergy from an isolated ingredient name when cross-reactivity is uncertain and the source provides no reaction phenotype; if a potentially cross-reactive candidate cannot be cleared from approved instructions or reviewed data, choose a supported non-conflicting alternative or stop and report the uncertainty.
+
+Apply the allergy gate to both source-reviewed and AI-selected medications. A medicinal `产品名称` does not override allergy safety: if it conflicts with the source allergy history, stop and report the `userid`, allergy, and product. After finalizing `combinedMedication`, verify that every active prescription entry starts with the same non-conflicting medication in the same order. When an allergy changes an AI-selected medication, regenerate the full prescription entry for a clinically equivalent non-conflicting option and state `因XX过敏，改用XX` or a precise equivalent. Never mention a conflicting drug as an active instruction in `处方清单`.
 
 ## Surgery
 
