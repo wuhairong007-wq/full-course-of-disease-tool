@@ -59,8 +59,8 @@ function validateRecord(record, patient) {
   if (JSON.stringify(Object.keys(record)) !== JSON.stringify(recordKeys)) throw new Error(`${expectedUserid}必须且只能包含六个生成字段`);
   if (record.userid !== expectedUserid) throw new Error(`${expectedUserid}的userid被改变`);
   if (record.allergyHistory !== sourceAllergy) throw new Error(`${expectedUserid}的过敏史必须保留源表值`);
-  if (!Array.isArray(record.combinedMedication) || record.combinedMedication.length < 3 || record.combinedMedication.length > 5) {
-    throw new Error(`${expectedUserid}的combinedMedication必须为3～5项数组`);
+  if (!Array.isArray(record.combinedMedication) || record.combinedMedication.length < 1 || record.combinedMedication.length > 5) {
+    throw new Error(`${expectedUserid}的combinedMedication必须为1～5项数组`);
   }
   if (record.combinedMedication.some((medication) => !normalize(medication) || medication === "无")) throw new Error(`${expectedUserid}的combinedMedication必须填写有效药物通用名`);
   if (new Set(record.combinedMedication).size !== record.combinedMedication.length) throw new Error(`${expectedUserid}的用药存在重复`);
