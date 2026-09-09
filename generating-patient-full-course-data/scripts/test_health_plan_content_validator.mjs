@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { validateHealthPlanContent, validatePharmacologyContent, validatePharmacologyParagraph } from "./health_plan_content_validator.mjs";
+import { validateHealthPlanContent, validateMedicalRecordContent, validatePharmacologyContent, validatePharmacologyParagraph } from "./health_plan_content_validator.mjs";
 
 const patient = {
   userid: "U001",
@@ -11,6 +11,23 @@ const patient = {
 const validParagraph = "奥美拉唑肠溶胶囊：药理机制通过抑制胃壁细胞质子泵减少胃酸分泌；本方案用途用于慢性胃炎的抑酸管理；执行要点为规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天；主要风险与监测包括观察腹泻、皮疹等不良反应，异常时咨询医生。";
 
 assert.doesNotThrow(() => validatePharmacologyParagraph(validParagraph, patient, "奥美拉唑肠溶胶囊"));
+assert.doesNotThrow(() => validateMedicalRecordContent("就诊科室：消化内科\n就诊日期：2026年8月1日\n处置：围绕慢性胃炎开展管理。", "U001"));
+assert.throws(
+  () => validateMedicalRecordContent("就诊科室：消化内科\n全病程方案：慢性胃炎管理方案", "U001"),
+  /不得出现全病程方案/,
+);
+assert.throws(
+  () => validatePharmacologyParagraph(`${validParagraph}；`, patient, "奥美拉唑肠溶胶囊"),
+  /多余的分号|多余分号/,
+);
+assert.throws(
+  () => validatePharmacologyParagraph(validParagraph.replace("：药理机制", "：；药理机制"), patient, "奥美拉唑肠溶胶囊"),
+  /多余的分号|多余分号/,
+);
+assert.throws(
+  () => validatePharmacologyParagraph(validParagraph.replace("分泌；本方案", "分泌。；本方案"), patient, "奥美拉唑肠溶胶囊"),
+  /多余的分号|多余分号/,
+);
 assert.throws(
   () => validatePharmacologyParagraph(validParagraph.replace("用于慢性胃炎的抑酸管理", "用于心脏节律管理"), patient, "奥美拉唑肠溶胶囊"),
   /本方案用途必须关联患者疾病或已审核手术/,
@@ -28,4 +45,4 @@ assert.throws(
   /只能介绍患者的每种药品及已有手术或器械/,
 );
 
-console.log(JSON.stringify({ status: "passed", cases: 5 }));
+console.log(JSON.stringify({ status: "passed", cases: 10 }));

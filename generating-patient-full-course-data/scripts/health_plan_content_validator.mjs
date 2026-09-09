@@ -2,8 +2,24 @@ const externalBasisPattern = /按(?:已?审核|审核|审定|已确认)(?:处方
 const mechanismPattern = /机制|通过|抑制|阻断|拮抗|激动|促进|调节|补充|替代|中和|结合|减少|增加|稳定|松弛|抗菌|抗炎|镇痛|保护|吸收|分泌|代谢|酶|受体/;
 const executionPattern = /规格|每次|每日|每周|每\d+小时|口服|外用|涂抹|注射|吸入|疗程|连续\d+[天日周]|长期|早餐前|早餐后|午餐前|午餐后|晚餐前|晚餐后|餐前|餐后|睡前|间隔/;
 const safetyPattern = /注意|避免|监测|观察|风险|不良反应|咨询|就医|复核|过敏|停用|禁用/;
+const redundantSemicolonPattern = /(?:^|[\r\n。！？：:])\s*；|；\s*(?:$|[\r\n。！？；])/;
+const medicalRecordCoursePlanPattern = /全病程方案\s*[：:]\s*\S+/;
 
 const normalize = (value) => String(value ?? "").trim();
+
+export function validateNoRedundantSemicolon(text, userid, fieldLabel) {
+  const value = normalize(text);
+  if (redundantSemicolonPattern.test(value)) {
+    throw new Error(`${userid || "患者"}的${fieldLabel}含多余分号，不得在句号、冒号后或文案末尾追加“；”`);
+  }
+}
+
+export function validateMedicalRecordContent(text, userid) {
+  const value = normalize(text);
+  if (medicalRecordCoursePlanPattern.test(value)) {
+    throw new Error(`${userid || "患者"}的AI病例解读不得出现全病程方案：xxxxx文案`);
+  }
+}
 
 function prescriptionSegment(patient, medication) {
   const source = normalize(patient.prescriptionList);
@@ -30,6 +46,7 @@ function reviewedExecutionTokens(segment) {
 
 export function validatePharmacologyParagraph(text, patient, medication) {
   const value = normalize(text);
+  validateNoRedundantSemicolon(value, patient.userid, "AI药理科普");
   if (externalBasisPattern.test(value)) {
     throw new Error(`${patient.userid}的${medication}药理科普不得使用按审核处方或类似外部依据文案`);
   }
@@ -66,6 +83,7 @@ export function validateHealthPlanContent(fields) {
 }
 
 export function validatePharmacologyContent(text, patient) {
+  validateNoRedundantSemicolon(text, patient.userid, "AI药理科普");
   const lines = normalize(text).split(/\r?\n/).map(normalize).filter(Boolean);
   for (const line of lines) {
     if (!patient.combinedMedication.some((medication) => line.startsWith(medication))

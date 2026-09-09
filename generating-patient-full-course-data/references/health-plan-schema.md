@@ -70,6 +70,8 @@ Use source facts only and include these labels on separate lines:
 
 The reviewed input has no chief-complaint or physical-examination fields. Omit `主诉：` and `体征：` completely; do not output missing-input placeholders and do not simulate typical values or symptoms.
 
+Do not add a separate `全病程方案：` label or repeat the full-course plan name in this field. The plan name is used in `aiManagerIntro`; `aiMedicalRecord` must contain only the three required medical-record labels and the reviewed clinical facts.
+
 Never invent temperatures, pulse, respiratory rate, blood pressure, oxygen saturation, laboratory values, imaging results, pathological stage, chief complaint, symptoms, examination findings, contraindications, or treatment response.
 
 ### treatmentPlan
@@ -89,7 +91,7 @@ Write one separate newline-delimited paragraph for every reviewed medication, be
 3. `执行要点` — preserve or explain the reviewed route, timing, spacing, course, or administration technique when supplied. Include at least one recognizable medication-specific detail from that medication's reviewed prescription (such as specification, dose, frequency, timing, route, or duration). Do not silently change the prescription.
 4. `主要风险与监测` — give medication-specific adverse-effect signals, interaction/spacing precautions, contraindication boundaries, or monitoring needs supported by that medication and the supplied allergy history.
 
-Avoid unrelated disease, diet, exercise, or generic drug-class prose in this field: every paragraph must explain the corresponding medication, its supplied patient-specific use, execution detail, and safety monitoring. Do not use `按审核处方`, `按审核方案`, `依据经审定方案`, `根据已确认处方`, `已审核用药`, or equivalent wording that asks the reader to consult another reviewed/confirmed source; write the supported medication, use, timing, dose, duration, and action directly. Avoid boilerplate such as “该产品的具体作用、剂量和疗程以说明书及医生复核为准” as the whole explanation. For an uncertain product, it is acceptable to say that the mechanism requires product-instruction verification, but still explain the reviewed use, execution requirements, and observable safety signals conservatively. Explain each reviewed procedure/device in a separate paragraph when present. Every reviewed medication name must appear verbatim. Do not claim efficacy.
+Avoid unrelated disease, diet, exercise, or generic drug-class prose in this field: every paragraph must explain the corresponding medication, its supplied patient-specific use, execution detail, and safety monitoring. Do not use `按审核处方`, `按审核方案`, `依据经审定方案`, `根据已确认处方`, `已审核用药`, or equivalent wording that asks the reader to consult another reviewed/confirmed source; write the supported medication, use, timing, dose, duration, and action directly. Avoid boilerplate such as “该产品的具体作用、剂量和疗程以说明书及医生复核为准” as the whole explanation. For an uncertain product, it is acceptable to say that the mechanism requires product-instruction verification, but still explain the reviewed use, execution requirements, and observable safety signals conservatively. Explain each reviewed procedure/device in a separate paragraph when present. Every reviewed medication name must appear verbatim. Do not claim efficacy. Use `；` only as an internal clause separator; do not output a leading or trailing `；`, `。；`, `：；`, or repeated `；；` in any medication paragraph.
 
 ### aiHealthPlan
 

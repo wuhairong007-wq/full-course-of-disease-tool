@@ -106,9 +106,11 @@ await assertInvalidRecords([{ ...records[0], userid: "CHANGED" }, records[1]], /
 await assertInvalidRecords([{ ...records[0], lifestyleAvoid: "不要剧烈活动" }, records[1]], /必须包含至少4个•分项/);
 await assertInvalidRecords([{ ...records[0], aiMedicalRecord: `${records[0].aiMedicalRecord}\n体征：体温36.5℃，血压120\/80mmHg` }, records[1]], /不得虚构主诉、体征或生命体征数值/);
 await assertInvalidRecords([{ ...records[0], aiMedicalRecord: `${records[0].aiMedicalRecord}\n主诉：源文件未提供` }, records[1]], /占位文案/);
+await assertInvalidRecords([{ ...records[0], aiMedicalRecord: `${records[0].aiMedicalRecord}\n全病程方案：心房颤动伴缓慢心室率起搏器术后管理方案` }, records[1]], /不得出现全病程方案/);
 await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}\n• 阿莫西林胶囊\n——【辅助治疗·抗感染】` }, records[1]], /治疗方案项目数量|输入之外/);
 await assertInvalidRecords([{ ...records[0], aiPharmacology: records[0].aiPharmacology.replace("华法林钠片：", "该抗凝药：") }, records[1]], /只能介绍患者的每种药品及已有手术或器械|药理科普必须为华法林钠片单独分段|药理科普遗漏联合用药/);
 await assertInvalidRecords([{ ...records[0], aiPharmacology: records[0].aiPharmacology.replace("用于心房颤动伴缓慢心室率的抗凝管理", "用于胃酸分泌管理") }, records[1]], /本方案用途必须关联患者疾病或已审核手术/);
+await assertInvalidRecords([{ ...records[0], aiPharmacology: `${records[0].aiPharmacology}；` }, records[1]], /多余的分号|多余分号/);
 await assertInvalidRecords([{ ...records[0], followupPlan: `${records[0].followupPlan}\n• 按审核处方完成后复诊` }, records[1]], /不得引用审核处方、审核方案或已确认方案/);
 await assertInvalidRecords([{ ...records[0], aiManagerIntro: "你好！我是您的AI健康管理师，将围绕当前情况提供健康管理支持，请按医生建议完成复诊。" }, records[1]], /AI健康管理师介绍/);
 

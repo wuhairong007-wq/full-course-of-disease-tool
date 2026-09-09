@@ -3,7 +3,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
-import { validateHealthPlanContent, validatePharmacologyContent, validatePharmacologyParagraph } from "./health_plan_content_validator.mjs";
+import { validateHealthPlanContent, validateMedicalRecordContent, validatePharmacologyContent, validatePharmacologyParagraph } from "./health_plan_content_validator.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -55,6 +55,7 @@ function parseTreatmentItemNames(text) {
 }
 
 function validateMedicalRecord(userid, text) {
+  validateMedicalRecordContent(text, userid);
   if (/^(?:主诉|体征)[：:]/m.test(text)) {
     throw new Error(`${userid}的AI病历解读不得虚构主诉、体征或生命体征数值`);
   }
