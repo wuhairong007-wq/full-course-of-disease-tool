@@ -2,7 +2,7 @@
 name: generating-patient-full-course-data
 description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单、不良反应清单或洞察报告, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, “生成不良反应清单 依据文件：Excel路径 数量：N”, and “生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD 依据以下文件：7份Excel”.
 metadata:
-  version: "1.1.11"
+  version: "1.1.12"
 ---
 
 # Generating Patient Full-Course Data
@@ -107,7 +107,7 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
 2. Generate exactly one four-key record per patient, in source order, following `references/medication-tracking-schema.md`. Keep `medicationItems` exactly aligned with the reviewed combined medications and prescription list; never add a medication. Write `<temp>/medication-tracking-records.json`.
    Write the actual medication arrangement directly. Do not use `按已审核处方执行`, `按审核方案`, `依据经审定方案`, `根据已确认处方`, or similar external-basis wording in the medication plan, medication cycle, or medication items.
    For every medication item, output only the normalized specification value beginning with a number. Strip a source label separator such as `规格：` to produce `5mg/支`; never output `：5mg/支`, `规格5mg/支`, or explanatory specification prose. Preserve and validate the supported unit and dosage-form package convention.
-   For `medicationCycle`, write one continuous duration statement; never use multi-stage wording such as `第一阶段` or `第二阶段`. When a start date is needed, use the reviewed activation date (for example, `自2026-07-19起，抗感染疗程3-5天，镇痛及胃肠道对症治疗持续5-7天，视术后恢复情况停药。`), never the service-period dates.
+   For `medicationCycle`, write one continuous duration statement; never use multi-stage wording such as `第一阶段` or `第二阶段`. Start directly with the medication or duration arrangement, for example, `抗感染疗程3-5天，镇痛及胃肠道对症治疗持续5-7天，视术后恢复情况停药。` Never begin with a calendar-date phrase such as `自2026-08-28起` or `自2026年-08-28起`, and never use the activation date or service-period dates as a narrative prefix.
 3. Set both outputs to the source directory unless the user specifies another location. Use `<source-stem>_跟踪提醒.xlsx` and `<source-stem>_用药清单.xlsx`. If the source directory is not writable, use `outputs/patient-medication-tracking/<source-stem>/`.
 4. Run:
 

@@ -14,7 +14,7 @@ The extractor emits:
 - `combinedMedication`: non-empty array split from the reviewed `+`-separated field
 - `prescriptionList`, `treatmentPlan`, `surgeryName`, `coursePlanName`
 
-Use the reviewed `activateDate` as the medication-cycle anchor when a date is written; do not substitute the service-period dates.
+Do not use `activateDate` or either service-period date as a narrative prefix for the medication cycle. Start the cycle directly with the medication or duration arrangement.
 
 ## Generated JSON
 
@@ -48,7 +48,7 @@ Each `medicationItems` entry must have exactly these seven keys:
 - Derive the cycle from the reviewed prescription, disease logic, age, gender, and supplied treatment plan.
 - Write one continuous medication-duration statement rather than a staged schedule. Do not use `阶段`, `第一阶段`, `第二阶段`, `第三阶段`, `分阶段`, or similar phase labels.
 - State each medication's duration directly in the continuous sentence; do not use an audited, reviewed, or confirmed prescription or plan as the reason for the duration.
-- Write the reviewed activation date as the narrative anchor when supplied, for example: `自2026-07-19起，抗感染疗程3-5天，镇痛及胃肠道对症治疗持续5-7天，视术后恢复情况停药。` Do not replace it with the service-period start or end date, and do not calculate a relative offset such as“激活后第7天”。
+- Start directly with the medication or duration arrangement, for example: `抗感染疗程3-5天，镇痛及胃肠道对症治疗持续5-7天，视术后恢复情况停药。` Never begin with a calendar-date phrase such as `自2026-08-28起`, `自2026年-08-28起`, or equivalent wording, and do not calculate a relative offset such as“激活后第7天”。
 - Never extend a reviewed finite course or convert a finite course into long-term therapy without source support.
 - When the source does not provide a reliable duration, use conservative wording requiring clinician confirmation rather than inventing a duration.
 

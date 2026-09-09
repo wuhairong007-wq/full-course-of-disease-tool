@@ -4,7 +4,7 @@ import { validateMedicationTrackingWording } from "./medication_tracking_wording
 const valid = {
   userid: "U001",
   medicationPlan: "针对心房颤动使用利伐沙班片，固定时间服用并观察异常出血。",
-  medicationCycle: "自2026-08-01起，利伐沙班片长期使用，对乙酰氨基酚片连续3天。",
+  medicationCycle: "利伐沙班片长期使用，对乙酰氨基酚片连续3天。",
   medicationItems: [{ precautions: "新增药物前由医生或药师复核相互作用。" }],
 };
 
@@ -29,4 +29,15 @@ for (const medicationCycle of ["第1阶段：连续用药3天。", "第2阶段�
   );
 }
 
-console.log(JSON.stringify({ status: "passed", unsupportedBasisCases: 4, stagedCycleCases: 3 }));
+for (const medicationCycle of [
+  "自2026-08-28起，连续用药7天。",
+  "自2026年-08-28起，连续用药7天。",
+  "从2026年08月28日开始，连续用药7天。",
+]) {
+  assert.throws(
+    () => validateMedicationTrackingWording({ ...valid, medicationCycle }),
+    /开头不得使用日期文案/,
+  );
+}
+
+console.log(JSON.stringify({ status: "passed", unsupportedBasisCases: 4, stagedCycleCases: 3, leadingDateCases: 3 }));

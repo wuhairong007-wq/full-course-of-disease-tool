@@ -1,5 +1,6 @@
 const unsupportedBasisPattern = /(?:按|依据|根据|依照|遵循)(?:已|经)?(?:审核|审定|确认)|(?:已|经)(?:审核|审定|确认)|(?:审核|审定)(?:处方|方案|疗程|用药)/;
 const stagedCyclePattern = /阶段/;
+const leadingCalendarDatePattern = /^\s*(?:(?:自|从)\s*)?\d{4}\s*(?:年\s*[-/.]?|[-/.])\s*\d{1,2}\s*(?:月\s*[-/.]?|[-/.])\s*\d{1,2}\s*日?\s*(?:起|开始)/;
 
 export function validateMedicationTrackingWording({ userid, medicationPlan, medicationCycle, medicationItems }) {
   const generatedText = [medicationPlan, medicationCycle, JSON.stringify(medicationItems ?? [])].join("\n");
@@ -8,5 +9,8 @@ export function validateMedicationTrackingWording({ userid, medicationPlan, medi
   }
   if (stagedCyclePattern.test(String(medicationCycle ?? ""))) {
     throw new Error(`${userid}的medicationCycle不得使用阶段化表述，应写成连续用药周期`);
+  }
+  if (leadingCalendarDatePattern.test(String(medicationCycle ?? ""))) {
+    throw new Error(`${userid}的medicationCycle开头不得使用日期文案，应直接陈述药物或疗程安排`);
   }
 }

@@ -113,6 +113,7 @@ assert.match(skill, /Reject external-basis wording in every output field/);
 assert.match(skill, /integer response rates of 45～70/);
 assert.match(skill, /Do not use `按已审核处方执行`.*similar external-basis wording/s);
 assert.match(skill, /Strip a source label separator such as `规格：` to produce `5mg\/支`/);
+assert.match(skill, /Never begin with a calendar-date phrase such as `自2026-08-28起` or `自2026年-08-28起`/);
 assert.match(skill, /medication confirmation times on or after the service-period start date, strictly later than activation, strictly earlier than the service-period end date, and within `07:00:00–21:59:59`/);
 assert.match(skill, /生成不良反应清单 依据文件：<source\.xlsx> 数量：N/);
 assert.match(skill, /生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD/);
@@ -126,7 +127,7 @@ assert.match(skill, /输出Word文件模板.*visual|输出Word文件模板.*视�
 
 const medicationSchema = await fs.readFile(path.join(skillDir, "references", "medication-tracking-schema.md"), "utf8");
 assert.match(medicationSchema, /体温监测次数.*血压、心率监测次数.*用药提醒次数/s);
-assert.match(medicationSchema, /Use the reviewed `activateDate` as the medication-cycle anchor/s);
+assert.match(medicationSchema, /Do not use `activateDate` or either service-period date as a narrative prefix/s);
 assert.match(medicationSchema, /must exactly equal one item in `combinedMedication`/);
 assert.match(medicationSchema, /Do not put administration routes/);
 assert.match(medicationSchema, /positive integer.*`长期` or `无限期`/s);
@@ -140,6 +141,7 @@ assert.match(medicationSchema, /45 through 70 inclusive/);
 assert.match(medicationSchema, /`中度` or `高度` → `是`; `无` or `轻度` → `否`/);
 assert.match(medicationSchema, /Do not write `按已审核处方执行`.*similar wording that depends on an external reviewed or confirmed basis/s);
 assert.match(medicationSchema, /Do not use `阶段`.*similar phase labels/s);
+assert.match(medicationSchema, /Never begin with a calendar-date phrase such as `自2026-08-28起`, `自2026年-08-28起`/);
 assert.match(medicationSchema, /Output the value alone, beginning with a number/);
 assert.match(medicationSchema, /Never output a leading .*the word `规格`/);
 assert.match(medicationSchema, /tablet and capsule package denominators must match `\/片` and `\/粒`/);

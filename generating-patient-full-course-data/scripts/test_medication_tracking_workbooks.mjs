@@ -50,7 +50,7 @@ const records = [
   {
     userid: "U001",
     medicationPlan: "针对70岁男性心房颤动患者，使用利伐沙班片进行抗凝管理，并短期使用对乙酰氨基酚片进行疼痛或发热对症管理；固定时间核对用药，关注出血及肝脏相关风险，调整前由医生或药师复核。",
-    medicationCycle: "自2026-08-01起，利伐沙班片长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。",
+    medicationCycle: "利伐沙班片长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。",
     medicationItems: [
       { drugName: "利伐沙班片", specification: "10mg/片", singleDose: "10mg", frequency: "每日1次", medicationTime: "晚餐中", treatmentDays: "长期", precautions: "随餐服用并观察牙龈出血、血尿、黑便或异常瘀斑；联合用药或新增药物前由医生或药师核对相互作用。" },
       { drugName: "对乙酰氨基酚片", specification: "0.5g/片", singleDose: "0.5g", frequency: "每8小时1次", medicationTime: "餐后", treatmentDays: 3, precautions: "每日总量不得超过2g，避免与含同成分复方制剂同服；联合用药期间新增药物前咨询医生。" },
@@ -59,7 +59,7 @@ const records = [
   {
     userid: "U002",
     medicationPlan: "针对42岁女性慢性胃炎患者，使用奥美拉唑肠溶胶囊和铝碳酸镁咀嚼片，规范餐前与餐后时机并保持药物间隔；结合青霉素过敏史核对新增药物，由医生或药师复核疗程。",
-    medicationCycle: "自2026-08-12起，奥美拉唑肠溶胶囊与铝碳酸镁咀嚼片均连续14天，疗程结束后根据症状和复诊意见决定是否调整。",
+    medicationCycle: "奥美拉唑肠溶胶囊与铝碳酸镁咀嚼片均连续14天，疗程结束后根据症状和复诊意见决定是否调整。",
     medicationItems: [
       { drugName: "奥美拉唑肠溶胶囊", specification: "20mg/粒", singleDose: "20mg", frequency: "每日1次", medicationTime: "早餐前", treatmentDays: 14, precautions: "整粒吞服，不自行延长疗程；既往青霉素过敏，联合用药期间新增药物前由医生或药师核对。" },
       { drugName: "铝碳酸镁咀嚼片", specification: "0.5g/片", singleDose: "1g", frequency: "每日3次", medicationTime: "餐后1小时", treatmentDays: 14, precautions: "充分咀嚼，与其他口服药间隔至少2小时；既往青霉素过敏，联合用药期间注意核对相互作用。" },
@@ -102,6 +102,8 @@ const trackingSheet = trackingWorkbook.worksheets.getItemAt(0);
 const trackingRows = trackingSheet.getUsedRange(true).values;
 assert.deepEqual(trackingRows[0], ["序号", "患者ID", "姓名", "性别", "年龄", "疾病", "既往过敏史", "联合用药", "体温监测次数", "血压、心率监测次数", "用药提醒次数", "用药方案", "用药周期", "方案链接", "患者响应率", "是否触发人工干预"]);
 assert.deepEqual(trackingRows.slice(1).map((row) => row[1]), ["U001", "U002"]);
+assert.deepEqual(trackingRows.slice(1).map((row) => row[12]), records.map((record) => record.medicationCycle));
+for (const row of trackingRows.slice(1)) assert.doesNotMatch(row[12], /^\s*(?:自|从)\s*\d{4}/);
 for (const row of trackingRows.slice(1)) {
   const days = row[1] === "U001" ? 31 : 20;
   assert(row[8] >= Math.round(2 * days * 0.4) && row[8] <= Math.round(2 * days * 0.9));
@@ -160,7 +162,7 @@ async function assertInvalid(invalidRecords, expectedMessage) {
   assert.match(`${result.stdout}\n${result.stderr}`, expectedMessage);
 }
 
-await assertInvalid([{ ...records[0], medicationCycle: "自2026-08-10起长期治疗", medicationItems: records[0].medicationItems }, records[1]], /必须使用激活日期/);
+await assertInvalid([{ ...records[0], medicationCycle: "自2026年-08-28起，长期治疗", medicationItems: records[0].medicationItems }, records[1]], /开头不得使用日期文案/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], drugName: "阿司匹林肠溶片" }, records[0].medicationItems[1]] }, records[1]], /同序一一对应/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], frequency: "qd" }, records[0].medicationItems[1]] }, records[1]], /中文量化格式/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], medicationTime: "口服" }, records[0].medicationItems[1]] }, records[1]], /规范服药时机/);
@@ -178,7 +180,7 @@ await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicati
 await assertInvalid([{ ...records[0], medicationCycle: "源文件未提供明确周期，需医生确认", medicationItems: records[0].medicationItems }, records[1]], /占位文案/);
 
 sourceRows[0][3] = "2026-08-31 21:59:59";
-records[0].medicationCycle = "自2026-08-31起，利伐沙班片长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。";
+records[0].medicationCycle = "利伐沙班片长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。";
 const noWindowSourceWorkbook = Workbook.create();
 const noWindowSourceSheet = noWindowSourceWorkbook.worksheets.add("Sheet1");
 noWindowSourceSheet.getRange("A1:Q3").values = [sourceHeaders, ...sourceRows];
