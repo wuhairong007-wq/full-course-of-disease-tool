@@ -13,6 +13,24 @@ const base = {
 };
 
 assert.doesNotThrow(() => validateClinicalMedicationSelection(base));
+assert.doesNotThrow(() => validateClinicalMedicationSelection({
+  ...base,
+  company: "山东利赛医药有限公司",
+  medications: ["双氯芬酸二乙胺乳胶剂", "对乙酰氨基酚片"],
+}));
+assert.throws(
+  () => validateClinicalMedicationSelection({
+    ...base,
+    company: "山东利赛医药有限公司",
+    medications: ["硫酸氨基葡萄糖胶囊", "对乙酰氨基酚片"],
+  }),
+  /山东利赛医药有限公司.*产品名称.*硫酸氨基葡萄糖胶囊.*不得进入联合用药/,
+);
+assert.doesNotThrow(() => validateClinicalMedicationSelection({
+  ...base,
+  company: "其他公司",
+  medications: ["硫酸氨基葡萄糖胶囊", "双氯芬酸二乙胺乳胶剂"],
+}));
 assert.throws(
   () => validateClinicalMedicationSelection({ ...base, medications: ["对乙酰氨基酚片", "硫酸氨基葡萄糖胶囊", "双氯芬酸二乙胺乳胶剂"] }),
   /药品类产品必须作为联合用药第一项/,
@@ -72,4 +90,4 @@ assert.throws(
   /布洛芬缓释胶囊过敏.*布洛芬片/,
 );
 
-console.log(JSON.stringify({ status: "passed", cases: 12 }));
+console.log(JSON.stringify({ status: "passed", cases: 15 }));

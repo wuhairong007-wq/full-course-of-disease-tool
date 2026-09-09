@@ -21,6 +21,7 @@ const noKnownDrugAllergyPattern = /^(?:无|否|无(?:明确)?(?:药物|药品)�
 const negatedAllergyClausePattern = /^(?:否认|无|未发现|未诉).*(?:过敏|过敏史)$/;
 const ignoredAllergyTerms = new Set(["无", "否", "既往", "药品", "药物", "不详"]);
 const dosageFormSuffixPattern = /(?:缓释|控释|肠溶|分散|咀嚼|泡腾)?(?:片|胶囊|颗粒|混悬液|口服液|注射液|乳膏剂?|软膏剂?|凝胶剂?|滴眼液|滴鼻液|喷雾剂|吸入剂|阴道片|栓剂?|丸剂?|散剂?|粉针剂|注射剂)$/;
+const productExclusionCompany = "山东利赛医药有限公司";
 
 function cleanAllergyTerm(value) {
   return String(value ?? "")
@@ -73,19 +74,32 @@ function conflictsWithAllergy(medication, allergyTerms) {
   ));
 }
 
+function normalize(value) {
+  return String(value ?? "").trim();
+}
+
+export function shouldExcludeMedicinalProduct({ company, productType }) {
+  return normalize(company) === productExclusionCompany && normalize(productType) === "用药";
+}
+
 export function validateClinicalMedicationSelection({
   userid,
   age,
   allergyHistory,
   productName,
   productType,
+  company,
   medications,
 }) {
   const allergyTerms = extractAllergyTerms(allergyHistory);
-  if (productType === "用药" && conflictsWithAllergy(productName, allergyTerms)) {
+  const excludeProduct = shouldExcludeMedicinalProduct({ company, productType });
+  if (excludeProduct && medications.includes(productName)) {
+    throw new Error(`${userid}在${productExclusionCompany}场景下，产品名称${productName}不得进入联合用药`);
+  }
+  if (!excludeProduct && productType === "用药" && conflictsWithAllergy(productName, allergyTerms)) {
     throw new Error(`${userid}存在${allergyHistory}，产品名称${productName}与既往过敏史冲突`);
   }
-  if (productType === "用药" && medications[0] !== productName) {
+  if (!excludeProduct && productType === "用药" && medications[0] !== productName) {
     throw new Error(`${userid}的药品类产品必须作为联合用药第一项：${productName}`);
   }
   if (Number(age) < 18) {

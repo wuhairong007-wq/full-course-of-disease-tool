@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { validateDrugSpecification } from "./drug_specification_validator.mjs";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
-import { validateClinicalMedicationSelection } from "./clinical_medication_validator.mjs";
+import { shouldExcludeMedicinalProduct, validateClinicalMedicationSelection } from "./clinical_medication_validator.mjs";
 
 const nodeModules = process.env.CODEX_NODE_MODULES;
 if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
@@ -53,7 +53,23 @@ function validatePrescriptionMapping(userid, medications, prescriptionList) {
   }
 }
 
-function validateRecord(record, patient) {
+function filterCompanyProduct(record, patient, company) {
+  if (!shouldExcludeMedicinalProduct({ company, productType: patient.productType })) return record;
+  if (!Array.isArray(record?.combinedMedication) || typeof record?.prescriptionList !== "string") return record;
+  const productName = normalize(patient.productName);
+  const medications = record.combinedMedication.filter((medication) => normalize(medication) !== productName);
+  const prescriptionEntries = normalize(record.prescriptionList).split(" + ").map(normalize);
+  const filteredPrescriptionEntries = prescriptionEntries.filter((entry) => (
+    entry !== productName && !entry.startsWith(`${productName} `)
+  ));
+  return {
+    ...record,
+    combinedMedication: medications,
+    prescriptionList: filteredPrescriptionEntries.join(" + "),
+  };
+}
+
+function validateRecord(record, patient, company) {
   const { userid: expectedUserid, age, gender, disease, sourceAllergy, productName, productType } = patient;
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error(`${expectedUserid}记录必须为对象`);
   if (JSON.stringify(Object.keys(record)) !== JSON.stringify(recordKeys)) throw new Error(`${expectedUserid}必须且只能包含六个生成字段`);
@@ -72,6 +88,7 @@ function validateRecord(record, patient) {
     allergyHistory: sourceAllergy,
     productName,
     productType,
+    company,
     medications: record.combinedMedication,
   });
   if (!normalize(record.prescriptionList)) throw new Error(`${expectedUserid}的prescriptionList不能为空`);
@@ -134,9 +151,10 @@ const outputRows = sourceRows.slice(1).map((sourceRow) => {
   const disease = normalize(sourceRow[indexes["疾病"]]);
   const productName = normalize(sourceRow[indexes["产品名称"]]);
   const productType = normalize(sourceRow[indexes["产品类型"]]);
-  const record = recordByUserid.get(userid);
-  if (!record) throw new Error(`缺少userid记录：${userid}`);
-  validateRecord(record, { userid, age, gender, disease, sourceAllergy, productName, productType });
+  const sourceRecord = recordByUserid.get(userid);
+  if (!sourceRecord) throw new Error(`缺少userid记录：${userid}`);
+  const record = filterCompanyProduct(sourceRecord, { productName, productType }, args.company);
+  validateRecord(record, { userid, age, gender, disease, sourceAllergy, productName, productType }, args.company);
   if (record.allergyHistory !== "无") allergyCount += 1;
   return [
     ...baseValues,

@@ -116,6 +116,63 @@ assert.equal(outputRows[1][15], "已生成");
 assert.equal(outputRows[1][16], "待确认");
 assert.equal(outputSheet.tables.items.length, 1);
 
+const companyRecords = [
+  {
+    ...records[0],
+    combinedMedication: ["华法林钠片", "达格列净片", "对乙酰氨基酚片"],
+  },
+  {
+    ...records[1],
+    combinedMedication: ["硫酸氨基葡萄糖胶囊", "双氯芬酸二乙胺乳胶剂"],
+    prescriptionList: "硫酸氨基葡萄糖胶囊 规格0.25g/粒，每次0.5g，口服，每日3次，餐后服用，连续84天 + 双氯芬酸二乙胺乳胶剂 规格1%（20g/支），每次2g，外用，每日3次，早中晚涂抹，连续14天",
+  },
+  {
+    ...records[2],
+    combinedMedication: ["克霉唑阴道片", "氟康唑胶囊"],
+    prescriptionList: "克霉唑阴道片 规格0.5g/片，每次0.5g，阴道给药，每晚1次，睡前使用，连续3天 + 氟康唑胶囊 规格150mg/粒，每次150mg，口服，单次服用，餐后服用，治疗期间由医生复核症状变化",
+  },
+  {
+    ...records[3],
+    combinedMedication: ["克霉唑阴道片", "甲硝唑阴道泡腾片", "氟康唑胶囊"],
+    prescriptionList: "克霉唑阴道片 规格0.5g/片，每次0.5g，阴道给药，每晚1次，睡前使用，连续7天 + 甲硝唑阴道泡腾片 规格0.2g/片，每次0.2g，阴道给药，每晚1次，睡前使用，连续7天 + 氟康唑胶囊 规格150mg/粒，每次150mg，口服，单次服用，餐后服用，治疗期间由医生复核症状变化",
+  },
+];
+await fs.writeFile(recordsPath, JSON.stringify(companyRecords, null, 2), "utf8");
+const companyResult = spawnSync(nodePath, [
+  path.join(scriptDir, "build_workbook.mjs"),
+  "--input", sourcePath,
+  "--records", recordsPath,
+  "--template", templatePath,
+  "--output", outputPath,
+  "--company", "山东利赛医药有限公司",
+], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModules } });
+assert.equal(companyResult.status, 0, `${companyResult.stdout}\n${companyResult.stderr}`);
+const companyWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(outputPath));
+const companyRows = companyWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
+assert.equal(companyRows[1][11], "华法林钠片+达格列净片+对乙酰氨基酚片");
+assert.equal(companyRows[2][11], "双氯芬酸二乙胺乳胶剂");
+assert.equal(companyRows[3][11], "氟康唑胶囊");
+assert.equal(companyRows[4][11], "甲硝唑阴道泡腾片+氟康唑胶囊");
+for (const row of companyRows.slice(1)) {
+  if (row[6] === "原发性膝骨关节炎") assert.doesNotMatch(row[12], /硫酸氨基葡萄糖胶囊/);
+  if (row[6] === "念珠菌性阴道炎") assert.doesNotMatch(row[12], /克霉唑阴道片/);
+  if (row[6] === "混合性阴道感染") assert.doesNotMatch(row[12], /克霉唑阴道片/);
+}
+
+await fs.writeFile(recordsPath, JSON.stringify(records, null, 2), "utf8");
+const otherCompanyResult = spawnSync(nodePath, [
+  path.join(scriptDir, "build_workbook.mjs"),
+  "--input", sourcePath,
+  "--records", recordsPath,
+  "--template", templatePath,
+  "--output", outputPath,
+  "--company", "其他公司",
+], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModules } });
+assert.equal(otherCompanyResult.status, 0, `${otherCompanyResult.stdout}\n${otherCompanyResult.stderr}`);
+const otherCompanyWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(outputPath));
+const otherCompanyRows = otherCompanyWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
+assert.equal(otherCompanyRows[2][11], "硫酸氨基葡萄糖胶囊+双氯芬酸二乙胺乳胶剂+对乙酰氨基酚片");
+
 const variableCountRecords = [
   {
     ...records[0],

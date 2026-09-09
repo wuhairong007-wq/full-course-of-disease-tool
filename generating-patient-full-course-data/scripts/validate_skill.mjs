@@ -102,6 +102,9 @@ assert.match(skill, /userid \+ disease \+ therapy role/i);
 assert.match(skill, /same-disease cohort.*multiple eligible equivalents.*stable selector/s);
 assert.match(skill, /Never change treatment roles, medication counts, doses, or durations merely to create diversity/);
 assert.match(skill, /生成患者明细 依据文件：<source\.xlsx>/);
+assert.match(skill, /公司.*optional|公司.*可选/s);
+assert.match(skill, /山东利赛医药有限公司/);
+assert.match(skill, /产品名称.*联合用药.*处方清单/s);
 assert.match(skill, /生成健康管理方案 依据文件：<source\.xlsx>/);
 assert.match(skill, /生成跟踪提醒和用药清单 依据文件：<source\.xlsx>/);
 assert.match(skill, /service-period reminder formulas/);
@@ -234,6 +237,8 @@ assert.match(generatedContentValidator, /无法获取/);
 assert.match(generatedContentValidator, /不详/);
 const clinicalMedicationValidator = await fs.readFile(path.join(skillDir, "scripts", "clinical_medication_validator.mjs"), "utf8");
 assert.match(clinicalMedicationValidator, /药品类产品必须作为联合用药第一项/);
+assert.match(clinicalMedicationValidator, /山东利赛医药有限公司/);
+assert.match(clinicalMedicationValidator, /shouldExcludeMedicinalProduct/);
 assert.match(clinicalMedicationValidator, /未满18岁/);
 assert.match(clinicalMedicationValidator, /过敏/);
 assert.match(clinicalMedicationValidator, /extractAllergyTerms/);
@@ -250,6 +255,8 @@ for (const builder of [
 }
 const stageOneBuilder = await fs.readFile(path.join(skillDir, "scripts", "build_workbook.mjs"), "utf8");
 assert.match(stageOneBuilder, /validateClinicalMedicationSelection/);
+assert.match(stageOneBuilder, /--company|args\.company/);
+assert.match(stageOneBuilder, /filterCompanyProduct/);
 
 const drugSpecificationRules = await fs.readFile(path.join(skillDir, "references", "drug-specification-rules.md"), "utf8");
 assert.match(drugSpecificationRules, /注射用胰蛋白酶/);

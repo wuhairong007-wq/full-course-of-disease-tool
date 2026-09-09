@@ -2,7 +2,7 @@
 name: generating-patient-full-course-data
 description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单、不良反应清单或洞察报告, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, “生成不良反应清单 依据文件：Excel路径 数量：N”, and “生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD 依据以下文件：7份Excel”.
 metadata:
-  version: "1.1.10"
+  version: "1.1.11"
 ---
 
 # Generating Patient Full-Course Data
@@ -22,7 +22,7 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
 
 ## Route the Request
 
-- `生成患者明细 依据文件：<source.xlsx>` invokes stage 1.
+- `生成患者明细 依据文件：<source.xlsx> 公司：<company>` invokes stage 1; `公司` is optional and may be omitted or empty.
 - `生成健康管理方案 依据文件：<source.xlsx>` invokes stage 2.
 - `生成跟踪提醒和用药清单 依据文件：<source.xlsx> 服务周期 YYYY-MM-DD 至 YYYY-MM-DD` invokes stage 3.
 - `生成不良反应清单 依据文件：<source.xlsx> 数量：N` invokes stage 4.
@@ -46,7 +46,8 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
    <bundled-node> scripts/extract_patients.mjs --input <source.xlsx> --output <temp>/patients.json
    ```
 
-2. For each patient, first normalize and review `既往过敏史`. Exclude the documented allergen, its dosage-form or combination-product names, and every member of an explicitly documented allergy class before selecting any medication. Apply this gate to the supplied medicinal product as well: if the source product conflicts with the allergy history, stop and report the `userid`, allergy, and product instead of forcing it into the regimen. Build the remaining treatment roles in this order: a non-conflicting supplied medicinal product; etiologic, first-line, maintenance, or mandatory postoperative therapy; then each evidence-supported symptom-supportive medication. Decide whether a role is needed only from disease, procedure, age, sex, allergy history, product, and reviewed surgery. Select 1～5 distinct, directly indicated medications according to clinical need. A disease that is routinely managed with monotherapy or dual therapy, including uncomplicated vulvovaginal candidiasis and other clinically supportable local vaginal infection regimens, may retain one or two medications. Do not default every patient to the same number, and never add an unrelated, allergic, or contraindicated drug merely to reach an arbitrary count.
+2. For each patient, first normalize and review `既往过敏史`. Exclude the documented allergen, its dosage-form or combination-product names, and every member of an explicitly documented allergy class before selecting any medication. Apply this gate to the supplied medicinal product as well: if the source product conflicts with the allergy history, stop and report the `userid`, allergy, and product instead of forcing it into the regimen, except in the company-specific exclusion below where the product is omitted from both generated medication fields. Build the remaining treatment roles in this order: a non-conflicting supplied medicinal product; etiologic, first-line, maintenance, or mandatory postoperative therapy; then each evidence-supported symptom-supportive medication. Decide whether a role is needed only from disease, procedure, age, sex, allergy history, product, and reviewed surgery. Select 1～5 distinct, directly indicated medications according to clinical need. A disease that is routinely managed with monotherapy or dual therapy, including uncomplicated vulvovaginal candidiasis and other clinically supportable local vaginal infection regimens, may retain one or two medications. Do not default every patient to the same number, and never add an unrelated, allergic, or contraindicated drug merely to reach an arbitrary count.
+   - When `公司=山东利赛医药有限公司` and `产品类型=用药`, exclude the source `产品名称` from `联合用药` and from its active `处方清单` entry. Do not apply the normal “supplied medicinal product first” rule in this case. Keep other directly indicated medications and their complete prescriptions; if exclusion leaves no safe, directly indicated medication, stop and report the affected `userid` instead of padding the record. When `公司` is empty or names another company, preserve the normal product-first rule. Device products are never removed by this company rule.
 3. When one treatment role has multiple clinically equivalent candidates, first remove candidates that fail indication, treatment-line, route, age, allergy, contraindication, or interaction checks. Call `scripts/equivalent_medication_selector.mjs` with the eligible candidate objects and the stable key `userid + disease + therapy role`. The userid selects only within an already eligible equivalent group; it must never create an indication or change the number of treatment roles. Keep exactly one candidate for the role. A one-candidate group stays unchanged.
 4. Finalize and deduplicate `combinedMedication`, then generate exactly one complete prescription entry for each selected medication in the same order. Treat medication name, dosage form, specification, single dose, route, frequency, timing, duration, and warnings as one candidate-owned set. Judge the route dynamically from disease site, treatment role, treatment setting, patient safety facts, and the selected drug's supported routes; do not hard-code a disease to one route or default every injectable product to `肌内注射`. For airway-clearance goals, assess `雾化吸入`; for ophthalmic and soft-tissue goals, assess the corresponding local route, treating these as reasoning cues rather than unconditional mappings. If route fit conflicts with the treatment goal or dosage form, regenerate the entire candidate-owned set; if no supported route can be confirmed, stop and report the patient and drug. Validate each set against `references/drug-specification-rules.md`; never guess a strength, convert an unsupported unit, or retain parameters from a discarded alternative. Generate exactly one six-field record according to all stage-1 references and write `<temp>/records.json`.
 5. After drafting all records, run a same-disease cohort review for every disease represented by at least two patients. For each shared treatment role with multiple eligible equivalents after all patient-specific safety filters, verify that every eligible patient used the stable selector instead of inheriting one default regimen for the entire disease group. If the cohort remains identical, re-evaluate the equivalent candidate groups and regenerate each affected prescription from the final selected candidate. Identical regimens remain valid when only one safe candidate remains or patient-specific facts leave one supported choice. Never change treatment roles, medication counts, doses, or durations merely to create diversity.
@@ -57,8 +58,9 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
    <bundled-node> scripts/build_workbook.mjs \
      --input <source.xlsx> \
      --records <temp>/records.json \
-     --template assets/patient-full-course-template.xlsx \
+   --template assets/patient-full-course-template.xlsx \
      --output <output.xlsx> \
+     [--company <company>] \
      --preview <temp>/preview.png
    ```
 
