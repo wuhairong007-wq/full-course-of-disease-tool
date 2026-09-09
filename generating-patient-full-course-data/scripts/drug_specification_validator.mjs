@@ -3,6 +3,10 @@ const strictDrugRules = new Map([
     description: "效价单位（单位或万单位），不得使用mg或g等质量单位",
     specificationPattern: /^\d+(?:\.\d+)?(?:万)?单位(?:\/(?:支|瓶))?$/,
   }],
+  ["氟比洛芬凝胶贴膏", {
+    description: "mg/贴规格",
+    specificationPattern: /^\d+(?:\.\d+)?mg\/贴$/,
+  }],
 ]);
 
 function normalize(value) {

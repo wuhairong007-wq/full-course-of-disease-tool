@@ -20,6 +20,7 @@ After any equivalent medication substitution, discard the previous candidate's s
 | Drug | Dosage form | Allowed specification convention | Valid example | Forbidden example |
 |---|---|---|---|---|
 | 注射用胰蛋白酶 | 注射用无菌制剂 | Potency/activity units expressed as `单位` or `万单位`; an optional package denominator may be `/支` or `/瓶` | `5万单位`, `5万单位/支` | `5mg`, `0.005g` |
+| 氟比洛芬凝胶贴膏 | 外用贴膏剂 | `mg/贴` | `40mg/贴` | `40mg/片`, `40mg/支` |
 
 For `注射用胰蛋白酶`, the single dose must also use a supported potency/activity expression or a clearly corresponding whole-vial quantity. Do not write a mass-unit single dose after an activity-unit specification.
 

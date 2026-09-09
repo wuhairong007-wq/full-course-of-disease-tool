@@ -13,6 +13,18 @@ assert.doesNotThrow(() => validateDrugSpecification({
   prescriptionEntry: "重组人表皮生长因子凝胶 规格10万IU/支，每次1g，外用，每日1次，每日换药时，连续14天",
 }));
 
+assert.doesNotThrow(() => validateDrugSpecification({
+  userid: "U006",
+  medication: "氟比洛芬凝胶贴膏",
+  prescriptionEntry: "氟比洛芬凝胶贴膏 规格40mg/贴，每次1贴，外用，每日1次，贴于疼痛部位，连续7天",
+}));
+
+assert.throws(() => validateDrugSpecification({
+  userid: "U006",
+  medication: "氟比洛芬凝胶贴膏",
+  prescriptionEntry: "氟比洛芬凝胶贴膏 规格40mg/支，每次1贴，外用，每日1次，贴于疼痛部位，连续7天",
+}), /U006.*氟比洛芬凝胶贴膏.*40mg\/支.*mg\/贴/);
+
 assert.throws(() => validateDrugSpecification({
   userid: "U003",
   medication: "注射用胰蛋白酶",

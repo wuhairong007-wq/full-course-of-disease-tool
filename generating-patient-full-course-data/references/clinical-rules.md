@@ -2,7 +2,19 @@
 
 ## Safety Boundary
 
-Generate simulated discharge records, not real prescriptions. Use only source disease, age, sex, product, product type, and allergy history. Do not invent symptoms, test results, pathology, stage, comorbidities, organ function, weight, contraindications, or efficacy claims. Add a clinician-review statement to each prescription.
+Generate simulated discharge records, not real prescriptions. Use only source disease, age, sex, product, product type, and allergy history. Do not invent symptoms, test results, pathology, stage, comorbidities, organ function, weight, contraindications, or efficacy claims, except for the explicit user-authorized osteoarthritis symptom-stratification pathway below. Add a clinician-review statement to each prescription.
+
+## User-Authorized Osteoarthritis Symptom Stratification
+
+Only when the user explicitly authorizes allocation of pain severity and inflammatory features for an osteoarthritis cohort with no symptom-detail fields, derive an internal stratum using the stable key `userid + 疾病`. The stratum is an operational generation input, not a sourced patient fact: do not write it into copied source columns or represent it as an observed clinical finding.
+
+- Mild: use the supplied glucosamine product alone.
+- Moderate with inflammatory features: add one topical NSAID to the supplied glucosamine product.
+- Severe persistent pain with inflammatory features: add one topical NSAID and acetaminophen to the supplied glucosamine product.
+- The topical NSAID candidate group is `双氯芬酸二乙胺乳胶剂` or `氟比洛芬凝胶贴膏`; use the stable equivalent selector with the therapy role `外用抗炎镇痛`, and retain the selected candidate's full prescription parameters.
+- For documented NSAID, diclofenac, or flurbiprofen allergy, omit the topical NSAID. A severe stratum may retain acetaminophen.
+
+Use the selector's deterministic bucket allocation only for the authorized cohort; it cannot override source-product, allergy, specification, medication-order, or complete-prescription rules. Do not add oral NSAIDs under this pathway because gastrointestinal, renal, and cardiovascular safety data are not available.
 
 Every completed record must contain 1–5 clinically justified medications. When `产品类型=用药`, treat the supplied `产品名称` as a source-reviewed medication and include it first, except when `公司=山东利赛医药有限公司`, where the medicinal product is excluded from both generated medication fields. Then independently evaluate first-line disease treatment, maintenance or mandatory postoperative therapy, and every directly indicated adjunct from disease, procedure, age, sex, allergy history, product, and reviewed surgery. Finally evaluate each 有明确依据的对症支持药物. Retain every safe, directly indicated treatment role, subject to the five-drug cap. Clinical need determines the count: a disease routinely managed with monotherapy or dual therapy, including uncomplicated vulvovaginal candidiasis and other clinically supportable local vaginal infection regimens, may use one or two medications. Do not default every patient to the same number, randomize the number, or add an unrelated or contraindicated drug merely to reach an arbitrary count. If no safe, directly indicated medication remains after the complete assessment, stop and report the affected `userid` instead of writing an empty or padded record.
 
