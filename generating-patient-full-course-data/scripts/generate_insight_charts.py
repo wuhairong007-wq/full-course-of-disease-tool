@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+import re
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -90,18 +91,25 @@ def _radar_chart(path, labels, values):
     labels, values = list(labels) or ["无记录"], [float(v or 0) for v in (list(values) or [0])]
     image, draw = Image.new("RGB", (1200, 820), BG), None
     draw = ImageDraw.Draw(image)
-    cx, cy, radius, count = 520, 395, 260, len(labels)
+    cx, cy, radius, count = 560, 430, 270, len(labels)
     angles = [-math.pi / 2 + 2 * math.pi * i / count for i in range(count)]
     for level in range(1, 6):
-        points = [(cx + radius * level / 5 * math.cos(a), cy + radius * level / 5 * math.sin(a)) for a in angles]
-        draw.line(points + [points[0]], fill=GRID, width=2)
+        r = radius * level / 5
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r), outline="#D9E2E8", width=2)
+        _text(draw, (cx + r + 10, cy - 2), str(level), size=18, anchor="lm", fill="#25313A")
+    draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), outline="#222222", width=3)
     for angle in angles:
-        draw.line((cx, cy, cx + radius * math.cos(angle), cy + radius * math.sin(angle)), fill=GRID, width=2)
-    points = [(cx + radius * min(v, 5) / 5 * math.cos(a), cy + radius * min(v, 5) / 5 * math.sin(a)) for a, v in zip(angles, values)]
-    draw.polygon(points, fill="#B8DDE1", outline=PALETTE[0])
-    draw.line(points + [points[0]], fill=PALETTE[0], width=4)
+        draw.line((cx, cy, cx + radius * math.cos(angle), cy + radius * math.sin(angle)), fill="#D9E2E8", width=2)
+    points = [(cx + radius * min(max(v, 0), 5) / 5 * math.cos(a), cy + radius * min(max(v, 0), 5) / 5 * math.sin(a)) for a, v in zip(angles, values)]
+    draw.polygon(points, fill="#C6DCEC")
+    draw.line(points + [points[0]], fill="#2D79B8", width=4)
+    for x, y in points:
+        draw.ellipse((x - 6, y - 6, x + 6, y + 6), fill="#2D79B8", outline="#FFFFFF", width=2)
+    _text(draw, (cx, 38), "六维度评分分布图", size=28, anchor="ma", fill="#111111")
     for angle, label in zip(angles, labels):
-        _text(draw, (cx + (radius + 35) * math.cos(angle), cy + (radius + 35) * math.sin(angle)), str(label).split("、", 1)[-1][:12], size=19, anchor="mm")
+        short = re.sub(r"^\d+[、.]", "", str(label)).replace("用药后", "").replace("患处", "").strip()
+        short = re.split(r"的严重程度|的影响|对应", short, maxsplit=1)[0].strip(" ：:，,/") or "无记录"
+        _text(draw, (cx + (radius + 42) * math.cos(angle), cy + (radius + 42) * math.sin(angle)), short[:12], size=19, anchor="mm")
     image.save(path, format="PNG", optimize=True)
 
 

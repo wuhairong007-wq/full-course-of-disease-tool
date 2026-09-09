@@ -22,8 +22,52 @@ def validate_report(docx_path, insight_path):
         root = etree.fromstring(zf.read("word/document.xml"))
         text = "".join(root.xpath("//w:t/text()", namespaces=NS))
         paras = ["".join(p.xpath(".//w:t/text()", namespaces=NS)).strip() for p in root.xpath("//w:p", namespaces=NS)]
-        top = [p for p in paras if re.match(r"^[一二三四五六七八九]、", p)]
+
+        # The cover is front matter and must carry the request-specific metadata.
+        metadata = insight.get("metadata", {})
+        period = metadata.get("period", {})
+        compact_period = f"{period.get('start', '').replace('-', '')}-{period.get('end', '').replace('-', '')}"
+        cover_values = {
+            "委托方（甲方）：": metadata.get("client", ""),
+            "服务商（乙方）：": metadata.get("provider", ""),
+            "产品：": metadata.get("product", ""),
+            "服务地区：": metadata.get("serviceRegion", ""),
+            "服务周期：": compact_period,
+            "报告日期：": metadata.get("reportDate", ""),
+        }
+        tables_in_doc = root.xpath("//w:tbl", namespaces=NS)
+        cover_text = "".join("".join(cell.xpath(".//w:t/text()", namespaces=NS)) for table in tables_in_doc[:1] for cell in table.xpath("./w:tr/w:tc", namespaces=NS)) if tables_in_doc else ""
+        if "患者洞察报告" not in text or not tables_in_doc:
+            errors.append("缺少患者洞察报告封面或封面表格")
+        for label, value in cover_values.items():
+            if label not in cover_text:
+                errors.append(f"封面缺少字段：{label}")
+            elif value and value not in cover_text:
+                errors.append(f"封面字段未与insight.json对账：{label}")
+
+        toc_fields = root.xpath("//w:fldSimple[contains(translate(@w:instr, 'toc', 'TOC'), 'TOC')]", namespaces=NS)
+        toc_instr_text = root.xpath("//w:instrText[contains(translate(text(), 'toc', 'TOC'), 'TOC')]/text()", namespaces=NS)
+        if not toc_fields and not toc_instr_text:
+            errors.append("缺少动态目录字段")
+
+        if "图表说明：" in text:
+            errors.append("正文不得包含图表说明段")
+
+        page_field_found = False
+        footer_names = [name for name in names if name.startswith("word/footer") and name.endswith(".xml")]
+        for footer_name in footer_names:
+            footer_root = etree.fromstring(zf.read(footer_name))
+            if footer_root.xpath("//w:fldSimple[contains(translate(@w:instr, 'page', 'PAGE'), 'PAGE')]", namespaces=NS) or footer_root.xpath("//w:instrText[contains(translate(text(), 'page', 'PAGE'), 'PAGE')]/text()", namespaces=NS):
+                page_field_found = True
+                break
+        if not page_field_found:
+            errors.append("正文缺少PAGE页码字段")
+        page_starts = root.xpath("//w:sectPr/w:pgNumType[@w:start='1']", namespaces=NS)
+        if not page_starts:
+            errors.append("正文页码未从1开始")
+
         expected = [f"{x}、" for x in "一二三四五六七八九"]
+        top = [p for p in paras if re.match(r"^[一二三四五六七八九]、[^、]+$", p)]
         if len(top) != 9 or [p[:2] for p in top] != expected:
             errors.append("一级标题必须按一、至九、连续出现")
         expected_headings = [
@@ -72,7 +116,7 @@ def validate_report(docx_path, insight_path):
         total_prompts = insight["metrics"]["serviceExecution"]["totalPrompts"]
         if f"{total_prompts:,}次" not in text:
             errors.append("提醒总数未与insight.json对账")
-        blue_headers = root.xpath("//w:tr[1]//w:shd[@w:fill='1F4E78']", namespaces=NS)
+        blue_headers = root.xpath("//w:tbl/w:tr[1]//w:shd[@w:fill='1F4E78']", namespaces=NS)
         if len(blue_headers) < len(tables):
             errors.append("存在未使用蓝色底纹的表头")
         body_paras = root.xpath("//w:p[not(ancestor::w:tbl) and .//w:t]", namespaces=NS)
@@ -91,9 +135,10 @@ def validate_report(docx_path, insight_path):
             errors.append("正文固定28磅行距覆盖不足")
 
         def heading_uses_font_and_size(heading, east_asia_font, half_points):
+            accepted_fonts = {"宋体": "Songti SC", "黑体": "Heiti SC"}.get(east_asia_font, east_asia_font)
             matches = [p for p in root.xpath("//w:p", namespaces=NS) if "".join(p.xpath(".//w:t/text()", namespaces=NS)).strip() == heading]
             return bool(matches) and all(
-                p.xpath(f".//w:rPr/w:rFonts[@w:eastAsia='{east_asia_font}']", namespaces=NS)
+                p.xpath(f".//w:rPr/w:rFonts[@w:eastAsia='{east_asia_font}' or @w:eastAsia='{accepted_fonts}']", namespaces=NS)
                 and p.xpath(f".//w:rPr/w:sz[@w:val='{half_points}']", namespaces=NS)
                 for p in matches
             )

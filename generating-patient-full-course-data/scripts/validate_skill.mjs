@@ -23,6 +23,7 @@ const requiredFiles = [
   "scripts/test_generate_insight_charts.py",
   "scripts/test_insight_request_parser.mjs",
   "scripts/validate_insight_report.py",
+  "scripts/test_validate_insight_report.py",
   "scripts/drug_specification_validator.mjs",
   "scripts/test_drug_specification_validator.mjs",
   "scripts/equivalent_medication_selector.mjs",
@@ -124,6 +125,9 @@ assert.match(skill, /documents skill `render_docx\.py`/);
 assert.match(skill, /patient-insight-report-generation-prompt-template\.md\.docx/);
 assert.match(skill, /insight-report-template-contract\.md/);
 assert.match(skill, /输出Word文件模板.*visual|输出Word文件模板.*视觉/s);
+assert.match(skill, /委托方.*服务商.*blank|委托方.*服务商.*留白/s);
+assert.match(skill, /fixed cover.*dynamic table of contents.*body page numbers starting at 1/s);
+assert.match(skill, /no `图表说明：` paragraphs/);
 
 const medicationSchema = await fs.readFile(path.join(skillDir, "references", "medication-tracking-schema.md"), "utf8");
 assert.match(medicationSchema, /体温监测次数.*血压、心率监测次数.*用药提醒次数/s);
@@ -209,15 +213,26 @@ const insightTemplateContract = await fs.readFile(path.join(skillDir, "reference
 assert.match(insightTemplateContract, /一、报告概述/);
 assert.match(insightTemplateContract, /九、总结/);
 assert.match(insightTemplateContract, /固定 28 磅行距/);
+assert.match(insightTemplateContract, /封面.*目录.*页码从 1/s);
+assert.match(insightTemplateContract, /图注下不再输出“图表说明”/);
 const insightParser = await fs.readFile(path.join(skillDir, "scripts", "insight_request_parser.mjs"), "utf8");
 assert.match(insightParser, /sourcePaths\.length !== 7/);
 assert.match(insightParser, /templatePath.*null/);
+assert.match(insightParser, /extractOptionalValue/);
+assert.match(insightParser, /委托方/);
+assert.match(insightParser, /服务商/);
 const insightExtractor = await fs.readFile(path.join(skillDir, "scripts", "extract_insight_sources.py"), "utf8");
 assert.match(insightExtractor, /ROLE_RULES/);
+assert.match(insightExtractor, /serviceRegion/);
+assert.match(insightExtractor, /reportDate/);
 const insightBuilder = await fs.readFile(path.join(skillDir, "scripts", "build_insight_report.py"), "utf8");
 assert.match(insightBuilder, /bundled report contract/);
 assert.match(insightBuilder, /if template_path else Document\(\)/);
 assert.match(insightBuilder, /DEFAULT_REPORT_RULE_TEMPLATE/);
+assert.match(insightBuilder, /TOC.*1-3/);
+assert.match(insightBuilder, /_add_page_number/);
+assert.match(insightBuilder, /w:start.*"1"/);
+assert.doesNotMatch(insightBuilder, /图表说明：/);
 
 const healthPlanSchema = await fs.readFile(path.join(skillDir, "references", "health-plan-schema.md"), "utf8");
 assert.match(healthPlanSchema, /Omit `主诉：` and `体征：` completely/);

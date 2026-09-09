@@ -2,7 +2,7 @@
 name: generating-patient-full-course-data
 description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单、不良反应清单或洞察报告, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, “生成不良反应清单 依据文件：Excel路径 数量：N”, and “生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD 依据以下文件：7份Excel”.
 metadata:
-  version: "1.1.12"
+  version: "1.1.13"
 ---
 
 # Generating Patient Full-Course Data
@@ -158,10 +158,10 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
 
 ## Stage 5 — Patient Insight Report
 
-1. Require `生成洞察报告`, a product, an inclusive `服务周期：YYYY-MM-DD 至 YYYY-MM-DD`, and seven `.xlsx` files. Detect the seven source roles by headers and reject missing, duplicate or ambiguous roles. Read `assets/patient-insight-report-generation-prompt-template.md.docx` and `references/insight-report-template-contract.md`; these always control the final report's content and formatting. An output Word template is optional only as an additional visual layout source.
+1. Require `生成洞察报告`, a product, an inclusive `服务周期：YYYY-MM-DD 至 YYYY-MM-DD`, and seven `.xlsx` files. Optional cover metadata may be supplied as `委托方：<名称>` and `服务商：<名称>` lines; when omitted, those cover cells remain blank. Detect the seven source roles by headers and reject missing, duplicate or ambiguous roles. Read `assets/patient-insight-report-generation-prompt-template.md.docx` and `references/insight-report-template-contract.md`; these always control the final report's content and formatting. An output Word template is optional only as an additional visual layout source.
 2. Run `scripts/extract_insight_sources.py` to create `insight.json`, then `scripts/generate_insight_charts.py` to create real PNG charts and a chart manifest.
-3. Run `scripts/build_insight_report.py`. When the user supplies a visual Word template, pass it with `--template` and preserve its page settings, styles, headers and footers; otherwise use the bundled report layout. In every case, generate the fixed nine chapters and apply the bundled 28-point, title, table, chart and caption rules. Replace any sample body data with the extracted metrics. Default output is `患者洞察报告_<产品>_<YYYY-MM>.docx` beside the patient master workbook.
-4. Run `scripts/validate_insight_report.py` and the documents skill `render_docx.py`. Verify the bundled template asset exists, nine top-level headings, fixed title hierarchy, continuous figure/table captions, 28-point body spacing, centered objects, blue table headers, chart media relationships, source reconciliation, no prompt-template sample text or values, and readable page renders.
+3. Run `scripts/build_insight_report.py`. Pass `--client` and `--provider` to `scripts/extract_insight_sources.py` when the optional cover values are present. When the user supplies a visual Word template, pass it with `--template` and preserve its page settings, styles, headers and footers; otherwise use the bundled report layout. In every case, generate the fixed cover, dynamic table of contents, nine chapters, body page numbers starting at 1, and the bundled 28-point, title, table, chart and caption rules. Replace any sample body data with the extracted metrics. Default output is `患者洞察报告_<产品>_<YYYY-MM>.docx` beside the patient master workbook.
+4. Run `scripts/validate_insight_report.py` and the documents skill `render_docx.py`. Verify the bundled template asset exists, cover metadata, TOC field, body page field, nine top-level headings, fixed title hierarchy, continuous figure/table captions, no `图表说明：` paragraphs, 28-point body spacing, centered objects, blue table headers, chart media relationships, source reconciliation, no prompt-template sample text or values, and readable page renders.
 
 ## Stop Conditions
 

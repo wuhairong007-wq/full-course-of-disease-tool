@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from generate_insight_charts import generate_charts
+from generate_insight_charts import _radar_chart, generate_charts
 
 
 class ChartGenerationTest(unittest.TestCase):
@@ -34,6 +34,23 @@ class ChartGenerationTest(unittest.TestCase):
                     self.assertGreater(image.width, 100)
                     self.assertGreater(image.height, 100)
                     self.assertNotIn(item["caption"], image.info.get("Description", ""))
+
+    def test_radar_chart_matches_reference_geometry(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "radar.png"
+            _radar_chart(output, ["1、肿胀", "2、疼痛", "3、渗出", "4、炎症", "5、日常活动", "6、瘙痒"], [1, 2, 3, 2.5, 1.5, 2])
+            with Image.open(output) as image:
+                self.assertEqual(image.size, (1200, 820))
+                colors = image.getcolors(maxcolors=1200 * 820)
+                self.assertIsNotNone(colors)
+                self.assertGreater(sum(count for count, color in colors if color != (255, 255, 255)), 1000)
+                # A dark outer circle is a distinguishing feature of the reference style.
+                outer_ring = [
+                    image.getpixel((x, y))
+                    for x in range(286, 835)
+                    for y in (160, 161, 699, 700)
+                ]
+                self.assertTrue(any(max(pixel) < 100 for pixel in outer_ring))
 
 
 if __name__ == "__main__":

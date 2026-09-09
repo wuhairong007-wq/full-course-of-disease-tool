@@ -41,6 +41,9 @@ class ExtractInsightSourcesTest(unittest.TestCase):
     def test_builds_auditable_metrics_and_filters_dates(self):
         insight = build_insight(self.paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
         self.assertEqual(insight["metadata"]["patientCount"], 1)
+        self.assertEqual(insight["metadata"]["serviceRegion"], "湖北省武汉市")
+        self.assertEqual(insight["metadata"]["client"], "")
+        self.assertEqual(insight["metadata"]["provider"], "")
         self.assertEqual(insight["sourceDiagnostics"]["roles"]["symptomAssessments"]["includedRows"], 1)
         self.assertEqual(insight["metrics"]["followupCoverage"], {"numerator": 1, "denominator": 1, "value": 1.0, "display": "100.0%"})
         self.assertEqual(insight["metrics"]["trackingCoverage"], {"numerator": 1, "denominator": 1, "value": 1.0, "display": "100.0%"})
@@ -56,6 +59,11 @@ class ExtractInsightSourcesTest(unittest.TestCase):
         write_book(Path(ae_path), ["序号", "患者ID", "疾病", "不良反应发生时间", "不良反应严重程度分级", "处理结果/转归", "是否触发人工干预"], [], "不良反应（AE）记录清单")
         insight = build_insight(self.paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
         self.assertEqual(insight["metrics"]["adverseEventRate"], {"numerator": 0, "denominator": 1, "value": 0.0, "display": "0.0%"})
+
+    def test_accepts_cover_parties(self):
+        insight = build_insight(self.paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31", "甲方", "乙方")
+        self.assertEqual(insight["metadata"]["client"], "甲方")
+        self.assertEqual(insight["metadata"]["provider"], "乙方")
 
     def test_rejects_empty_patient_master(self):
         patient_path = next(path for path in self.paths if path.endswith("patients.xlsx"))

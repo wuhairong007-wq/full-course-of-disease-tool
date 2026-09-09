@@ -19,6 +19,25 @@ assert.equal(request.product, '注射用胰蛋白酶');
 assert.deepEqual(request.period, { start: '2026-07-01', end: '2026-07-31' });
 assert.equal(request.sourcePaths.length, 7);
 assert.equal(request.templatePath, '06-患者洞察报告.docx');
+assert.equal(request.client, null);
+assert.equal(request.provider, null);
+
+const coverPrompt = `生成洞察报告
+委托方：山东利赛医药有限公司
+服务商：福建健康之路健康科技有限公司
+产品：注射用胰蛋白酶
+服务周期：2026-07-01 至 2026-07-31
+依据以下文件：
+患者全病程数据.xlsx
+健康管理方案.xlsx
+跟踪提醒.xlsx
+智能随访明细.xlsx
+症状自评明细.xlsx
+用药清单.xlsx
+不良反应清单.xlsx`;
+const coverRequest = parseInsightRequest(coverPrompt);
+assert.equal(coverRequest.client, '山东利赛医药有限公司');
+assert.equal(coverRequest.provider, '福建健康之路健康科技有限公司');
 
 const noTemplatePrompt = `生成洞察报告
 产品：注射用胰蛋白酶

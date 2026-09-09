@@ -5,6 +5,11 @@ function extractValue(text, label) {
   return value;
 }
 
+function extractOptionalValue(text, label) {
+  const pattern = new RegExp(`^${label}[：:][ \\t]*(.*)$`, 'm');
+  return text.match(pattern)?.[1]?.trim() || null;
+}
+
 export function parseInsightRequest(text) {
   if (!text.includes('生成洞察报告')) throw new Error('缺少“生成洞察报告”触发词');
 
@@ -19,6 +24,9 @@ export function parseInsightRequest(text) {
   const templatePath = templateMatch?.[1]?.trim() || null;
   if (templatePath && !templatePath.toLowerCase().endsWith('.docx')) throw new Error('输出Word文件模板必须为 .docx');
 
+  const client = extractOptionalValue(text, '委托方');
+  const provider = extractOptionalValue(text, '服务商');
+
   const sourceStart = text.search(/依据以下文件[：:]/);
   const sourceTail = sourceStart >= 0 ? text.slice(sourceStart).replace(/^依据以下文件[：:]\s*/, '') : '';
   const sourceBlock = sourceTail.split(/输出Word文件模板[：:]/)[0];
@@ -30,5 +38,5 @@ export function parseInsightRequest(text) {
   if (new Set(sourcePaths).size !== sourcePaths.length) throw new Error('依据文件路径存在重复');
   if (sourcePaths.length !== 7) throw new Error(`依据文件必须恰好包含7个 .xlsx 路径，当前为${sourcePaths.length}个`);
 
-  return { product, period: { start, end }, sourcePaths, templatePath };
+  return { product, period: { start, end }, sourcePaths, templatePath, client, provider };
 }

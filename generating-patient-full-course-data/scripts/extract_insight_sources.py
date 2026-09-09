@@ -346,7 +346,20 @@ def build_metrics(data, product):
     }
 
 
-def build_insight(source_paths, product, start_text, end_text):
+def _service_region_display(records):
+    labels = []
+    for record in records:
+        label = clean(record.get("地区"))
+        if label and label not in labels:
+            labels.append(label)
+    if not labels:
+        return ""
+    if len(labels) <= 3:
+        return "、".join(labels)
+    return f"共{len(labels)}个地区"
+
+
+def build_insight(source_paths, product, start_text, end_text, client=None, provider=None):
     if len(source_paths) != 7:
         raise ValueError(f"必须提供7份Excel资料，当前为{len(source_paths)}份")
     resolved = [str(Path(path).expanduser().resolve()) for path in source_paths]
@@ -392,6 +405,10 @@ def build_insight(source_paths, product, start_text, end_text):
         "schemaVersion": "1.0",
         "metadata": {
             "product": product,
+            "client": client or "",
+            "provider": provider or "",
+            "serviceRegion": _service_region_display(data["patients"]),
+            "reportDate": f"{date.today().year}年{date.today().month}月",
             "period": {"start": start_text, "end": end_text},
             "patientCount": len(patient_ids),
             "regionCount": len(metrics["regionDistribution"]),
@@ -410,9 +427,11 @@ def main():
     parser.add_argument("--product", required=True)
     parser.add_argument("--start", required=True)
     parser.add_argument("--end", required=True)
+    parser.add_argument("--client")
+    parser.add_argument("--provider")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
-    result = build_insight(args.source, args.product, args.start, args.end)
+    result = build_insight(args.source, args.product, args.start, args.end, args.client, args.provider)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")

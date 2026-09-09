@@ -3,12 +3,14 @@
 import argparse
 import json
 import shutil
+from datetime import date
 from pathlib import Path
 from zipfile import ZipFile
 
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+from docx.enum.section import WD_SECTION
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
@@ -44,10 +46,13 @@ def _set_cell_borders(cell, color="D9D9D9"):
 
 
 def _set_run(run, font="宋体", size=12, bold=False, color="000000"):
-    run.font.name = font
-    run._element.rPr.rFonts.set(qn("w:ascii"), font)
-    run._element.rPr.rFonts.set(qn("w:hAnsi"), font)
-    run._element.rPr.rFonts.set(qn("w:eastAsia"), font)
+    # Use installed macOS CJK family names so LibreOffice previews do not
+    # substitute missing glyph boxes for the Word-facing Chinese names.
+    render_font = {"宋体": "Songti SC", "黑体": "Heiti SC"}.get(font, font)
+    run.font.name = render_font
+    run._element.rPr.rFonts.set(qn("w:ascii"), render_font)
+    run._element.rPr.rFonts.set(qn("w:hAnsi"), render_font)
+    run._element.rPr.rFonts.set(qn("w:eastAsia"), render_font)
     run.font.size = Pt(size)
     run.bold = bold
     run.font.color.rgb = __import__("docx").shared.RGBColor.from_string(color)
@@ -92,6 +97,7 @@ def _add_para(doc, text, **kwargs):
 
 def _add_heading(doc, text, level):
     p = doc.add_paragraph(text)
+    p.style = f"Heading {level}"
     if level == 1:
         _format_paragraph(p, size=16, font="黑体", bold=True, first_line=False, before=14, after=14)
     elif level == 2:
@@ -99,6 +105,92 @@ def _add_heading(doc, text, level):
     else:
         _format_paragraph(p, size=14, font="黑体", bold=False, first_line=True)
     return p
+
+
+def _add_field(paragraph, instruction, placeholder=""):
+    field = OxmlElement("w:fldSimple")
+    field.set(qn("w:instr"), instruction)
+    run = OxmlElement("w:r")
+    if placeholder:
+        for index, line in enumerate(str(placeholder).splitlines()):
+            if index:
+                run.append(OxmlElement("w:br"))
+            text = OxmlElement("w:t")
+            text.text = line
+            run.append(text)
+    field.append(run)
+    paragraph._p.append(field)
+
+
+def _set_update_fields(document):
+    settings = document.settings._element
+    update = settings.find(qn("w:updateFields"))
+    if update is None:
+        update = OxmlElement("w:updateFields")
+        settings.append(update)
+    update.set(qn("w:val"), "true")
+
+
+def _clear_footer(section):
+    footer = section.footer
+    for paragraph in footer.paragraphs:
+        paragraph._element.getparent().remove(paragraph._element)
+
+
+def _add_page_number(section):
+    section.footer.is_linked_to_previous = False
+    _clear_footer(section)
+    paragraph = section.footer.add_paragraph()
+    _format_paragraph(paragraph, size=9, font="宋体", align=WD_ALIGN_PARAGRAPH.CENTER, first_line=False, line=12)
+    _add_field(paragraph, "PAGE")
+    pg_num = section._sectPr.find(qn("w:pgNumType"))
+    if pg_num is None:
+        pg_num = OxmlElement("w:pgNumType")
+        section._sectPr.append(pg_num)
+    pg_num.set(qn("w:start"), "1")
+
+
+def _add_cover(doc, metadata):
+    title = _add_para(doc, "患者洞察报告", size=24, font="黑体", bold=True, first_line=False, line=32,
+                      align=WD_ALIGN_PARAGRAPH.CENTER, before=165, after=70)
+    title.paragraph_format.keep_with_next = True
+    period = metadata.get("period", {})
+    start, end = period.get("start", ""), period.get("end", "")
+    compact_period = f"{start.replace('-', '')}-{end.replace('-', '')}" if start and end else ""
+    report_date = metadata.get("reportDate") or f"{date.today().year}年{date.today().month}月"
+    rows = [
+        ("委托方（甲方）：", metadata.get("client", "")),
+        ("服务商（乙方）：", metadata.get("provider", "")),
+        ("产品：", metadata.get("product", "")),
+        ("服务地区：", metadata.get("serviceRegion", "")),
+        ("服务周期：", compact_period),
+        ("报告日期：", report_date),
+    ]
+    table = doc.add_table(rows=len(rows), cols=2)
+    table.autofit = False
+    for row, (label, value) in zip(table.rows, rows):
+        row.cells[0].width = Cm(5.0)
+        row.cells[1].width = Cm(9.0)
+        for idx, cell in enumerate(row.cells):
+            cell.text = label if idx == 0 else value
+            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+            _set_cell_borders(cell, "B7C9D6")
+            for paragraph in cell.paragraphs:
+                _format_paragraph(paragraph, size=11, font="宋体", bold=idx == 0,
+                                  align=WD_ALIGN_PARAGRAPH.CENTER, first_line=False, line=16)
+    doc.add_page_break()
+
+
+def _add_toc(doc, entries):
+    p = _add_para(doc, "目录", size=18, font="黑体", bold=True, first_line=False, line=28,
+                  align=WD_ALIGN_PARAGRAPH.CENTER, before=0, after=18)
+    p.paragraph_format.keep_with_next = True
+    toc = doc.add_paragraph()
+    _format_paragraph(toc, size=11, font="宋体", first_line=False, line=20, before=0, after=0)
+    # Keep a cached readable result for renderers that do not recalculate TOC
+    # fields; Word still owns the dynamic field and refreshes page numbers.
+    _add_field(toc, 'TOC \\o "1-3" \\h \\z \\u', "\n".join(entries))
+    doc.add_section(WD_SECTION.NEW_PAGE)
 
 
 def _add_table(doc, headers, rows):
@@ -149,7 +241,6 @@ def _add_chart(doc, image_path, manifest_item, index):
     run = p.add_run()
     run.add_picture(str(image_path), width=Cm(15.5))
     _add_caption(doc, "图", index, f"{manifest_item['caption']}（{manifest_item['type']}）")
-    _add_para(doc, f"图表说明：{manifest_item['coreInformation']}", size=10, first_line=False, line=16, align=WD_ALIGN_PARAGRAPH.CENTER, before=0, after=8)
 
 
 def build_report(insight_path, chart_manifest_path, template_path, output_path):
@@ -164,7 +255,27 @@ def build_report(insight_path, chart_manifest_path, template_path, output_path):
     _clear_body(doc)
     meta, m = insight["metadata"], insight["metrics"]
     product = meta["product"]
-    _add_para(doc, "患者洞察报告", size=20, font="黑体", bold=True, first_line=False, line=28, align=WD_ALIGN_PARAGRAPH.CENTER, before=18, after=18)
+    for section in doc.sections:
+        section.footer.is_linked_to_previous = False
+        _clear_footer(section)
+    _add_cover(doc, meta)
+    toc_entries = [
+        "一、报告概述", "（一）执行摘要", "（二）关键指标概览",
+        "二、患者基本特征分析", "（一）性别分布", "（二）年龄分布", "（三）性别×年龄交叉", "（四）地区分布", "（五）疾病分型", "（六）过敏史",
+        "三、AI用药提醒服务分析", "（一）服务覆盖", "（二）用药方案分析", "（三）联合用药分析", "（四）联合用药模式深度分析",
+        "四、AI智能随访服务分析", "（一）随访概况", "（二）用药依从性 Q1-Q2", "（三）症状改善 Q3-Q5", "（四）生活质量与满意度 Q7-Q9", "（五）后续用药意愿 Q10",
+        "五、AI症状自评服务分析", "（一）症状自评概况", "（二）六维度详细分析", "（三）按疾病分型评分分析",
+        "六、不良反应监测与分析", "（一）不良反应概况", "（二）不良反应特征总结",
+        "七、患者风险评估", "（一）风险分级概况", "八、服务质量与SLA达标分析", "九、总结",
+    ]
+    _add_toc(doc, toc_entries)
+    # _add_toc creates the body section, so unlink and clear all newly-created
+    # front-matter footers before adding the body PAGE field.
+    for section in doc.sections[:-1]:
+        section.footer.is_linked_to_previous = False
+        _clear_footer(section)
+    _add_page_number(doc.sections[-1])
+    _set_update_fields(doc)
     period = meta["period"]
     chart_map = {item["id"]: item for item in manifest}
     current_section = 0
