@@ -3,14 +3,9 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 
-const nodeModules = process.env.CODEX_NODE_MODULES;
-if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES");
-const runtimeRequire = createRequire(path.join(nodeModules, "package.json"));
-const artifactToolPath = runtimeRequire.resolve("@oai/artifact-tool");
-const { Workbook, SpreadsheetFile } = await import(pathToFileURL(artifactToolPath).href);
+const { Workbook, SpreadsheetFile, nodeModulesPath } = await loadArtifactTool();
 const scriptDir = path.dirname(new URL(import.meta.url).pathname);
 const skillDir = path.resolve(scriptDir, "..");
 const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "health-plan-richness-"));
@@ -44,7 +39,7 @@ const result = spawnSync(process.execPath, [
   "--input", sourcePath, "--records", recordsPath,
   "--template", path.join(skillDir, "assets", "health-management-plan-template.xlsx"),
   "--output", outputPath,
-], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModules } });
+], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModulesPath } });
 assert.notEqual(result.status, 0, "泛化药理和三条概述式健康方案不应通过校验");
 assert.match(`${result.stdout}\n${result.stderr}`, /药理科普|健康管理方案/);
 console.log(JSON.stringify({ status: "passed", observedFailure: true }));

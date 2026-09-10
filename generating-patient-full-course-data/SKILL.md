@@ -18,7 +18,7 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
 - For stage 5, read `references/insight-report-schema.md`, `references/insight-report-writing.md`, and `references/insight-report-template-contract.md` completely. Use `assets/patient-insight-report-generation-prompt-template.md.docx` as the authoritative source for the fixed report content and formatting contract.
 - Use the matching bundled template in `assets/`; do not invent another layout.
 - Use the bundled extractor and builder scripts; do not rewrite their workbook logic.
-- **REQUIRED SUB-SKILL:** Use `spreadsheets:Spreadsheets` for dependency loading and visual verification.
+- Bundled Node scripts locate `@oai/artifact-tool` themselves via `scripts/lib/artifact_tool.mjs`: it honors `CODEX_NODE_MODULES` when set (e.g. after calling `load_workspace_dependencies` in Codex), otherwise it auto-detects a local Codex CLI runtime cache. No sub-skill call is required to run them in Claude Code or other environments.
 
 ## Route the Request
 
@@ -32,9 +32,9 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
 
 ## Shared Setup
 
-1. Call `load_workspace_dependencies`.
+1. Bundled Node commands resolve `@oai/artifact-tool` on their own; in Codex, optionally call `load_workspace_dependencies` first to prime the cache and speed up the first run.
 2. Create a temporary work directory.
-3. Set `CODEX_NODE_MODULES` to the returned Node packages path for every bundled Node command.
+3. In Codex, `CODEX_NODE_MODULES` is set automatically after `load_workspace_dependencies`; in other environments the scripts auto-detect the local Codex CLI runtime cache, or you can set `CODEX_NODE_MODULES` manually to a `node_modules` directory containing `@oai/artifact-tool`.
 4. Never overwrite the source workbook.
 5. Never emit language that describes absent input or references the source file, including `源文件未提供`, `未提供`, `未获取`, `暂无资料`, or equivalent placeholders. Omit an unsupported fact or its label instead; never fabricate content to fill the omission.
 
@@ -162,7 +162,9 @@ Generate a template-matched workbook from one source `.xlsx` path. Preserve ever
 1. Require `生成洞察报告`, a product, an inclusive `服务周期：YYYY-MM-DD 至 YYYY-MM-DD`, and seven `.xlsx` files. Optional cover metadata may be supplied as `委托方：<名称>` and `服务商：<名称>` lines; when omitted, those cover cells remain blank. Detect the seven source roles by headers and reject missing, duplicate or ambiguous roles. Read `assets/patient-insight-report-generation-prompt-template.md.docx` and `references/insight-report-template-contract.md`; these always control the final report's content and formatting. An output Word template is optional only as an additional visual layout source.
 2. Run `scripts/extract_insight_sources.py` to create `insight.json`, then `scripts/generate_insight_charts.py` to create real PNG charts and a chart manifest.
 3. Run `scripts/build_insight_report.py`. Pass `--client` and `--provider` to `scripts/extract_insight_sources.py` when the optional cover values are present. When the user supplies a visual Word template, pass it with `--template` and preserve its page settings, styles, headers and footers; otherwise use the bundled report layout. In every case, generate the fixed cover, dynamic table of contents, nine chapters, body page numbers starting at 1, and the bundled 28-point, title, table, chart and caption rules. Replace any sample body data with the extracted metrics. Default output is `患者洞察报告_<产品>_<YYYY-MM>.docx` beside the patient master workbook.
-4. Run `scripts/validate_insight_report.py` and the documents skill `render_docx.py`. Verify the bundled template asset exists, cover metadata, TOC field, body page field, nine top-level headings, fixed title hierarchy, continuous figure/table captions, no `图表说明：` paragraphs, 28-point body spacing, centered objects, blue table headers, chart media relationships, source reconciliation, no prompt-template sample text or values, and readable page renders.
+4. Run `scripts/validate_insight_report.py` to verify the bundled template asset exists, cover metadata, TOC field, body page field, nine top-level headings, fixed title hierarchy, continuous figure/table captions, no `图表说明：` paragraphs, 28-point body spacing, centered objects, blue table headers, chart media relationships, source reconciliation, and no prompt-template sample text or values. If LibreOffice (`soffice`) and poppler (`pdftoppm`) are installed, also run the documents skill `render_docx.py` (a standalone Python CLI, invocable directly via Bash) to render page images and confirm they are readable. If either dependency is missing, skip page rendering and state explicitly in the verification output that visual rendering was skipped and why; rely on `validate_insight_report.py`'s structural checks alone.
+
+Stage 5's Python scripts need `python-docx`, `lxml`, `openpyxl`, and `Pillow`; the optional visual-render check in step 4 additionally needs `pdf2image` plus LibreOffice and poppler installed on the host (e.g. `pip install python-docx lxml pdf2image` and `brew install libreoffice poppler`). None of this is required to generate the stage-5 report itself — only to render page-image previews for the last verification step.
 
 ## Stop Conditions
 

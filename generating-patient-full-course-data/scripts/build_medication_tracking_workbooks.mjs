@@ -1,18 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 import { generateMedicationConfirmationTime } from "./medication_confirmation_time.mjs";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
 import { validateMedicationTrackingWording } from "./medication_tracking_wording_validator.mjs";
 import { extractMedicationSpecification, validateMedicationListSpecification } from "./medication_specification.mjs";
 import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
 
-const nodeModules = process.env.CODEX_NODE_MODULES;
-if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES；请使用load_workspace_dependencies返回的Node.js packages路径");
-const runtimeRequire = createRequire(path.join(nodeModules, "package.json"));
-const artifactToolPath = runtimeRequire.resolve("@oai/artifact-tool");
-const { FileBlob, SpreadsheetFile } = await import(pathToFileURL(artifactToolPath).href);
+const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
 const sourceHeaders = [
   "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",

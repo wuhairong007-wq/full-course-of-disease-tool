@@ -3,14 +3,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { createRequire } from "node:module";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 
-const nodeModules = process.env.CODEX_NODE_MODULES;
-if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES");
-const runtimeRequire = createRequire(path.join(nodeModules, "package.json"));
-const artifactToolPath = runtimeRequire.resolve("@oai/artifact-tool");
-const { FileBlob, SpreadsheetFile, Workbook } = await import(pathToFileURL(artifactToolPath).href);
+const { FileBlob, SpreadsheetFile, Workbook, nodeModulesPath } = await loadArtifactTool();
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const skillDir = path.resolve(scriptDir, "..");
@@ -75,7 +71,7 @@ await fs.writeFile(recordsPath, JSON.stringify(records, null, 2), "utf8");
 
 const run = (script, args) => spawnSync(process.execPath, [path.join(scriptDir, script), ...args], {
   encoding: "utf8",
-  env: { ...process.env, CODEX_NODE_MODULES: nodeModules },
+  env: { ...process.env, CODEX_NODE_MODULES: nodeModulesPath },
 });
 const serviceArgs = ["--service-start", "2026-08-01", "--service-end", "2026-08-31"];
 const extractResult = run("extract_medication_tracking_patients.mjs", ["--input", sourcePath, ...serviceArgs, "--output", extractedPath]);

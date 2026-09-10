@@ -3,14 +3,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { createRequire } from "node:module";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 
-const nodeModules = process.env.CODEX_NODE_MODULES;
-if (!nodeModules) throw new Error("缺少环境变量CODEX_NODE_MODULES");
-const runtimeRequire = createRequire(path.join(nodeModules, "package.json"));
-const artifactToolPath = runtimeRequire.resolve("@oai/artifact-tool");
-const { FileBlob, SpreadsheetFile, Workbook } = await import(pathToFileURL(artifactToolPath).href);
+const { FileBlob, SpreadsheetFile, Workbook, nodeModulesPath } = await loadArtifactTool();
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const skillDir = path.resolve(scriptDir, "..");
@@ -77,7 +73,7 @@ const extractResult = spawnSync(nodePath, [
   path.join(scriptDir, "extract_patients.mjs"),
   "--input", sourcePath,
   "--output", extractedPath,
-], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModules } });
+], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModulesPath } });
 assert.equal(extractResult.status, 0, `${extractResult.stdout}\n${extractResult.stderr}`);
 const extractedPatients = JSON.parse(await fs.readFile(extractedPath, "utf8"));
 assert.deepEqual(extractedPatients, [
@@ -93,7 +89,7 @@ const result = spawnSync(nodePath, [
   "--records", recordsPath,
   "--template", templatePath,
   "--output", outputPath,
-], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModules } });
+], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModulesPath } });
 
 assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 
@@ -145,7 +141,7 @@ const companyResult = spawnSync(nodePath, [
   "--template", templatePath,
   "--output", outputPath,
   "--company", "山东利赛医药有限公司",
-], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModules } });
+], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModulesPath } });
 assert.equal(companyResult.status, 0, `${companyResult.stdout}\n${companyResult.stderr}`);
 const companyWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(outputPath));
 const companyRows = companyWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
@@ -167,7 +163,7 @@ const otherCompanyResult = spawnSync(nodePath, [
   "--template", templatePath,
   "--output", outputPath,
   "--company", "其他公司",
-], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModules } });
+], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModulesPath } });
 assert.equal(otherCompanyResult.status, 0, `${otherCompanyResult.stdout}\n${otherCompanyResult.stderr}`);
 const otherCompanyWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(outputPath));
 const otherCompanyRows = otherCompanyWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
@@ -188,7 +184,7 @@ const variableCountResult = spawnSync(nodePath, [
   "--records", recordsPath,
   "--template", templatePath,
   "--output", outputPath,
-], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModules } });
+], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModulesPath } });
 assert.equal(variableCountResult.status, 0, `${variableCountResult.stdout}\n${variableCountResult.stderr}`);
 const variableCountWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(outputPath));
 const variableCountRows = variableCountWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
@@ -205,7 +201,7 @@ async function assertInvalidRecords(invalidRecords, expectedMessage) {
     "--records", recordsPath,
     "--template", templatePath,
     "--output", outputPath,
-  ], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModules } });
+  ], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModulesPath } });
   assert.notEqual(invalidResult.status, 0);
   assert.match(`${invalidResult.stdout}\n${invalidResult.stderr}`, expectedMessage);
 }
