@@ -37,12 +37,30 @@ for (const [, sourceHeader] of fields) {
 }
 
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
+const symptomHeaders = [
+  "疼痛程度", "疼痛评分", "炎症表现", "症状", "症状描述", "主诉",
+  "症状持续时间", "晨僵时间", "关节肿胀", "活动受限",
+];
+const clinicalHeaders = [
+  "合并疾病", "既往病史", "当前用药", "用药效果", "肝功能", "肾功能", "妊娠状态", "哺乳状态", "手术史",
+];
 const patients = rows.slice(1).map((row) => Object.fromEntries(fields.map(([outputKey, sourceHeader]) => {
   const value = row[indexes[sourceHeader]];
   if (outputKey === "age") return [outputKey, Number(value)];
   const normalized = String(value ?? "").trim();
   return [outputKey, outputKey === "allergyHistory" ? normalized || "无" : normalized];
 })));
+
+patients.forEach((patient, index) => {
+  const row = rows[index + 1];
+  for (const [key, optionalHeaders] of [["symptomEvidence", symptomHeaders], ["clinicalContext", clinicalHeaders]]) {
+    const evidence = Object.fromEntries(optionalHeaders
+      .filter((header) => headers.includes(header))
+      .map((header) => [header, String(row[indexes[header]] ?? "").trim()])
+      .filter(([, value]) => value !== ""));
+    if (Object.keys(evidence).length) patient[key] = evidence;
+  }
+});
 
 if (patients.some((patient) => !patient.userid || !Number.isFinite(patient.age))) throw new Error("基础数据存在空userid或无效年龄");
 if (new Set(patients.map((patient) => patient.userid)).size !== patients.length) throw new Error("基础数据存在重复userid");

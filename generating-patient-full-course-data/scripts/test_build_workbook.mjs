@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSync as spawnProcess } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 
@@ -27,6 +28,29 @@ const sourceRows = [
   [3, "U003", "丙*", "2026-08-03 09:30:00", "女", 31, "念珠菌性阴道炎", "130****0003", "江苏省苏州市", "无", "无", "克霉唑阴道片", "用药"],
   [4, "U004", "丁*", "2026-08-04 14:20:00", "女", 36, "混合性阴道感染", "130****0004", "江苏省常州市", "轻度", "无", "克霉唑阴道片", "用药"],
 ];
+
+function spawnSync(command, argv, options) {
+  if (path.basename(argv[0]) !== "build_workbook.mjs") return spawnProcess(command, argv, options);
+  const inputRecords = JSON.parse(readFileSync(argv[argv.indexOf("--records") + 1], "utf8"));
+  const company = argv.includes("--company") ? argv[argv.indexOf("--company") + 1] : "";
+  const reviews = inputRecords.map(record => {
+    const source = sourceRows.find(row => row[1] === record.userid);
+    const medications = record.combinedMedication.filter(medication => !(
+      company === "山东利赛医药有限公司" && source[12] === "用药" && medication === source[11]
+    ));
+    return { userid: record.userid, roles: ["产品", "病因/一线治疗", "维持治疗", "围手术期治疗", "症状支持"].map(role => ({
+      role, evidence: [{ field: "疾病", value: source[6] }], rationale: "既有工作簿校验测试数据；不作为临床用药依据",
+      candidates: role === "产品" ? medications.map(medication => ({
+        medication, indication: "测试生成字段映射", safetyAssessment: "原有测试分别验证过敏和处方规则",
+        eligible: true, selected: true, exclusionReason: "",
+      })) : [],
+      exclusionReason: role === "产品" && medications.length ? "" : "测试场景不单独选择",
+    })) };
+  });
+  const reviewPath = path.join(tempDir, "review.json");
+  writeFileSync(reviewPath, JSON.stringify(reviews));
+  return spawnProcess(command, [...argv, "--review", reviewPath], options);
+}
 const records = [
   {
     userid: "U001",
@@ -48,7 +72,7 @@ const records = [
     userid: "U003",
     allergyHistory: "无",
     combinedMedication: ["克霉唑阴道片"],
-    prescriptionList: "克霉唑阴道片 规格0.5g/片，每次0.5g，阴道给药，每晚1次，睡前使用，连续3天；治疗期间由医生复核症状变化",
+    prescriptionList: "克霉唑阴道片 规格0.5g/片，每次0.5g，阴道给药，每晚1次，睡前使用，连续3天；治疗期间观察症状变化，出现皮疹或明显刺激时停用",
     surgeryName: "",
     coursePlanName: "念珠菌性阴道炎局部抗真菌治疗方案",
   },
@@ -56,7 +80,7 @@ const records = [
     userid: "U004",
     allergyHistory: "无",
     combinedMedication: ["克霉唑阴道片", "甲硝唑阴道泡腾片"],
-    prescriptionList: "克霉唑阴道片 规格0.5g/片，每次0.5g，阴道给药，每晚1次，睡前使用，连续7天；治疗期间由医生复核症状变化 + 甲硝唑阴道泡腾片 规格0.2g/片，每次0.2g，阴道给药，每晚1次，睡前使用，连续7天；治疗期间由医生复核症状变化",
+    prescriptionList: "克霉唑阴道片 规格0.5g/片，每次0.5g，阴道给药，每晚1次，睡前使用，连续7天；治疗期间观察症状变化，出现皮疹或明显刺激时停用 + 甲硝唑阴道泡腾片 规格0.2g/片，每次0.2g，阴道给药，每晚1次，睡前使用，连续7天；治疗期间观察症状变化，出现皮疹或明显刺激时停用",
     surgeryName: "",
     coursePlanName: "混合性阴道感染局部抗感染治疗方案",
   },
@@ -125,12 +149,12 @@ const companyRecords = [
   {
     ...records[2],
     combinedMedication: ["克霉唑阴道片", "氟康唑胶囊"],
-    prescriptionList: "克霉唑阴道片 规格0.5g/片，每次0.5g，阴道给药，每晚1次，睡前使用，连续3天 + 氟康唑胶囊 规格150mg/粒，每次150mg，口服，单次服用，餐后服用，治疗期间由医生复核症状变化",
+    prescriptionList: "克霉唑阴道片 规格0.5g/片，每次0.5g，阴道给药，每晚1次，睡前使用，连续3天 + 氟康唑胶囊 规格150mg/粒，每次150mg，口服，单次服用，餐后服用，治疗期间观察症状变化，出现皮疹或明显刺激时停用",
   },
   {
     ...records[3],
     combinedMedication: ["克霉唑阴道片", "甲硝唑阴道泡腾片", "氟康唑胶囊"],
-    prescriptionList: "克霉唑阴道片 规格0.5g/片，每次0.5g，阴道给药，每晚1次，睡前使用，连续7天 + 甲硝唑阴道泡腾片 规格0.2g/片，每次0.2g，阴道给药，每晚1次，睡前使用，连续7天 + 氟康唑胶囊 规格150mg/粒，每次150mg，口服，单次服用，餐后服用，治疗期间由医生复核症状变化",
+    prescriptionList: "克霉唑阴道片 规格0.5g/片，每次0.5g，阴道给药，每晚1次，睡前使用，连续7天 + 甲硝唑阴道泡腾片 规格0.2g/片，每次0.2g，阴道给药，每晚1次，睡前使用，连续7天 + 氟康唑胶囊 规格150mg/粒，每次150mg，口服，单次服用，餐后服用，治疗期间观察症状变化，出现皮疹或明显刺激时停用",
   },
 ];
 await fs.writeFile(recordsPath, JSON.stringify(companyRecords, null, 2), "utf8");

@@ -1,0 +1,700 @@
+{
+  "kind": "fictional-medication-catalog/v1",
+  "id": "adult-osteoarthritis-v1",
+  "reviewedOn": "2026-09-11",
+  "scope": {
+    "diseases": [
+      "原发性膝骨关节炎",
+      "手骨关节炎",
+      "原发性髋骨关节炎",
+      "肩骨关节炎",
+      "创伤后骨关节炎",
+      "髋关节继发性骨关节炎",
+      "继发性膝骨关节炎",
+      "踝骨关节炎"
+    ],
+    "productName": "硫酸氨基葡萄糖胶囊",
+    "productType": "用药",
+    "minAge": 18,
+    "maxAge": 80,
+    "allergyHistories": [
+      "无",
+      "磺胺类药物过敏",
+      "头孢菌素类过敏",
+      "青霉素过敏"
+    ],
+    "evidenceMatches": {}
+  },
+  "planSuffix": "疼痛控制与功能康复全病程方案",
+  "assumptions": [
+    "症状性骨关节炎疼痛影响活动，局部治疗不适用或疗效不足，采用最长5天的口服NSAID试用",
+    "NSAID同期使用PPI胃黏膜保护，依据NICE NG226 1.4.4；不虚构消化性溃疡诊断",
+    "排除额外药物过敏、妊娠/哺乳、活动性出血及溃疡、严重心肾肝损害和药物相互作用，仅为情境假设，非患者已核实事实",
+    "保留源表指定氨基葡萄糖；中国与NICE指南推荐不同，不声称三联方案普遍推荐",
+    "排除消化性溃疡及出血史、冠脉搭桥围手术期、炎症性肠病、乳糖或相关辅料不耐受、备孕及说明书列出的其他禁忌；这些均为虚构情境前提，不能标记成已核实患者事实。",
+    "65岁及以上仅分配3天的情境；3天和5天为测试病例的短期试用计划，并非指南对所有患者规定的固定疗程。"
+  ],
+  "sources": [
+    {
+      "name": "中国骨关节炎诊疗指南2024版",
+      "url": "https://www.hnysfww.com/data/article/1726813734537359986.pdf",
+      "scope": "表5及表6；不是固定三联处方依据"
+    },
+    {
+      "name": "NICE NG226",
+      "url": "https://www.nice.org.uk/guidance/ng226/chapter/Recommendations#pharmacological-management",
+      "scope": "1.4.4 NSAID及同期PPI；1.4.6不推荐氨基葡萄糖"
+    },
+    {
+      "name": "硫酸氨基葡萄糖胶囊说明书（浙一）",
+      "url": "https://swin.zy91.com/pages/m-instruction/m.instruction.html?webHisId=39242&hospitalCode=1",
+      "scope": "0.25g、0.5g每日3次、6周"
+    },
+    {
+      "name": "塞来昔布胶囊说明书",
+      "url": "https://viatris.cn/-/media/project/viatris-sites/product-document/05celecoxibcapsules.pdf",
+      "scope": "0.2g胶囊，OA 200mg每日1次，磺胺过敏禁用"
+    },
+    {
+      "name": "山东省立医院布洛芬缓释胶囊说明书",
+      "url": "https://www.sph.com.cn/Html/News/Articles/27986.html",
+      "scope": "图片1：0.3g/粒、成人每次1粒每日2次、止痛不超过5天、整粒吞服及禁忌"
+    },
+    {
+      "name": "艾司奥美拉唑镁肠溶片说明书（浙一）",
+      "url": "https://swin.zy91.com/pages/m-instruction/m.instruction.html?webHisId=32810&hospitalCode=1",
+      "scope": "20mg片、每日1次、整片吞服、相互作用；本情境短期预防用途依据NICE，不把其4至8周溃疡治疗疗程用于本情境"
+    },
+    {
+      "name": "美洛昔康片说明书（浙一）",
+      "url": "https://swin.zy91.com/pages/m-instruction/m.instruction.html?webHisId=38668&hospitalCode=1",
+      "scope": "7.5mg片，骨关节炎加重短期治疗起始7.5mg每日1次随餐；最低有效剂量、最短疗程"
+    },
+    {
+      "name": "萘普生250mg片剂SmPC",
+      "url": "https://www.medicines.org.uk/emc/product/101273/smpc",
+      "scope": "4.1及4.2：OA每日500mg至1g分2次、间隔12小时、随餐或餐后；本文件选低端250mg每日2次；国外说明书不代表中国品牌或批准文号"
+    },
+    {
+      "name": "奥美拉唑肠溶胶囊说明书（浙一）",
+      "url": "https://swin.zy91.com/pages/m-instruction/m.instruction.html?webHisId=39253&hospitalCode=1",
+      "scope": "20mg胶囊、每日1次、晨起整粒吞服及相互作用；NSAID同期保护依据NICE"
+    },
+    {
+      "name": "兰索拉唑15mg肠溶胶囊SmPC",
+      "url": "https://www.medicines.org.uk/emc/product/14550/smpc",
+      "scope": "4.2：NSAID溃疡预防15mg每日1次、餐前至少30分钟；短期同期保护依据NICE；国外说明书不代表中国品牌或批准文号"
+    }
+  ],
+  "drugs": {
+    "glucosamine": {
+      "name": "硫酸氨基葡萄糖胶囊",
+      "role": "产品",
+      "specification": "0.25g/粒",
+      "dose": "0.5g（2粒）",
+      "route": "口服",
+      "frequency": "每日3次",
+      "timing": "三餐时服用",
+      "durationSuffix": "",
+      "warnings": "甲壳类过敏、妊娠及哺乳期禁用；出现皮疹或呼吸困难立即停药就医，糖代谢异常时监测血糖。",
+      "sourceIds": [
+        2
+      ]
+    },
+    "celecoxib": {
+      "name": "塞来昔布胶囊",
+      "role": "口服NSAID",
+      "specification": "0.2g/粒",
+      "dose": "0.2g（1粒）",
+      "route": "口服",
+      "frequency": "每日1次",
+      "timing": "早餐后整粒吞服",
+      "durationSuffix": "，疼痛缓解即停",
+      "warnings": "磺胺或非甾体抗炎药过敏、活动性溃疡及出血、重度心肾肝功能障碍禁用；不叠加其他非甾体抗炎药，出现黑便、胸痛或少尿立即停药就医。",
+      "sourceIds": [
+        3
+      ]
+    },
+    "ibuprofen": {
+      "name": "布洛芬缓释胶囊",
+      "role": "口服NSAID",
+      "specification": "0.3g/粒",
+      "dose": "0.3g（1粒）",
+      "route": "口服",
+      "frequency": "每日2次",
+      "timing": "早晚餐后整粒吞服",
+      "durationSuffix": "，疼痛缓解即停",
+      "warnings": "非甾体抗炎药过敏、活动性溃疡及出血、严重心肾肝功能障碍、妊娠及哺乳期禁用；不叠加其他非甾体抗炎药，出现黑便、胸痛或少尿立即停药就医。",
+      "sourceIds": [
+        4
+      ]
+    },
+    "esomeprazole": {
+      "name": "艾司奥美拉唑镁肠溶片",
+      "role": "PPI",
+      "specification": "20mg/片",
+      "dose": "20mg（1片）",
+      "route": "口服",
+      "frequency": "每日1次",
+      "timing": "早餐前整片吞服，不咀嚼或压碎",
+      "durationSuffix": "，与口服抗炎药使用期同步",
+      "warnings": "苯并咪唑类过敏者禁用，不与奈非那韦合用，避免与氯吡格雷合用；出现持续腹泻或严重皮疹停药就医。",
+      "sourceIds": [
+        5,
+        1
+      ]
+    },
+    "meloxicam": {
+      "name": "美洛昔康片",
+      "role": "口服NSAID",
+      "specification": "7.5mg/片",
+      "dose": "7.5mg（1片）",
+      "route": "口服",
+      "frequency": "每日1次",
+      "timing": "早餐时用水送服",
+      "durationSuffix": "，疼痛缓解即停",
+      "warnings": "非甾体抗炎药过敏、活动性溃疡及出血、严重心肾肝功能障碍、妊娠及哺乳期、乳糖不耐受者禁用；不叠加其他非甾体抗炎药，出现黑便、少尿或皮疹立即停药就医。",
+      "sourceIds": [
+        6
+      ]
+    },
+    "naproxen": {
+      "name": "萘普生片",
+      "role": "口服NSAID",
+      "specification": "250mg/片",
+      "dose": "250mg（1片）",
+      "route": "口服",
+      "frequency": "每日2次",
+      "timing": "早晚餐后服用，间隔12小时",
+      "durationSuffix": "，疼痛缓解即停",
+      "warnings": "非甾体抗炎药过敏、消化性溃疡或消化道出血史、严重心肾肝功能障碍及妊娠晚期禁用；不叠加其他非甾体抗炎药，出现黑便、呕血或少尿立即停药就医。",
+      "sourceIds": [
+        7
+      ]
+    },
+    "omeprazole": {
+      "name": "奥美拉唑肠溶胶囊",
+      "role": "PPI",
+      "specification": "20mg/粒",
+      "dose": "20mg（1粒）",
+      "route": "口服",
+      "frequency": "每日1次",
+      "timing": "晨起早餐前整粒吞服，不咀嚼",
+      "durationSuffix": "，与口服抗炎药使用期同步",
+      "warnings": "苯并咪唑类过敏者禁用，不与奈非那韦、利匹韦林合用，避免与氯吡格雷合用；出现持续腹泻或严重皮疹停药就医。",
+      "sourceIds": [
+        8,
+        1
+      ]
+    },
+    "lansoprazole": {
+      "name": "兰索拉唑肠溶胶囊",
+      "role": "PPI",
+      "specification": "15mg/粒",
+      "dose": "15mg（1粒）",
+      "route": "口服",
+      "frequency": "每日1次",
+      "timing": "早餐前至少30分钟整粒吞服，不咀嚼颗粒",
+      "durationSuffix": "，与口服抗炎药使用期同步",
+      "warnings": "本品及辅料过敏者禁用，避免与阿扎那韦、奈非那韦合用；出现持续腹泻、严重皮疹或尿量减少停药就医。",
+      "sourceIds": [
+        9,
+        1
+      ]
+    }
+  },
+  "variants": [
+    {
+      "id": "ibuprofen-esomeprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "ibuprofen",
+          "days": 3
+        },
+        {
+          "drug": "esomeprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "celecoxib-omeprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [
+        "磺胺"
+      ],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "celecoxib",
+          "days": 3
+        },
+        {
+          "drug": "omeprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "meloxicam-lansoprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "meloxicam",
+          "days": 3
+        },
+        {
+          "drug": "lansoprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "naproxen-esomeprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "naproxen",
+          "days": 3
+        },
+        {
+          "drug": "esomeprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "ibuprofen-omeprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "ibuprofen",
+          "days": 3
+        },
+        {
+          "drug": "omeprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "celecoxib-lansoprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [
+        "磺胺"
+      ],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "celecoxib",
+          "days": 3
+        },
+        {
+          "drug": "lansoprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "meloxicam-esomeprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "meloxicam",
+          "days": 3
+        },
+        {
+          "drug": "esomeprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "naproxen-omeprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "naproxen",
+          "days": 3
+        },
+        {
+          "drug": "omeprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "ibuprofen-lansoprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "ibuprofen",
+          "days": 3
+        },
+        {
+          "drug": "lansoprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "celecoxib-esomeprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [
+        "磺胺"
+      ],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "celecoxib",
+          "days": 3
+        },
+        {
+          "drug": "esomeprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "meloxicam-omeprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "meloxicam",
+          "days": 3
+        },
+        {
+          "drug": "omeprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "naproxen-lansoprazole-3d",
+      "assumption": "短暂活动后加重，安排3天短期处理后观察",
+      "maxAge": 80,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "naproxen",
+          "days": 3
+        },
+        {
+          "drug": "lansoprazole",
+          "days": 3
+        }
+      ]
+    },
+    {
+      "id": "ibuprofen-esomeprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "ibuprofen",
+          "days": 5
+        },
+        {
+          "drug": "esomeprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "celecoxib-omeprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [
+        "磺胺"
+      ],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "celecoxib",
+          "days": 5
+        },
+        {
+          "drug": "omeprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "meloxicam-lansoprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "meloxicam",
+          "days": 5
+        },
+        {
+          "drug": "lansoprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "naproxen-esomeprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "naproxen",
+          "days": 5
+        },
+        {
+          "drug": "esomeprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "ibuprofen-omeprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "ibuprofen",
+          "days": 5
+        },
+        {
+          "drug": "omeprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "celecoxib-lansoprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [
+        "磺胺"
+      ],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "celecoxib",
+          "days": 5
+        },
+        {
+          "drug": "lansoprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "meloxicam-esomeprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "meloxicam",
+          "days": 5
+        },
+        {
+          "drug": "esomeprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "naproxen-omeprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "naproxen",
+          "days": 5
+        },
+        {
+          "drug": "omeprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "ibuprofen-lansoprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "ibuprofen",
+          "days": 5
+        },
+        {
+          "drug": "lansoprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "celecoxib-esomeprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [
+        "磺胺"
+      ],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "celecoxib",
+          "days": 5
+        },
+        {
+          "drug": "esomeprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "meloxicam-omeprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "meloxicam",
+          "days": 5
+        },
+        {
+          "drug": "omeprazole",
+          "days": 5
+        }
+      ]
+    },
+    {
+      "id": "naproxen-lansoprazole-5d",
+      "assumption": "持续活动性疼痛，安排最多5天短期处理后观察",
+      "maxAge": 64,
+      "excludedAllergies": [],
+      "medications": [
+        {
+          "drug": "glucosamine",
+          "days": 42
+        },
+        {
+          "drug": "naproxen",
+          "days": 5
+        },
+        {
+          "drug": "lansoprazole",
+          "days": 5
+        }
+      ]
+    }
+  ]
+}

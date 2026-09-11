@@ -1,9 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import crypto from "node:crypto";
 import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 import { validateDrugSpecification } from "./drug_specification_validator.mjs";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
 import { shouldExcludeMedicinalProduct, validateClinicalMedicationSelection } from "./clinical_medication_validator.mjs";
+import { validateMedicationReviews } from "./medication_review_validator.mjs";
+import { validateFictionalReview } from "./fictional_test_mode.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -23,9 +26,17 @@ function parseArgs(argv) {
     if (!key?.startsWith("--") || value === undefined) throw new Error(`无效参数：${key ?? ""}`);
     args[key.slice(2)] = value;
   }
-  for (const required of ["input", "records", "template", "output"]) {
+  for (const required of ["input", "records", "template", "output", "review"]) {
     if (!args[required]) throw new Error(`缺少参数：--${required}`);
   }
+  if (args["min-medications"] !== undefined && !/^[1-5]$/.test(args["min-medications"])) {
+    throw new Error("--min-medications（最少种数）必须为1～5的整数");
+  }
+  args.minimumMedications = Number(args["min-medications"] ?? 1);
+  args.mode ??= "real";
+  if (!["real", "fictional-test"].includes(args.mode)) throw new Error("--mode必须为real或fictional-test");
+  if (args.mode === "fictional-test" && !path.basename(args.output).includes("虚构测试")) throw new Error("虚构输出文件名必须含“虚构测试”");
+  if (path.resolve(args.input) === path.resolve(args.output) || path.resolve(args.template) === path.resolve(args.output)) throw new Error("输出不得覆盖源文件或模板");
   return args;
 }
 
@@ -119,10 +130,12 @@ const sourceSheet = sourceWorkbook.worksheets.getItemAt(0);
 const templateSheet = templateWorkbook.worksheets.getItemAt(0);
 const sourceRows = sourceSheet.getUsedRange(true).values;
 const sourceHeaders = sourceRows[0].map(normalize);
-const actualTemplateHeaders = templateSheet.getRange("A1:Q1").values[0].map(normalize);
+const actualTemplateHeaders = templateSheet.getUsedRange(true).values[0].map(normalize);
 const records = JSON.parse(await fs.readFile(args.records, "utf8"));
+const reviews = JSON.parse(await fs.readFile(args.review, "utf8"));
 
 if (JSON.stringify(actualTemplateHeaders) !== JSON.stringify(templateHeaders)) throw new Error("模板必须使用固定17列表头");
+if (templateWorkbook.worksheets.items.length !== 1) throw new Error("患者明细模板必须仅含一个工作表，不能附加评估工作表");
 for (const header of sourceRequiredHeaders) {
   if (!sourceHeaders.includes(header)) throw new Error(`基础数据缺少必需字段：${header}`);
 }
@@ -137,6 +150,7 @@ for (const record of records) {
 }
 
 let allergyCount = 0;
+const finalRecords = [];
 const outputRows = sourceRows.slice(1).map((sourceRow) => {
   const baseValues = baseHeaders.map((header) => sourceRow[indexes[header]]);
   const userid = normalize(sourceRow[indexes.userid]);
@@ -150,6 +164,7 @@ const outputRows = sourceRows.slice(1).map((sourceRow) => {
   if (!sourceRecord) throw new Error(`缺少userid记录：${userid}`);
   const record = filterCompanyProduct(sourceRecord, { productName, productType }, args.company);
   validateRecord(record, { userid, age, gender, disease, sourceAllergy, productName, productType }, args.company);
+  finalRecords.push(record);
   if (record.allergyHistory !== "无") allergyCount += 1;
   return [
     ...baseValues,
@@ -161,6 +176,27 @@ const outputRows = sourceRows.slice(1).map((sourceRow) => {
     "待确认",
   ];
 });
+
+const reviewPatients = sourceRows.slice(1).map(row => Object.fromEntries(sourceHeaders.map((header, index) => [header, row[index]])));
+let fictionalMetrics;
+if (args.mode === "fictional-test") {
+  fictionalMetrics = validateFictionalReview({
+    review: reviews, records: finalRecords, patients: reviewPatients,
+    sourceSHA256: crypto.createHash("sha256").update(await fs.readFile(args.input)).digest("hex"),
+    company: args.company ?? "", minimumMedications: args.minimumMedications, output: args.output,
+  });
+} else {
+  if (reviews?.kind === "fictional-test-review/v1") throw new Error("虚构情境记录不能用于真实患者模式；需要显式指定--mode fictional-test");
+  validateMedicationReviews({ reviews, records: finalRecords, patients: reviewPatients });
+}
+
+// Count the final, validated medications after company exclusions, not search candidates.
+// Fail before touching the output path so a previous valid workbook remains intact.
+const belowMinimum = finalRecords.filter(record => record.combinedMedication.length < args.minimumMedications);
+if (belowMinimum.length) {
+  const affected = belowMinimum.map(record => `${record.userid}（实际${record.combinedMedication.length}种）`).join("；");
+  throw new Error(`联合用药未达到最少种数${args.minimumMedications}：${affected}。未生成患者明细，不输出替代评估文件。`);
+}
 
 const existingRows = templateSheet.getUsedRange(true).values.length;
 if (existingRows > 1) templateSheet.getRange(`A2:Q${existingRows}`).clear({ applyTo: "contents" });
@@ -176,6 +212,16 @@ templateSheet.showGridLines = false;
 
 for (const table of [...(templateSheet.tables.items ?? [])]) table.delete();
 templateSheet.tables.add(`A1:Q${outputRows.length + 1}`, true, "PatientFullCourseData");
+
+if (args.mode === "fictional-test") {
+  // Preserve the template schema, with room for three complete prescriptions.
+  templateSheet.getRange(`A1:Q${outputRows.length + 1}`).format.wrapText = true;
+  templateSheet.getRange(`A1:Q${outputRows.length + 1}`).format.verticalAlignment = "top";
+  const widths = [65,335,95,180,55,55,195,130,185,140,165,280,850,90,245,90,90];
+  widths.forEach((width,i) => { templateSheet.getRangeByIndexes(0,i,outputRows.length+1,1).format.columnWidthPx = width; });
+  templateSheet.getRange(`A2:Q${outputRows.length + 1}`).format.rowHeightPx = 216;
+}
+templateWorkbook.recalculate();
 
 await fs.mkdir(path.dirname(args.output), { recursive: true });
 await (await SpreadsheetFile.exportXlsx(templateWorkbook)).save(args.output);
@@ -197,4 +243,8 @@ console.log(JSON.stringify({
   patients: outputRows.length,
   fields: templateHeaders.length,
   allergyCount,
+  minimumMedications: args.minimumMedications,
+  minimumActualMedications: Math.min(...finalRecords.map(record => record.combinedMedication.length)),
+  mode: args.mode,
+  ...(fictionalMetrics ?? {}),
 }));

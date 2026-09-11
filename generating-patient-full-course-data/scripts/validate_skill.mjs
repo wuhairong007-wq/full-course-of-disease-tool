@@ -8,7 +8,18 @@ const requiredFiles = [
   "SKILL.md",
   "agents/openai.yaml",
   "scripts/extract_patients.mjs",
+  "scripts/test_extract_patients.mjs",
   "scripts/build_workbook.mjs",
+  "scripts/fictional_test_mode.mjs",
+  "scripts/generate_fictional_test_records.mjs",
+  "scripts/test_fictional_test_mode.mjs",
+  "scripts/test_fictional_workbook.mjs",
+  "references/fictional-test-mode.md",
+  "assets/fictional-osteoarthritis-catalog.json",
+  "scripts/medication_review_validator.mjs",
+  "scripts/test_medication_review_validator.mjs",
+  "scripts/test_build_workbook_review.mjs",
+  "scripts/test_stage1_output_contract.mjs",
   "scripts/test_build_workbook.mjs",
   "scripts/generated_content_validator.mjs",
   "scripts/test_generated_content_validator.mjs",
@@ -50,6 +61,7 @@ const requiredFiles = [
   "scripts/test_adverse_reaction_validation.mjs",
   "scripts/test_adverse_reaction_time.mjs",
   "references/clinical-rules.md",
+  "references/medication-review-schema.md",
   "references/drug-specification-rules.md",
   "references/record-schema.md",
   "references/health-plan-schema.md",
@@ -274,6 +286,9 @@ const stageOneBuilder = await fs.readFile(path.join(skillDir, "scripts", "build_
 assert.match(stageOneBuilder, /validateClinicalMedicationSelection/);
 assert.match(stageOneBuilder, /--company|args\.company/);
 assert.match(stageOneBuilder, /filterCompanyProduct/);
+assert.match(stageOneBuilder, /validateFictionalReview/);
+assert.match(skill, /模式：虚构测试/);
+assert.match(skill, /references\/fictional-test-mode\.md/);
 
 const drugSpecificationRules = await fs.readFile(path.join(skillDir, "references", "drug-specification-rules.md"), "utf8");
 assert.match(drugSpecificationRules, /注射用胰蛋白酶/);
