@@ -9,6 +9,7 @@ const prohibitedPlaceholderPatterns = [
   /暂无(?:相关)?(?:资料|信息|记录|数据|结果)?/,
   /(?:资料|信息|记录|数据)(?:不足|缺失)/,
 ];
+const prohibitedExternalInterventionPattern = /由(?:临床医生|医生|药师|医疗团队|临床团队|手术团队)[^。；，,。；]*/;
 
 function visitGeneratedValue(value, path, visitor) {
   if (typeof value === "string") {
@@ -31,6 +32,9 @@ export function validateGeneratedContent({ userid, fields }) {
     const matchedPattern = prohibitedPlaceholderPatterns.find((pattern) => pattern.test(text));
     if (matchedPattern) {
       throw new Error(`${userid}的${fieldPath || "生成内容"}含描述输入缺失或引用源文件的占位文案`);
+    }
+    if (prohibitedExternalInterventionPattern.test(text)) {
+      throw new Error(`${userid}的${fieldPath || "生成内容"}含不确定的外部人员介入文案`);
     }
   });
 }

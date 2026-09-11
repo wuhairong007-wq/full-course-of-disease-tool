@@ -28,4 +28,14 @@ for (const [field, text] of [
   );
 }
 
+for (const [field, text] of [
+  ["prescriptionList", "华法林钠片 规格3mg/片，每次3mg，口服，每日1次，晚餐中服用，连续14天，由临床医生定期复核出血风险"],
+  ["prescriptionList", "利伐沙班片 规格10mg/片，每次10mg，口服，每日1次，随餐服用，连续7天，由医生评估是否调整"],
+]) {
+  assert.throws(
+    () => validateGeneratedContent({ userid: "U001", fields: { [field]: text } }),
+    new RegExp(`U001.*${field}.*外部人员介入文案`),
+  );
+}
+
 console.log(JSON.stringify({ status: "passed" }));
