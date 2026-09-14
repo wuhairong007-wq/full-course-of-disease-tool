@@ -127,7 +127,7 @@ assert.match(skill, /integer response rates of 45～70/);
 assert.match(skill, /Do not use `按已审核处方执行`.*similar external-basis wording/s);
 assert.match(skill, /Strip a source label separator such as `规格：` to produce `5mg\/支`/);
 assert.match(skill, /Never begin with a calendar-date phrase such as `自2026-08-28起` or `自2026年-08-28起`/);
-assert.match(skill, /medication confirmation times on or after the service-period start date, strictly later than activation, strictly earlier than the service-period end date, and within `07:00:00–21:59:59`/);
+assert.match(skill, /medication confirmation times on or after the service-period start date, strictly later than activation and no more than 7 × 24 hours after activation \(inclusive upper bound\), strictly earlier than the service-period end date, and within `07:00:00–21:59:59`/);
 assert.match(skill, /生成不良反应清单 依据文件：<source\.xlsx> 数量：N/);
 assert.match(skill, /生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD/);
 assert.match(skill, /Stage 5 — Patient Insight Report/);
