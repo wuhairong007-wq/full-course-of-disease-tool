@@ -50,6 +50,43 @@ class ExtractInsightSourcesTest(unittest.TestCase):
         self.assertEqual(insight["metrics"]["symptoms"]["dimensionMeans"], [2.0] * 6)
         self.assertEqual(insight["metrics"]["adverseEventRate"]["numerator"], 1)
 
+    def test_optional_adverse_events_are_not_treated_as_zero_events(self):
+        paths = [path for path in self.paths if not path.endswith("ae.xlsx")]
+        insight = build_insight(paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
+        self.assertFalse(insight["sourceDiagnostics"]["roles"]["adverseEvents"]["provided"])
+        self.assertIsNone(insight["metrics"]["adverseEventRate"])
+        self.assertIsNone(insight["metrics"]["adverseEvents"]["patientCount"])
+        self.assertIsNone(insight["metrics"]["adverseEvents"]["recordCount"])
+        self.assertEqual(insight["metrics"]["riskDistribution"], [])
+        self.assertEqual(len(insight["metrics"]["serviceGoals"]), 3)
+        self.assertEqual(insight["metrics"]["followupCoverage"]["numerator"], 1)
+
+    def test_six_files_cannot_omit_any_other_required_role(self):
+        for omitted in ["patients.xlsx", "plans.xlsx", "tracking.xlsx", "followups.xlsx", "symptoms.xlsx", "medications.xlsx"]:
+            with self.subTest(omitted=omitted), self.assertRaisesRegex(ValueError, "缺少工作簿角色"):
+                build_insight([path for path in self.paths if not path.endswith(omitted)], "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
+
+    def test_optional_file_still_rejects_duplicate_roles(self):
+        duplicate = Path(self.temp_dir.name) / "ae-copy.xlsx"
+        duplicate.write_bytes(next(Path(path) for path in self.paths if path.endswith("ae.xlsx")).read_bytes())
+        paths = [path for path in self.paths if not path.endswith("plans.xlsx")] + [str(duplicate)]
+        with self.assertRaisesRegex(ValueError, "角色重复"):
+            build_insight(paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
+
+    def test_optional_file_is_not_silently_ignored_when_invalid(self):
+        ae_path = next(Path(path) for path in self.paths if path.endswith("ae.xlsx"))
+        original = ae_path.read_bytes()
+        ae_path.unlink()
+        with self.assertRaisesRegex(ValueError, "文件不存在"):
+            build_insight(self.paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
+        write_book(ae_path, ["任意字段"], [["不是不良反应表"]])
+        with self.assertRaisesRegex(ValueError, "表头"):
+            build_insight(self.paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
+        write_book(ae_path, ["患者ID", "不良反应发生时间", "不良反应严重程度分级"], [["P001", "错误日期", "轻度"]])
+        with self.assertRaisesRegex(ValueError, "无法解析"):
+            build_insight(self.paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
+        ae_path.write_bytes(original)
+
     def test_rejects_duplicate_source_paths(self):
         with self.assertRaisesRegex(ValueError, "重复"):
             build_insight(self.paths[:-1] + [self.paths[0]], "注射用胰蛋白酶", "2026-07-01", "2026-07-31")

@@ -215,7 +215,8 @@ assert.match(clinicalRules, /雾化吸入.*推理线索/);
 assert.match(clinicalRules, /停止该患者生成并报告患者、药物和冲突原因/);
 
 const insightSchema = await fs.readFile(path.join(skillDir, "references", "insight-report-schema.md"), "utf8");
-assert.match(insightSchema, /七类工作簿/);
+assert.match(insightSchema, /六类必填工作簿/);
+assert.match(insightSchema, /不良反应清单为选填/);
 assert.match(insightSchema, /服务响应率/);
 const insightWriting = await fs.readFile(path.join(skillDir, "references", "insight-report-writing.md"), "utf8");
 assert.match(insightWriting, /正文叙述密度/);
@@ -228,7 +229,7 @@ assert.match(insightTemplateContract, /固定 28 磅行距/);
 assert.match(insightTemplateContract, /封面.*目录.*页码从 1/s);
 assert.match(insightTemplateContract, /图注下不再输出“图表说明”/);
 const insightParser = await fs.readFile(path.join(skillDir, "scripts", "insight_request_parser.mjs"), "utf8");
-assert.match(insightParser, /sourcePaths\.length !== 7/);
+assert.match(insightParser, /\[6, 7\]\.includes\(sourcePaths\.length\)/);
 assert.match(insightParser, /templatePath.*null/);
 assert.match(insightParser, /extractOptionalValue/);
 assert.match(insightParser, /委托方/);

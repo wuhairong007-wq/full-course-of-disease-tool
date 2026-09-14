@@ -19,6 +19,9 @@ ROLE_RULES = {
     "adverseEvents": {"患者ID", "不良反应发生时间", "不良反应严重程度分级"},
 }
 
+REQUIRED_ROLES = set(ROLE_RULES) - {"adverseEvents"}
+
+
 DATE_FIELDS = {
     "followups": "随访时间",
     "symptomAssessments": "自评时间",
@@ -204,7 +207,8 @@ def build_metrics(data, product):
     medication_patient_counts = Counter(normalize_patient_id(record) for record in medications)
     product_records = [record for record in medications if clean(record.get("药品名称")) == product]
 
-    adverse_events = [record for record in data["adverseEvents"] if normalize_patient_id(record) in patient_ids]
+    adverse_events_provided = "adverseEvents" in data
+    adverse_events = [record for record in data.get("adverseEvents", []) if normalize_patient_id(record) in patient_ids]
     adverse_ids = {normalize_patient_id(record) for record in adverse_events}
     severe_ids = {
         normalize_patient_id(record)
@@ -323,10 +327,11 @@ def build_metrics(data, product):
             "productCourseDistribution": distribution(record.get("疗程天数") for record in product_records),
             "combinationModeDistribution": [{"label": label, "count": count} for label, count in combination_modes.most_common(12)],
         },
-        "adverseEventRate": ratio(len(adverse_ids), patient_count),
+        "adverseEventRate": ratio(len(adverse_ids), patient_count) if adverse_events_provided else None,
         "adverseEvents": {
-            "recordCount": len(adverse_events),
-            "patientCount": len(adverse_ids),
+            "provided": adverse_events_provided,
+            "recordCount": len(adverse_events) if adverse_events_provided else None,
+            "patientCount": len(adverse_ids) if adverse_events_provided else None,
             "severityDistribution": distribution(record.get("不良反应严重程度分级") for record in adverse_events),
             "diseaseDistribution": distribution(record.get("疾病") for record in adverse_events),
             "outcomeDistribution": distribution(record.get("处理结果/转归") for record in adverse_events),
@@ -336,13 +341,14 @@ def build_metrics(data, product):
             {"label": "低风险", "count": low_risk},
             {"label": "中风险", "count": medium_risk},
             {"label": "高风险", "count": high_risk},
-        ],
+        ] if adverse_events_provided else [],
         "serviceGoals": [
             {"label": "健康管理方案覆盖", "actual": ratio(len(health_plan_ids), patient_count), "goal": "全量覆盖"},
             {"label": "智能随访覆盖", "actual": ratio(len(followup_ids), patient_count), "goal": "持续提升"},
             {"label": "症状自评覆盖", "actual": ratio(len(symptom_ids), patient_count), "goal": "持续提升"},
+        ] + ([
             {"label": "不良反应监测", "actual": ratio(patient_count - len(adverse_ids), patient_count), "goal": "持续监测"},
-        ],
+        ] if adverse_events_provided else []),
     }
 
 
@@ -360,8 +366,8 @@ def _service_region_display(records):
 
 
 def build_insight(source_paths, product, start_text, end_text, client=None, provider=None):
-    if len(source_paths) != 7:
-        raise ValueError(f"必须提供7份Excel资料，当前为{len(source_paths)}份")
+    if len(source_paths) not in (6, 7):
+        raise ValueError(f"须提供6或7份Excel资料（六类必填，不良反应清单选填），当前为{len(source_paths)}份")
     resolved = [str(Path(path).expanduser().resolve()) for path in source_paths]
     if len(set(resolved)) != len(resolved):
         raise ValueError("依据文件路径存在重复")
@@ -382,12 +388,13 @@ def build_insight(source_paths, product, start_text, end_text, client=None, prov
         data[role] = included
         diagnostics["roles"][role] = {
             "path": path,
+            "provided": True,
             "headerRow": header_row,
             "sourceRows": len(records),
             "includedRows": len(included),
         }
 
-    missing = sorted(set(ROLE_RULES) - set(data))
+    missing = sorted(REQUIRED_ROLES - set(data))
     if missing:
         raise ValueError(f"缺少工作簿角色：{', '.join(missing)}")
 
@@ -400,7 +407,16 @@ def build_insight(source_paths, product, start_text, end_text, client=None, prov
     if duplicates:
         raise ValueError(f"患者主表userid重复：{duplicates[0]}")
 
+    adverse_events_provided = "adverseEvents" in data
+    if not adverse_events_provided:
+        diagnostics["roles"]["adverseEvents"] = {
+            "provided": False, "path": None, "headerRow": None,
+            "sourceRows": None, "includedRows": None,
+        }
     metrics = build_metrics(data, product)
+    # Keep the record contract stable while availability distinguishes omission
+    # from an explicitly supplied workbook with no in-period events.
+    data.setdefault("adverseEvents", [])
     return {
         "schemaVersion": "1.0",
         "metadata": {

@@ -183,10 +183,11 @@ def generate_charts(insight, output_dir):
     _radar_chart(output / filename, symptoms.get("questions", []), symptoms.get("dimensionMeans", [])); add("symptoms", "雷达图", "症状自评六维度均值", "展示六个症状维度的平均评分，评分越高代表症状负担越重。", filename, "metrics.symptoms.dimensionMeans")
     disease_scores = _entries(symptoms.get("diseaseDistribution"), 10); filename = "10-disease-symptom-scores.png"
     _bar_chart(output / filename, [x["label"] for x in disease_scores], [x["totalMean"] for x in disease_scores], ylabel="总分均值", horizontal=True); add("disease-symptom", "横向条形图", "按疾病分型的症状自评总分均值", "展示各疾病分型有效自评记录的总分均值，辅助定位分层复测重点。", filename, "metrics.symptoms.diseaseDistribution")
-    risk = metrics.get("riskDistribution", []); filename = "11-risk-distribution.png"
-    _bar_chart(output / filename, [x["label"] for x in risk], [x["count"] for x in risk]); add("risk", "柱状图", "患者风险分层分布", "展示低风险、中风险和高风险患者数量。", filename, "metrics.riskDistribution")
-    ae = metrics.get("adverseEvents", {}).get("severityDistribution") or [{"label": "无记录", "count": 0}]; filename = "12-adverse-event-severity.png"
-    _bar_chart(output / filename, [x["label"] for x in ae], [x["count"] for x in ae]); add("adverse-events", "柱状图", "不良反应严重程度分布", "展示服务周期内不良反应记录的严重程度构成。", filename, "metrics.adverseEvents.severityDistribution")
+    if metrics.get("adverseEvents", {}).get("provided", True):
+        risk = metrics.get("riskDistribution", []); filename = "11-risk-distribution.png"
+        _bar_chart(output / filename, [x["label"] for x in risk], [x["count"] for x in risk]); add("risk", "柱状图", "患者风险分层分布", "展示低风险、中风险和高风险患者数量。", filename, "metrics.riskDistribution")
+        ae = metrics.get("adverseEvents", {}).get("severityDistribution") or [{"label": "无记录", "count": 0}]; filename = "12-adverse-event-severity.png"
+        _bar_chart(output / filename, [x["label"] for x in ae], [x["count"] for x in ae]); add("adverse-events", "柱状图", "不良反应严重程度分布", "展示服务周期内不良反应记录的严重程度构成。", filename, "metrics.adverseEvents.severityDistribution")
     for metric_key, filename, chart_id, caption in [("moduleCoverageByDisease", "13-disease-module-coverage.png", "disease-coverage", "各疾病分型服务模块覆盖率"), ("moduleCoverageByAge", "14-age-module-coverage.png", "age-coverage", "各年龄组服务模块覆盖率")]:
         groups = metrics.get(metric_key, [])
         labels = [x["label"] for x in groups]

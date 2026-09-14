@@ -255,6 +255,7 @@ def build_report(insight_path, chart_manifest_path, template_path, output_path):
     _clear_body(doc)
     meta, m = insight["metadata"], insight["metrics"]
     product = meta["product"]
+    adverse_events_provided = m["adverseEvents"].get("provided", True)
     for section in doc.sections:
         section.footer.is_linked_to_previous = False
         _clear_footer(section)
@@ -313,7 +314,7 @@ def build_report(insight_path, chart_manifest_path, template_path, output_path):
     body(f"本周期提醒总量达到{s['totalPrompts']:,}次，平均每名患者约{s['totalPrompts'] / n:.1f}次。该高频触达为疗程执行和异常发现提供了过程数据，但也需要结合患者响应情况控制重复触达，建议下一周期同时观察患者级覆盖、单人提醒次数和未响应连续天数，形成更细的服务质量判断。")
     body("因此，本报告对服务成效的判断分为三层：第一层看患者是否进入服务流程，第二层看提醒、随访和自评是否实际发生，第三层看异常是否被记录、处理并形成转归。三层指标的分母不同，不能用单一响应率替代全流程质量评价；后续运营复盘也应按这三个层次分别提出改进任务。")
     h2("（二）关键指标概览")
-    table(["指标", "数值", "统计口径"], [["服务患者", f"{n:,}人", "患者主表去重"], ["覆盖地区", f"{meta['regionCount']}个", "地区字段去重"], ["提醒总量", f"{s['totalPrompts']:,}次", "三类提醒次数合计"], ["估算响应率", s['estimatedResponseRate']['display'], s['responseRateBasis']], ["不良反应发生率", m['adverseEventRate']['display'], "不良反应患者数/患者数"]], "关键指标概览")
+    table(["指标", "数值", "统计口径"], [["服务患者", f"{n:,}人", "患者主表去重"], ["覆盖地区", f"{meta['regionCount']}个", "地区字段去重"], ["提醒总量", f"{s['totalPrompts']:,}次", "三类提醒次数合计"], ["估算响应率", s['estimatedResponseRate']['display'], s['responseRateBasis']]] + ([["不良反应发生率", m['adverseEventRate']['display'], "不良反应患者数/患者数"]] if adverse_events_provided else []), "关键指标概览")
     chart("service")
 
     h1("二、患者基本特征分析")
@@ -470,38 +471,57 @@ def build_report(insight_path, chart_manifest_path, template_path, output_path):
 
     h1("六、不良反应监测与分析")
     h2("（一）不良反应概况")
-    ae = m['adverseEvents']; body(f"本周期记录不良反应{ae['recordCount']}例，涉及患者{ae['patientCount']}人，患者发生率为{m['adverseEventRate']['display']}。记录数与涉及患者数{('一致，当前未见同一患者多条事件记录。' if ae['recordCount'] == ae['patientCount'] else '不一致，提示存在患者多事件记录，需要按患者维度复核。')}")
-    body(f"按患者总数计算，未记录不良反应的患者为{n - ae['patientCount']:,}人，占{pct(n - ae['patientCount'], n)}。该比例只能说明当前清单中的记录状态，不能等同于所有患者均经过相同强度的主动安全随访；评价安全监测质量时，还应同时查看随访覆盖、异常上报及时性和事件字段完整性。")
-    body("不良反应监测的管理重点是闭环而非单纯追求低发生率。每条事件都应能够回溯患者、相关药品、发生时间、严重程度、是否人工干预、处理措施和转归；对于没有事件的患者，也应保留是否完成过安全性询问的过程记录，以区分‘确认无异常’和‘没有形成评估记录’。")
-    table(["指标", "数值"], [["不良反应记录", ae['recordCount']], ["涉及患者", ae['patientCount']], ["患者发生率", m['adverseEventRate']['display']]], "不良反应概况"); chart("adverse-events")
-    h2("（二）不良反应特征总结")
-    sev = ae['severityDistribution'] or [{"label":"无记录", "count":0}]; body("严重程度分布为" + "、".join(f"{x['label']}（{x['count']}例，{pct(x['count'], ae['recordCount'])}）" for x in sev) + "。应持续核对严重程度分级、发生时间和处理结果是否完整，避免仅凭事件数量判断安全性。")
-    severe_count = sum(item['count'] for item in sev if item['label'] in {'重度', '严重', '危及生命', '高度'})
-    body(f"本周期严重程度最高的记录为{sev[0]['label'] if sev else '无记录'}，高严重程度事件{severe_count:,}例。该分布只能描述当前服务周期的记录状态，不能外推为长期安全性结论；建议继续保持发生时间、关联药品、处理措施和转归四类字段的完整填写，以便后续按事件类型比较变化。")
-    table(["严重程度", "例数"], [[x['label'], x['count']] for x in sev], "不良反应严重程度分布")
-    body("不良反应记录按疾病、发生时间、严重程度和处理结果进行关联复核。现有数据支持对记录进行描述性归因，不足以单独确认产品与事件之间的因果关系。")
-    manual_yes = next((x['count'] for x in ae['manualInterventionDistribution'] if x['label'] == '是'), 0)
-    body("从疾病分布看，事件涉及" + "、".join(f"{x['label']}{x['count']}例" for x in ae['diseaseDistribution']) + f"；触发人工干预{manual_yes:,}例。下一周期应继续检查事件是否与具体联合用药、用药时间或疾病类型重复出现，重复模式才适合进入专项复核。")
-    table(["关联维度", "分布"], [["相关疾病", "、".join(f"{x['label']}（{x['count']}例）" for x in ae['diseaseDistribution']) or "无记录"], ["是否人工干预", "、".join(f"{x['label']}（{x['count']}例）" for x in ae['manualInterventionDistribution']) or "无记录"]], "不良反应与用药关系复核")
-    body("处理结果与转归字段用于记录事件处置后的状态。当前数据的转归分布为" + "、".join(f"{x['label']}（{x['count']}例）" for x in ae['outcomeDistribution']) + "。建议将未好转、重复发生或触发人工干预的记录设置为次周期优先复核对象。")
-    body(f"当前共有{sum(x['count'] for x in ae['outcomeDistribution']):,}条转归记录。转归分布可用于检查事件处理记录是否闭环，但不应替代对具体患者的医学判断；建议保留每条事件的原始描述，并在下一周期追踪是否复发或再次触发提醒。")
-    table(["处理结果/转归", "例数"], [[x['label'], x['count']] for x in ae['outcomeDistribution']] or [["无记录", 0]], "不良反应处理措施与转归")
+    if adverse_events_provided:
+        ae = m['adverseEvents']; body(f"本周期记录不良反应{ae['recordCount']}例，涉及患者{ae['patientCount']}人，患者发生率为{m['adverseEventRate']['display']}。记录数与涉及患者数{('一致，当前未见同一患者多条事件记录。' if ae['recordCount'] == ae['patientCount'] else '不一致，提示存在患者多事件记录，需要按患者维度复核。')}")
+        body(f"按患者总数计算，未记录不良反应的患者为{n - ae['patientCount']:,}人，占{pct(n - ae['patientCount'], n)}。该比例只能说明当前清单中的记录状态，不能等同于所有患者均经过相同强度的主动安全随访；评价安全监测质量时，还应同时查看随访覆盖、异常上报及时性和事件字段完整性。")
+        body("不良反应监测的管理重点是闭环而非单纯追求低发生率。每条事件都应能够回溯患者、相关药品、发生时间、严重程度、是否人工干预、处理措施和转归；对于没有事件的患者，也应保留是否完成过安全性询问的过程记录，以区分‘确认无异常’和‘没有形成评估记录’。")
+        table(["指标", "数值"], [["不良反应记录", ae['recordCount']], ["涉及患者", ae['patientCount']], ["患者发生率", m['adverseEventRate']['display']]], "不良反应概况"); chart("adverse-events")
+        h2("（二）不良反应特征总结")
+        sev = ae['severityDistribution'] or [{"label":"无记录", "count":0}]; body("严重程度分布为" + "、".join(f"{x['label']}（{x['count']}例，{pct(x['count'], ae['recordCount'])}）" for x in sev) + "。应持续核对严重程度分级、发生时间和处理结果是否完整，避免仅凭事件数量判断安全性。")
+        severe_count = sum(item['count'] for item in sev if item['label'] in {'重度', '严重', '危及生命', '高度'})
+        body(f"本周期严重程度最高的记录为{sev[0]['label'] if sev else '无记录'}，高严重程度事件{severe_count:,}例。该分布只能描述当前服务周期的记录状态，不能外推为长期安全性结论；建议继续保持发生时间、关联药品、处理措施和转归四类字段的完整填写，以便后续按事件类型比较变化。")
+        table(["严重程度", "例数"], [[x['label'], x['count']] for x in sev], "不良反应严重程度分布")
+        body("不良反应记录按疾病、发生时间、严重程度和处理结果进行关联复核。现有数据支持对记录进行描述性归因，不足以单独确认产品与事件之间的因果关系。")
+        manual_yes = next((x['count'] for x in ae['manualInterventionDistribution'] if x['label'] == '是'), 0)
+        body("从疾病分布看，事件涉及" + "、".join(f"{x['label']}{x['count']}例" for x in ae['diseaseDistribution']) + f"；触发人工干预{manual_yes:,}例。下一周期应继续检查事件是否与具体联合用药、用药时间或疾病类型重复出现，重复模式才适合进入专项复核。")
+        table(["关联维度", "分布"], [["相关疾病", "、".join(f"{x['label']}（{x['count']}例）" for x in ae['diseaseDistribution']) or "无记录"], ["是否人工干预", "、".join(f"{x['label']}（{x['count']}例）" for x in ae['manualInterventionDistribution']) or "无记录"]], "不良反应与用药关系复核")
+        body("处理结果与转归字段用于记录事件处置后的状态。当前数据的转归分布为" + "、".join(f"{x['label']}（{x['count']}例）" for x in ae['outcomeDistribution']) + "。建议将未好转、重复发生或触发人工干预的记录设置为次周期优先复核对象。")
+        body(f"当前共有{sum(x['count'] for x in ae['outcomeDistribution']):,}条转归记录。转归分布可用于检查事件处理记录是否闭环，但不应替代对具体患者的医学判断；建议保留每条事件的原始描述，并在下一周期追踪是否复发或再次触发提醒。")
+        table(["处理结果/转归", "例数"], [[x['label'], x['count']] for x in ae['outcomeDistribution']] or [["无记录", 0]], "不良反应处理措施与转归")
+
+    else:
+        body("本节采用不良反应清单选填模式，展示安全监测的服务要求，不计算事件例数、发生率及严重程度分布。选填模式不构成零事件或已确认安全的结论，问卷中的身体不适回答也不能直接替代经登记的不良反应事件。")
+        body("安全监测应与用药提醒、智能随访和症状自评建立患者级联系。服务团队可先复核出现不适、症状负担较高或持续未响应的患者，核对题项、回答时间及用药安排，再确定是否需要进一步询问或建立事件记录。")
+        body("后续新增事件时，应逐条记录患者ID、发生时间、症状描述、相关药品、严重程度、处理措施和转归。只有采用一致的事件登记范围和观察周期，才适合计算发生率或比较不同月份的安全监测结果。")
+        h2("（二）不良反应特征总结")
+        body("不良反应特征分析需围绕具体事件展开，不能从没有附清单这一操作推断患者没有不适，也不能将某项主观回答直接认定为产品导致的不良反应。分析时应区分患者体验、事件登记与因果关系评价三个层次。")
+        body("事件复核可依次核对症状出现与给药的时间关系、同一患者的联合用药、既往反应及后续处理经过。对于可能涉及多个药品的记录，应保留原始描述与时间信息，避免仅凭产品名称或疾病名称作归因判断。")
+        body("安全服务的改进重点是可追溯的处置流程：发现异常后记录评估结果，执行相应处理并追踪转归；恢复常规管理前核对是否反复出现相同症状。统计展示应与记录完整性相结合，不能把较少的事件数量作为唯一质量目标。")
 
     h1("七、患者风险评估")
     h2("（一）风险分级概况")
-    risk = m['riskDistribution']; body("风险分层规则基于不良反应、人工干预和可观察服务数据。" + "、".join(f"{x['label']}{x['count']}人（{x['count']/n*100:.1f}%）" for x in risk) + "。风险结果不等同于临床诊断。")
-    body(f"本周期低风险患者占{pct(next((x['count'] for x in risk if x['label'] == '低风险'), 0), n)}，中风险和高风险合计{sum(x['count'] for x in risk if x['label'] != '低风险'):,}人。由于风险分层主要受不良反应和人工干预记录影响，低风险占比高并不表示所有患者都完成了随访或症状自评，仍需将风险结果与服务覆盖缺口并行查看。")
-    table(["风险等级", "患者数", "占比"], [[x['label'], x['count'], f"{x['count']/n*100:.1f}%"] for x in risk], "患者风险分层分布"); chart("risk")
-    midhigh = sum(x['count'] for x in risk if x['label'] != '低风险'); body(f"本周期中高风险患者共{midhigh}人，占患者总数{pct(midhigh, n)}。建议对相关患者核对不良反应记录、处理结果、随访连续性和症状自评高分维度，并根据复核结果安排加强随访或人工介入。")
-    body(f"中高风险患者数量较少但具有明确的复核价值，当前{midhigh}名患者均应建立患者级跟踪清单，至少记录事件发生日期、涉及药品、处置结果、下一次随访时间和是否再次出现异常。对于低风险患者，则可保持标准化提醒，同时用覆盖率和未响应连续次数作为升级人工服务的触发条件。")
-    body("风险管理可采用动态升级和回落机制：新发生不良反应、需要人工干预或出现连续异常时提高复核优先级；完成处置、转归明确且后续无重复异常时，再由服务团队确认是否恢复常规管理。这样能够避免风险标签长期固定，也能保证每次等级变化都有数据依据和处理记录。")
+    if adverse_events_provided:
+        risk = m['riskDistribution']; body("风险分层规则基于不良反应、人工干预和可观察服务数据。" + "、".join(f"{x['label']}{x['count']}人（{x['count']/n*100:.1f}%）" for x in risk) + "。风险结果不等同于临床诊断。")
+        body(f"本周期低风险患者占{pct(next((x['count'] for x in risk if x['label'] == '低风险'), 0), n)}，中风险和高风险合计{sum(x['count'] for x in risk if x['label'] != '低风险'):,}人。由于风险分层主要受不良反应和人工干预记录影响，低风险占比高并不表示所有患者都完成了随访或症状自评，仍需将风险结果与服务覆盖缺口并行查看。")
+        table(["风险等级", "患者数", "占比"], [[x['label'], x['count'], f"{x['count']/n*100:.1f}%"] for x in risk], "患者风险分层分布"); chart("risk")
+        midhigh = sum(x['count'] for x in risk if x['label'] != '低风险'); body(f"本周期中高风险患者共{midhigh}人，占患者总数{pct(midhigh, n)}。建议对相关患者核对不良反应记录、处理结果、随访连续性和症状自评高分维度，并根据复核结果安排加强随访或人工介入。")
+        body(f"中高风险患者数量较少但具有明确的复核价值，当前{midhigh}名患者均应建立患者级跟踪清单，至少记录事件发生日期、涉及药品、处置结果、下一次随访时间和是否再次出现异常。对于低风险患者，则可保持标准化提醒，同时用覆盖率和未响应连续次数作为升级人工服务的触发条件。")
+        body("风险管理可采用动态升级和回落机制：新发生不良反应、需要人工干预或出现连续异常时提高复核优先级；完成处置、转归明确且后续无重复异常时，再由服务团队确认是否恢复常规管理。这样能够避免风险标签长期固定，也能保证每次等级变化都有数据依据和处理记录。")
+
+    else:
+        body("本周期不输出依赖不良反应事件的低、中、高风险人数及比例。服务复核可继续围绕人工干预标记、随访回答、症状评分和提醒响应开展，但这些过程信号用于安排核查顺序，不替代患者风险等级或临床诊断。")
+        body(f"当前智能随访覆盖{m['followupCoverage']['display']}，症状自评覆盖{m['symptomCoverage']['display']}。应把已经完成评估与尚待补访的患者分别管理，优先核对人工干预标记和异常题项；覆盖缺口意味着服务链存在待完成环节，不等同于某一临床风险等级。")
+        body("对已触发人工干预的患者，应保留触发原因、评估日期、处理结果和下一次复核时间。对持续未响应的患者，应先检查触达是否成功、联系方式是否有效以及操作理解情况，再依据实际复核结果决定后续服务安排。")
+        body("风险管理应在新的事件或评估信息进入后动态更新，明确每次调整所依据的患者事实。恢复常规服务也应有处置完成、转归和后续观察记录支持，不能将不良反应清单选填自动转化为全体患者低风险。")
 
     h1("八、服务质量与SLA达标分析")
     goals = m['serviceGoals']; body("本报告以实际数据对服务覆盖、方案生成、随访、自评和安全监测进行对照。由于输入资料未提供具体合同阈值，表中目标采用数据契约规定的全量覆盖或持续提升口径，不对未提供阈值作确定性达标判断。")
     h2("（一）AI服务覆盖率")
     table(["指标", "实际值", "目标口径"], [[x['label'], x['actual']['display'], x['goal']] for x in goals], "AI服务覆盖率与目标口径")
     body("SLA解读应区分覆盖率、过程量和结果指标：覆盖率反映触达范围，提醒次数反映执行量，随访和自评记录反映评估深度。健康管理方案覆盖完整，但智能随访和症状自评仍存在患者级缺口；建议将缺口直接转化为补访名单和完成时限。")
-    body(f"按当前服务数据，健康管理方案覆盖{m['healthPlanCoverage']['numerator']:,}名患者；智能随访仍有{n - m['followupCoverage']['numerator']:,}人的覆盖缺口，症状自评仍有{n - m['symptomCoverage']['numerator']:,}人的覆盖缺口。不良反应监测指标按‘未记录不良反应患者数/患者总数’计算为{m['serviceGoals'][-1]['actual']['display'] if m.get('serviceGoals') else pct(n - ae['patientCount'], n)}，该指标反映事件记录结果，不代表主动安全询问的实际覆盖率。")
+    body(f"按当前服务数据，健康管理方案覆盖{m['healthPlanCoverage']['numerator']:,}名患者；智能随访仍有{n - m['followupCoverage']['numerator']:,}人的覆盖缺口，症状自评仍有{n - m['symptomCoverage']['numerator']:,}人的覆盖缺口。")
+    if adverse_events_provided:
+        body(f"不良反应监测指标按‘未记录不良反应患者数/患者总数’计算为{m['serviceGoals'][-1]['actual']['display']}，该指标反映事件记录结果，不代表主动安全询问的实际覆盖率。")
     chart("service")
     h2("（二）各模块按疾病覆盖率")
     disease_cov = m.get('moduleCoverageByDisease', [])
@@ -516,11 +536,11 @@ def build_report(insight_path, chart_manifest_path, template_path, output_path):
 
     h1("九、总结")
     conclusions = [
-        ("1、服务覆盖与数据链完整性", f"本周期覆盖{n:,}名患者、{meta['regionCount']}个地区和{meta['diseaseCount']}类疾病，形成方案、提醒、随访、自评及安全监测的连续数据链。健康管理方案覆盖{m['healthPlanCoverage']['display']}，智能随访和症状自评仍存在患者级缺口，下一周期应优先补齐服务链断点。"),
+        ("1、服务覆盖与数据链完整性", f"本周期覆盖{n:,}名患者、{meta['regionCount']}个地区和{meta['diseaseCount']}类疾病，形成方案、提醒、随访和自评{'及安全监测' if adverse_events_provided else ''}的数据链。健康管理方案覆盖{m['healthPlanCoverage']['display']}，智能随访和症状自评仍存在患者级缺口，下一周期应优先补齐服务链断点。"),
         ("2、提醒服务执行量与响应情况", f"三类提醒累计{s['totalPrompts']:,}次，按患者级响应率加权估算响应率为{s['estimatedResponseRate']['display']}。后续应同时观察总体响应率、单人触达频次和连续未响应情况，避免用提醒总量代替服务参与度。"),
         ("3、用药结构与疗程记录", f"用药记录{meds['recordCount']:,}条、涉及{meds['uniqueDrugCount']}种药品；产品规格、频次和疗程分布需要结合具体分布复核，联合用药结构见本报告明细。下一周期可将长尾药品、规格字段和联合用药提醒作为抽查重点。"),
-        ("4、随访、自评与安全监测", f"智能随访{s['followupRecords']:,}条、症状自评{s['symptomRecords']:,}条，不良反应涉及患者{ae['patientCount']}人，严重程度最高记录为{sev[0]['label'] if sev else '无记录'}。建议持续关注非正向随访选项、高分自评记录和中高风险患者的连续复核。"),
-        ("5、下一周期服务建议", "建议保持患者ID和统计分母口径一致，提升随访与症状自评的连续覆盖，针对风险分层结果设置差异化复访频率，并在合同阈值明确后补充严格的SLA达标判定和异常升级规则。"),
+        ("4、随访、自评与安全监测", (f"智能随访{s['followupRecords']:,}条、症状自评{s['symptomRecords']:,}条，不良反应涉及患者{ae['patientCount']}人，严重程度最高记录为{sev[0]['label'] if sev else '无记录'}。建议持续关注非正向随访选项、高分自评记录和中高风险患者的连续复核。" if adverse_events_provided else f"智能随访{s['followupRecords']:,}条、症状自评{s['symptomRecords']:,}条。安全监测采用清单选填模式，不作零事件或全体低风险判断；建议对不适回答、人工干预标记及高分自评记录进行患者级复核，并保留处置过程和转归。")),
+        ("5、下一周期服务建议", "建议保持患者ID和统计分母口径一致，提升随访与症状自评的连续覆盖，根据患者级复核结果安排差异化复访，并在合同阈值明确后补充严格的SLA达标判定和异常升级规则。"),
     ]
     for title, text in conclusions:
         h3(title); body(text)

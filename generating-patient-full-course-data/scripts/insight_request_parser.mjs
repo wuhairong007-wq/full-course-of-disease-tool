@@ -36,7 +36,7 @@ export function parseInsightRequest(text) {
     .filter((line) => line.toLowerCase().endsWith('.xlsx'));
 
   if (new Set(sourcePaths).size !== sourcePaths.length) throw new Error('依据文件路径存在重复');
-  if (sourcePaths.length !== 7) throw new Error(`依据文件必须恰好包含7个 .xlsx 路径，当前为${sourcePaths.length}个`);
+  if (![6, 7].includes(sourcePaths.length)) throw new Error(`依据文件须包含6或7个 .xlsx 路径（六类必填，不良反应清单选填），当前为${sourcePaths.length}个`);
 
   return { product, period: { start, end }, sourcePaths, templatePath, client, provider };
 }

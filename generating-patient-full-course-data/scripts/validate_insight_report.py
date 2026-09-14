@@ -23,6 +23,14 @@ def validate_report(docx_path, insight_path):
         text = "".join(root.xpath("//w:t/text()", namespaces=NS))
         paras = ["".join(p.xpath(".//w:t/text()", namespaces=NS)).strip() for p in root.xpath("//w:p", namespaces=NS)]
 
+        if not insight.get("metrics", {}).get("adverseEvents", {}).get("provided", True):
+            event_assertions = r"(?:不良反应[\d,]+例|不良反应涉及患者[\d,]+人|患者发生率为[\d.]+%|(?:低|中|高)风险[\d,]+人|未记录不良反应的患者为[\d,]+人)"
+            statistic_labels = {"不良反应发生率", "患者发生率", "不良反应记录", "不良反应监测", "风险等级"}
+            if re.search(event_assertions, text) or statistic_labels.intersection(paras):
+                errors.append("不良反应清单选填模式不得输出事件统计或风险分层结论")
+            if any(re.match(r"^图\d+-\d+：(?:不良反应严重程度分布|患者风险分层分布)", p) for p in paras):
+                errors.append("不良反应清单选填模式不得输出事件或风险图表")
+
         # The cover is front matter and must carry the request-specific metadata.
         metadata = insight.get("metadata", {})
         period = metadata.get("period", {})

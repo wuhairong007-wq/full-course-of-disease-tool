@@ -56,7 +56,9 @@ assert.deepEqual(noTemplateRequest.period, { start: '2026-07-01', end: '2026-07-
 
 assert.throws(() => parseInsightRequest(prompt.replace('产品：注射用胰蛋白酶', '产品：')), /产品/);
 assert.throws(() => parseInsightRequest(prompt.replace('2026-07-01 至 2026-07-31', '2026-07-31 至 2026-07-01')), /服务周期/);
-assert.throws(() => parseInsightRequest(prompt.replace('不良反应清单.xlsx\n', '')), /7/);
+assert.equal(parseInsightRequest(prompt.replace('不良反应清单.xlsx\n', '')).sourcePaths.length, 6);
+assert.throws(() => parseInsightRequest(prompt.replace('不良反应清单.xlsx\n', '').replace('用药清单.xlsx\n', '')), /6/);
+assert.throws(() => parseInsightRequest(prompt.replace('不良反应清单.xlsx', '不良反应清单.xlsx\n额外.xlsx')), /7/);
 assert.throws(() => parseInsightRequest(prompt.replace('患者全病程数据.xlsx', '重复.xlsx\n重复.xlsx')), /重复/);
 
 console.log('insight request parser tests passed');
