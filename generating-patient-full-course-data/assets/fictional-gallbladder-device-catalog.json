@@ -1,0 +1,47 @@
+{
+  "kind": "fictional-medication-catalog/v1",
+  "id": "adult-gallbladder-device-v1",
+  "reviewedOn": "2026-09-14",
+  "scope": {
+    "diseases": ["慢性胆囊炎", "胆囊结石"],
+    "productName": "LIGAMAX5mm腔内连发施夹器",
+    "productType": "器械",
+    "minAge": 18,
+    "maxAge": 80,
+    "allergyHistories": ["无", "青霉素过敏", "头孢菌素类过敏", "海鲜过敏"],
+    "evidenceMatches": {}
+  },
+  "planSuffix": "腹腔镜胆囊切除术后恢复方案",
+  "assumptions": [
+    "虚构情境设定为择期腹腔镜胆囊切除术，器械用于术中管腔或血管夹闭；不代表真实手术已发生",
+    "虚构情境设定术后短期轻中度切口疼痛，使用对乙酰氨基酚3天；不代表患者已报告疼痛",
+    "排除肝肾功能严重异常、活动性消化道出血及对乙酰氨基酚或复方成分过敏；均为测试前提"
+  ],
+  "sources": [
+    {"name": "胆囊结石诊疗指南（2021年版）", "url": "https://www.cma.org.cn/art/2022/1/20/art_4583_40755.html", "scope": "胆囊结石腹腔镜胆囊切除术适应证背景"},
+    {"name": "对乙酰氨基酚片说明书（浙一）", "url": "https://swin.zy91.com/pages/m-instruction/m.instruction.html?webHisId=39196&hospitalCode=1", "scope": "0.5g规格、成人剂量及每日极量"}
+  ],
+  "drugs": {
+    "acetaminophen": {
+      "name": "对乙酰氨基酚片",
+      "role": "术后镇痛",
+      "specification": "0.5g/片",
+      "dose": "0.5g（1片）",
+      "route": "口服",
+      "frequency": "每日2次",
+      "timing": "早晚餐后服用",
+      "durationSuffix": "，疼痛缓解即停",
+      "warnings": "每日极量2g，禁与含同成分复方制剂同服；肝病或饮酒者慎用，出现皮疹或黄疸停药就医。",
+      "sourceIds": [1]
+    }
+  },
+  "variants": [
+    {
+      "id": "postoperative-acetaminophen-3d",
+      "assumption": "虚构设定术后短期切口疼痛，安排3天对症处理",
+      "maxAge": 80,
+      "excludedAllergies": [],
+      "medications": [{"drug": "acetaminophen", "days": 3}]
+    }
+  ]
+}

@@ -38,7 +38,7 @@ function validateCatalog(catalog) {
  assert(nonempty(catalog.id) && /^\d{4}-\d{2}-\d{2}$/.test(catalog.reviewedOn),'方案库缺少编号或核对日期');
  assert(scope && Array.isArray(scope.diseases) && scope.diseases.length && scope.diseases.every(nonempty),'方案库必须列出疾病范围');
  assert(Number.isInteger(scope.minAge)&&Number.isInteger(scope.maxAge)&&scope.minAge>=18&&scope.maxAge>=scope.minAge,'成人虚构方案库年龄范围不正确');
- assert(nonempty(scope.productName)&&scope.productType==='用药','虚构方案库必须声明适用药品');
+ assert(nonempty(scope.productName)&&['用药','器械'].includes(scope.productType),'虚构方案库必须声明适用产品类型');
  assert(Array.isArray(scope.allergyHistories)&&scope.allergyHistories.length,'方案库必须列出已核对的过敏史范围');
  assert(scope.evidenceMatches && typeof scope.evidenceMatches==='object'&&!Array.isArray(scope.evidenceMatches),'方案库必须声明源证据匹配条件');
  assert(nonempty(catalog.planSuffix),'方案库缺少方案名称后缀');
@@ -123,7 +123,7 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
  }
  const records=patients.map(p=>{
   const selected=assigned.get(p.userid);const items=itemsFor(p,selected);
-  const record={userid:p.userid,allergyHistory:p.allergyHistory,combinedMedication:items.map(i=>i.drug.name),prescriptionList:items.map(i=>prescription(i.drug,i.days)).join(' + '),surgeryName:'',coursePlanName:p.disease+catalog.planSuffix};
+  const record={userid:p.userid,allergyHistory:p.allergyHistory,combinedMedication:items.map(i=>i.drug.name),prescriptionList:items.map(i=>prescription(i.drug,i.days)).join(' + '),surgeryName:scope.productType==='器械'?`${p.disease}腹腔镜胆囊切除术（使用${p.productName}）`:'' ,coursePlanName:p.disease+catalog.planSuffix};
   assert(!record.combinedMedication.some(m=>record.coursePlanName.includes(m)),'方案名称不得包含产品名称');
   validateGeneratedContent({userid:p.userid,fields:{prescriptionList:record.prescriptionList,coursePlanName:record.coursePlanName}});
   return record;

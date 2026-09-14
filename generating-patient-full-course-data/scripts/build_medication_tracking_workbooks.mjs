@@ -106,7 +106,7 @@ function getReviewedField(segment, pattern) {
 }
 
 function getExpectedSingleDose(segment) {
-  const perDose = getReviewedField(segment, /每次\s*([^，；+]+)/);
+  const perDose = getReviewedField(segment, /每次\s*(?:用量\s*)?[：:]?\s*([^，；+]+)/);
   if (perDose) return perDose;
   return /(?:^|\s)适量(?:\s|$)/.test(segment) ? "适量" : "";
 }
