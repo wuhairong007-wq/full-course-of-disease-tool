@@ -101,13 +101,6 @@ assert.deepEqual(trackingRows[0], ["序号", "患者ID", "姓名", "性别", "�
 assert.deepEqual(trackingRows.slice(1).map((row) => row[1]), ["U001", "U002"]);
 assert.deepEqual(trackingRows.slice(1).map((row) => row[12]), records.map((record) => record.medicationCycle));
 for (const row of trackingRows.slice(1)) assert.doesNotMatch(row[12], /^\s*(?:自|从)\s*\d{4}/);
-for (const row of trackingRows.slice(1)) {
-  const days = row[1] === "U001" ? 31 : 20;
-  assert(row[8] >= Math.round(2 * days * 0.4) && row[8] <= Math.round(2 * days * 0.9));
-  assert(row[9] >= Math.round(days * 0.5) && row[9] <= Math.round(days * 0.85));
-  assert(row[10] >= Math.round(3 * days * 0.6) && row[10] <= Math.round(3 * days * 0.85));
-  assert(Number.isInteger(row[14]) && row[14] >= 45 && row[14] <= 70);
-}
 assert.equal(trackingRows[1][15], "是");
 assert.equal(trackingRows[2][15], "否");
 const firstBuildMetrics = trackingRows.slice(1).map((row) => row.slice(8, 11).concat(row.slice(14, 16)));
@@ -139,6 +132,17 @@ const medicationRows = medicationSheet.getUsedRange(true).values;
 assert.deepEqual(medicationRows[0], ["userid", "用药方案确认时间", "药品名称", "规格", "单次剂量", "用药频率", "用药时间", "疗程天数", "注意事项"]);
 assert.deepEqual(medicationRows.slice(1).map((row) => row[0]), ["U001", "U001", "U002", "U002"]);
 assert.deepEqual(medicationRows.slice(1).map((row) => row[2]), ["利伐沙班片", "对乙酰氨基酚片", "奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"]);
+const confirmationByUseridForMetrics = new Map(medicationRows.slice(1).map((row) => [row[0], row[1]]));
+for (const row of trackingRows.slice(1)) {
+  const confirmationDate = parseDateTime(confirmationByUseridForMetrics.get(row[1]));
+  const serviceEnd = parseDateTime("2026-08-31 00:00:00");
+  const confirmationCalendarDate = new Date(confirmationDate.getFullYear(), confirmationDate.getMonth(), confirmationDate.getDate());
+  const days = Math.max(Math.floor((serviceEnd - confirmationCalendarDate) / 86400000) + 1, 1);
+  assert(row[8] >= Math.round(2 * days * 0.4) && row[8] <= Math.round(2 * days * 0.9));
+  assert(row[9] >= Math.round(days * 0.5) && row[9] <= Math.round(days * 0.85));
+  assert(row[10] >= Math.round(3 * days * 0.6) && row[10] <= Math.round(3 * days * 0.85));
+  assert(Number.isInteger(row[14]) && row[14] >= 45 && row[14] <= 70);
+}
 const activationByUserid = new Map(sourceRows.map((row) => [row[1], row[3]]));
 for (const row of medicationRows.slice(1)) assertValidConfirmationTime(row[1], activationByUserid.get(row[0]), "2026-08-01", "2026-08-31", row[0]);
 const confirmationsByUserid = new Map();

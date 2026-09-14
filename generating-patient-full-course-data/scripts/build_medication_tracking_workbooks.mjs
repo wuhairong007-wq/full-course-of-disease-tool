@@ -66,10 +66,10 @@ function stableRandom(userid, salt) {
 const randomBetween = (userid, salt, minimum, maximum) => minimum + stableRandom(userid, salt) * (maximum - minimum);
 const randomInteger = (userid, salt, minimum, maximum) => minimum + Math.floor(stableRandom(userid, salt) * (maximum - minimum + 1));
 
-function trackingMetrics(patient) {
-  const activateDate = parseCalendarDate(patient.activateDate, `${patient.userid}的激活时间`);
+function trackingMetrics(patient, medicationConfirmationTime) {
+  const confirmationDate = parseCalendarDate(medicationConfirmationTime, `${patient.userid}的用药方案确认时间`);
   const serviceEndDate = parseCalendarDate(patient.serviceEndDate, `${patient.userid}的服务结束日期`);
-  const days = Math.max(serviceEndDate.dayNumber - activateDate.dayNumber + 1, 1);
+  const days = Math.max(serviceEndDate.dayNumber - confirmationDate.dayNumber + 1, 1);
   const periodSalt = `${patient.serviceStartDate}|${patient.serviceEndDate}`;
   return {
     temperature: Math.round(2 * days * randomBetween(patient.userid, `${periodSalt}|temperature`, 0.4, 0.9)),
@@ -260,19 +260,19 @@ for (let index = 0; index < patients.length; index += 1) {
   const record = recordByUserid.get(patient.userid);
   if (!record) throw new Error(`缺少userid记录：${patient.userid}`);
   validateRecord(record, patient);
-  const metrics = trackingMetrics(patient);
-  trackingRows.push([
-    index + 1, patient.userid, patient.patientName, patient.gender, patient.age, patient.diseaseName,
-    patient.allergyHistory, patient.combinedMedication.join("+"), metrics.temperature, metrics.bloodPressureHeartRate,
-    metrics.medicationReminder, record.medicationPlan, record.medicationCycle, "", metrics.patientResponseRate,
-    metrics.manualIntervention,
-  ]);
   const medicationConfirmationTime = generateMedicationConfirmationTime({
     userid: patient.userid,
     activateTime: patient.activateDate,
     serviceStartDate: patient.serviceStartDate,
     serviceEndDate: patient.serviceEndDate,
   });
+  const metrics = trackingMetrics(patient, medicationConfirmationTime);
+  trackingRows.push([
+    index + 1, patient.userid, patient.patientName, patient.gender, patient.age, patient.diseaseName,
+    patient.allergyHistory, patient.combinedMedication.join("+"), metrics.temperature, metrics.bloodPressureHeartRate,
+    metrics.medicationReminder, record.medicationPlan, record.medicationCycle, "", metrics.patientResponseRate,
+    metrics.manualIntervention,
+  ]);
   for (const item of record.medicationItems) {
     const treatmentDays = /^[1-9]\d*$/.test(normalize(item.treatmentDays)) ? Number(item.treatmentDays) : item.treatmentDays;
     medicationRows.push([

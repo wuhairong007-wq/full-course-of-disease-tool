@@ -70,7 +70,7 @@ Use exactly these 16 headers from the bundled template:
 
 `序号 | 患者ID | 姓名 | 性别 | 年龄 | 疾病 | 既往过敏史 | 联合用药 | 体温监测次数 | 血压、心率监测次数 | 用药提醒次数 | 用药方案 | 用药周期 | 方案链接 | 患者响应率 | 是否触发人工干预`
 
-Generate one row per input patient in source order. Validate the full trigger-supplied service period, then let `D = max(服务结束日期 - 患者激活日期 + 1, 1)` using calendar days. The service start date does not replace the patient activation date in this formula. Generate stable per-user pseudorandom values so rerunning the same input and service period is reproducible while values vary between patients:
+Generate one row per input patient in source order. Generate the patient's `用药方案确认时间` first, then validate the full trigger-supplied service period and let `D = max(服务结束日期 - 用药方案确认时间 + 1, 1)` using the confirmation timestamp's calendar date. The service start date and patient activation date do not replace the confirmation date in this formula. Generate stable per-user pseudorandom values so rerunning the same input and service period is reproducible while values vary between patients:
 
 - `体温监测次数 = round(2 × D × random[0.4, 0.9))`
 - `血压、心率监测次数 = round(D × random[0.5, 0.85))`
