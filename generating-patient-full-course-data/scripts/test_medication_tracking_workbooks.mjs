@@ -27,6 +27,7 @@ function assertValidConfirmationTime(value, activationText, serviceStartText, se
   const serviceEnd = parseDateTime(`${serviceEndText} 00:00:00`);
   const confirmation = parseDateTime(value);
   assert(confirmation > activation, `${userid}用药方案确认时间必须严格晚于激活时间`);
+  assert(confirmation - activation <= 7 * 24 * 3600 * 1000, `${userid}用药方案确认时间必须在激活时间后7天内`);
   assert(confirmation >= serviceStart, `${userid}用药方案确认时间不得早于服务周期开始日期`);
   assert(confirmation < serviceEnd, `${userid}用药方案确认时间不得落在服务周期最后一天`);
   const secondsOfDay = confirmation.getHours() * 3600 + confirmation.getMinutes() * 60 + confirmation.getSeconds();
@@ -45,19 +46,19 @@ const sourceRows = [
 const records = [
   {
     userid: "U001",
-    medicationPlan: "针对70岁男性心房颤动患者，使用利伐沙班片进行抗凝管理，并短期使用对乙酰氨基酚片进行疼痛或发热对症管理；固定时间核对用药，关注出血及肝脏相关风险，调整前由医生或药师复核。",
+    medicationPlan: "针对70岁男性心房颤动患者，使用利伐沙班片进行抗凝管理，并短期使用对乙酰氨基酚片进行疼痛或发热对症管理；固定时间核对用药，关注出血及肝脏相关风险，调整前核对剂量和相互作用。",
     medicationCycle: "利伐沙班片长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。",
     medicationItems: [
-      { drugName: "利伐沙班片", specification: "10mg/片", singleDose: "10mg", frequency: "每日1次", medicationTime: "晚餐中", treatmentDays: "长期", precautions: "随餐服用并观察牙龈出血、血尿、黑便或异常瘀斑；联合用药或新增药物前由医生或药师核对相互作用。" },
+      { drugName: "利伐沙班片", specification: "10mg/片", singleDose: "10mg", frequency: "每日1次", medicationTime: "晚餐中", treatmentDays: "长期", precautions: "随餐服用并观察牙龈出血、血尿、黑便或异常瘀斑；联合用药或新增药物前核对相互作用。" },
       { drugName: "对乙酰氨基酚片", specification: "0.5g/片", singleDose: "0.5g", frequency: "每8小时1次", medicationTime: "餐后", treatmentDays: 3, precautions: "每日总量不得超过2g，避免与含同成分复方制剂同服；联合用药期间新增药物前咨询医生。" },
     ],
   },
   {
     userid: "U002",
-    medicationPlan: "针对42岁女性慢性胃炎患者，使用奥美拉唑肠溶胶囊和铝碳酸镁咀嚼片，规范餐前与餐后时机并保持药物间隔；结合青霉素过敏史核对新增药物，由医生或药师复核疗程。",
+    medicationPlan: "针对42岁女性慢性胃炎患者，使用奥美拉唑肠溶胶囊和铝碳酸镁咀嚼片，规范餐前与餐后时机并保持药物间隔；结合青霉素过敏史核对新增药物，核对疗程。",
     medicationCycle: "奥美拉唑肠溶胶囊与铝碳酸镁咀嚼片均连续14天，疗程结束后根据症状和复诊意见决定是否调整。",
     medicationItems: [
-      { drugName: "奥美拉唑肠溶胶囊", specification: "20mg/粒", singleDose: "20mg", frequency: "每日1次", medicationTime: "早餐前", treatmentDays: 14, precautions: "整粒吞服，不自行延长疗程；既往青霉素过敏，联合用药期间新增药物前由医生或药师核对。" },
+      { drugName: "奥美拉唑肠溶胶囊", specification: "20mg/粒", singleDose: "20mg", frequency: "每日1次", medicationTime: "早餐前", treatmentDays: 14, precautions: "整粒吞服，不自行延长疗程；既往青霉素过敏，联合用药期间新增药物前核对过敏风险。" },
       { drugName: "铝碳酸镁咀嚼片", specification: "0.5g/片", singleDose: "1g", frequency: "每日3次", medicationTime: "餐后1小时", treatmentDays: 14, precautions: "充分咀嚼，与其他口服药间隔至少2小时；既往青霉素过敏，联合用药期间注意核对相互作用。" },
     ],
   },
@@ -174,6 +175,25 @@ await assertInvalid([{ ...records[0], medicationPlan: `${records[0].medicationPl
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], singleDose: "0mg" }, records[0].medicationItems[1]] }, records[1]], /单次剂量必须与审核处方一致/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], precautions: "观察出血。" }, records[0].medicationItems[1]] }, records[1]], /联合用药核对或相互作用风险/);
 await assertInvalid([{ ...records[0], medicationCycle: "源文件未提供明确周期，需医生确认", medicationItems: records[0].medicationItems }, records[1]], /占位文案/);
+
+sourceRows[0][3] = "2026-07-20 10:00:00";
+const expiredSourceWorkbook = Workbook.create();
+const expiredSourceSheet = expiredSourceWorkbook.worksheets.add("Sheet1");
+expiredSourceSheet.getRange("A1:Q3").values = [sourceHeaders, ...sourceRows];
+await (await SpreadsheetFile.exportXlsx(expiredSourceWorkbook)).save(sourcePath);
+await fs.writeFile(recordsPath, JSON.stringify(records, null, 2), "utf8");
+const expiredTrackingOutput = path.join(tempDir, "跟踪提醒_超期.xlsx");
+const expiredMedicationOutput = path.join(tempDir, "用药清单_超期.xlsx");
+const expiredBuildArgs = buildArgs.map((value, index) => {
+  if (buildArgs[index - 1] === "--tracking-output") return expiredTrackingOutput;
+  if (buildArgs[index - 1] === "--medication-output") return expiredMedicationOutput;
+  return value;
+});
+const expiredResult = run("build_medication_tracking_workbooks.mjs", expiredBuildArgs);
+assert.notEqual(expiredResult.status, 0);
+assert.match(`${expiredResult.stdout}\n${expiredResult.stderr}`, /U001.*激活时间后7天内.*合法确认时间/);
+await assert.rejects(fs.access(expiredTrackingOutput), { code: "ENOENT" });
+await assert.rejects(fs.access(expiredMedicationOutput), { code: "ENOENT" });
 
 sourceRows[0][3] = "2026-08-31 21:59:59";
 records[0].medicationCycle = "利伐沙班片长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。";

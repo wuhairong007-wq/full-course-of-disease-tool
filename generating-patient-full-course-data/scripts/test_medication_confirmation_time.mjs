@@ -7,7 +7,9 @@ const cases = [
   ["U-LATE", "2026-07-06 22:30:00", "2026-07-01", "2026-07-31"],
   ["U-MONTH-END", "2026-07-31 10:09:33", "2026-07-01", "2026-08-01"],
   ["U-END-SECOND", "2026-07-31 21:59:58", "2026-07-01", "2026-08-01"],
-  ["U-SERVICE-START", "2026-06-20 10:00:00", "2026-07-01", "2026-07-31"],
+  ["U-SERVICE-START", "2026-06-26 10:00:00", "2026-07-01", "2026-07-31"],
+  ["U-CROSS-MONTH", "2026-07-30 10:00:00", "2026-07-01", "2026-08-31"],
+  ["U-CROSS-YEAR", "2026-12-30 10:00:00", "2026-12-01", "2027-01-31"],
 ];
 
 for (const [userid, activationText, serviceStartDate, serviceEndDate] of cases) {
@@ -17,6 +19,7 @@ for (const [userid, activationText, serviceStartDate, serviceEndDate] of cases) 
   const serviceEnd = new Date(`${serviceEndDate}T00:00:00`);
   const result = new Date(resultText.replace(" ", "T"));
   assert(result > activation, `${userid}用药方案确认时间必须严格晚于激活时间`);
+  assert(result - activation <= 7 * 24 * 3600 * 1000, `${userid}用药方案确认时间必须在激活时间后7天内：${resultText}`);
   assert(result >= serviceStart, `${userid}确认时间不得早于服务周期开始日期`);
   assert(result < serviceEnd, `${userid}确认时间不得落在服务周期最后一天`);
   const secondsOfDay = result.getHours() * 3600 + result.getMinutes() * 60 + result.getSeconds();
@@ -37,7 +40,25 @@ assert.throws(
 
 assert.throws(
   () => generateMedicationConfirmationTime({ userid: "U-NO-WINDOW", activateTime: "2026-07-30 21:59:59", serviceStartDate: "2026-07-01", serviceEndDate: "2026-07-31" }),
-  /不存在严格晚于激活时间且位于服务周期内的合法确认时间/,
+  /不存在.*合法确认时间/,
 );
 
-console.log(JSON.stringify({ status: "passed", cases: cases.length, boundaryCases: 3 }));
+assert.equal(
+  generateMedicationConfirmationTime({ userid: "U-SEVEN-DAY-SECOND", activateTime: "2026-06-24 07:00:00", serviceStartDate: "2026-07-01", serviceEndDate: "2026-07-31" }),
+  "2026-07-01 07:00:00",
+);
+for (const activateTime of ["2026-06-20 10:00:00", "2026-06-24 06:59:59"]) {
+  assert.throws(
+    () => generateMedicationConfirmationTime({ userid: "U-EXPIRED", activateTime, serviceStartDate: "2026-07-01", serviceEndDate: "2026-07-31" }),
+    /U-EXPIRED.*激活时间后7天内.*合法确认时间/,
+  );
+}
+
+for (let index = 0; index < 1000; index += 1) {
+  const patient = { userid: `U-SAMPLE-${index}`, activateTime: "2026-07-06 19:36:59", serviceStartDate: "2026-07-01", serviceEndDate: "2026-12-31" };
+  const result = new Date(generateMedicationConfirmationTime(patient).replace(" ", "T"));
+  const activation = new Date(patient.activateTime.replace(" ", "T"));
+  assert(result > activation && result - activation <= 7 * 24 * 3600 * 1000);
+}
+
+console.log(JSON.stringify({ status: "passed", cases: cases.length, boundaryCases: 6, sampledPatients: 1000 }));
