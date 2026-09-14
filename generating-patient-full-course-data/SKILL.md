@@ -1,6 +1,6 @@
 ---
 name: generating-patient-full-course-data
-description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单、不良反应清单或洞察报告, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, “生成不良反应清单 依据文件：Excel路径 数量：N”, and “生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD 依据以下文件：6份必填Excel及选填的不良反应清单”.
+description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单、不良反应清单、洞察报告或深度访谈, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, “生成不良反应清单 依据文件：Excel路径 数量：N”, and “生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD 依据以下文件：6份必填Excel及选填的不良反应清单”.
 metadata:
   version: "1.2.2"
 ---
@@ -31,6 +31,7 @@ Stage 1 has two explicit modes: real patient evidence (default) and authorized f
 - `生成跟踪提醒和用药清单 依据文件：<source.xlsx> 服务周期 YYYY-MM-DD 至 YYYY-MM-DD` invokes stage 3.
 - `生成不良反应清单 依据文件：<source.xlsx> 数量：N` invokes stage 4.
 - `生成洞察报告` with a product, inclusive service period, and six required role-detectable Excel files plus an optional adverse-reaction workbook invokes stage 5. `服务周期：` and `服务周期:` are both accepted. The bundled patient-insight-report prompt template always controls report content and format. An optional `输出Word文件模板：<template.docx>` line supplies additional visual page furniture only; it cannot replace the bundled nine-chapter content or formatting contract unless the user explicitly requests a deviation.
+- `生成深度访谈 调研时间：<时间> 调研数量：<人数> 是否轻度：<是|否，可选，默认否>` invokes stage 6; parse with `parseDeepInterviewRequest` in `scripts/insight_request_parser.mjs`.
 - An explicit trigger always wins. If the user supplies only a path, the exact reviewed 17-column contract invokes stage 2; stage 3 requires its explicit trigger and service period; otherwise use stage 1.
 - Do not ask for fields already present in the workbook.
 
@@ -200,3 +201,9 @@ Stage 5's Python scripts need `python-docx`, `lxml`, `openpyxl`, and `Pillow`; t
 - In stage 3, accept `患者标签` values `无 | 轻度 | 中度 | 高度 | 重度`, normalize `重度` to `高度`, and keep `无` distinct from `轻度` while mapping both to no manual intervention; stop if the trigger omits an invalid `服务周期 YYYY-MM-DD 至 YYYY-MM-DD`, if the start is after the end, or if another label is used; when an activation date equals the service-period end date, stop and report `<userid>的激活日期不能为服务周期最后一天，请修改激活日期` instead of omitting the patient; stop and report the affected `userid` if no confirmation timestamp exists on or after the service-period start date, strictly after activation and no more than 7 × 24 hours after activation (inclusive upper bound), strictly before the service-period end date, and within `07:00:00–21:59:59`; stop for the existing medication, prescription, timing, cycle, and allergy validation failures.
 - In stage 4, normalize `重度` to `高度`; stop if `数量：N` is missing or invalid, if fewer than `N` patients have a normalized `中度` or `高度` label, if a selected patient has no same-month timestamp strictly after activation within `06:00:00–21:59:59`, or if the fixed input/output schema, selected-patient order, occurrence-time boundary, or generated narrative contract fails.
 - Never overwrite either the source workbook or the user's reviewed workbook.
+
+## Stage 6 — 深度访谈
+
+- `生成深度访谈` invokes the patient experience interview workflow. Require `调研时间`、`调研数量` and 5–6 role-detectable Excel files (patient master, health plans, tracking, followups, symptom assessments, optional adverse-reaction list), plus the two `.docx` output templates when supplied.
+- Optional parameter `是否轻度：是|否` defaults to `否`. `否` selects only medium/high adverse-reaction patients; `是` allows mild, medium and high patients, still prioritizing high then medium before using mild patients to fill the requested quantity. Match actual severity labels, normalize `高度/重度` as high, and deduplicate by patient ID using the highest recorded severity; this is event severity, not the stage-5 risk score. A missing adverse-reaction list cannot establish eligibility. Never fabricate interviewees when the eligible count is below the requested quantity; stop with the shortage and generate no false quotations.
+- Generate a detailed interview-record document and a themed analysis report from real interview transcripts when provided. Source workbooks alone do not constitute interview transcripts and cannot support invented dialogue, round counts, quotations or interview conclusions. Keep improvement suggestions as “无” when requested, and do not introduce platform complaints or feature requests.
