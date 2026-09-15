@@ -21,4 +21,28 @@ assert.equal(parseDeepInterviewRequest(base).templatePaths.length, 2);
 for (const value of ['', 'true', '轻度', 'yes']) {
   assert.throws(() => parseDeepInterviewRequest(base.replace('依据以下文件：', `是否轻度：${value}\n依据以下文件：`)), /是否轻度只能/);
 }
-console.log('Deep interview optional severity parser tests passed');
+const withMethod = (value, separator = '=') => base.replace('依据以下文件：', `调研方式${separator}${value}\n依据以下文件：`);
+const defaultRequest = parseDeepInterviewRequest(base);
+assert.equal(defaultRequest.researchMethod, '深度访谈');
+assert.deepEqual(defaultRequest.outputKinds, ['analysis', 'records']);
+for (const separator of ['=', '：', ':']) {
+  const phone = parseDeepInterviewRequest(withMethod('电话随访', separator));
+  assert.equal(phone.researchMethod, '电话随访');
+  assert.deepEqual(phone.outputKinds, ['records']);
+  assert.equal(phone.templatePaths.length, 2); // Existing paired templates remain valid input.
+  const deep = parseDeepInterviewRequest(withMethod('深度访谈', separator));
+  assert.equal(deep.researchMethod, '深度访谈');
+  assert.deepEqual(deep.outputKinds, ['analysis', 'records']);
+}
+assert.equal(parseDeepInterviewRequest(withMethod(' 电话随访 ', ' = ')).researchMethod, '电话随访');
+const noTemplates = withMethod('电话随访').split('输出文件模板：')[0];
+assert.deepEqual(parseDeepInterviewRequest(noTemplates).templatePaths, []);
+assert.deepEqual(parseDeepInterviewRequest(`${noTemplates}输出文件模板：\n/a/details.docx`).templatePaths, ['/a/details.docx']);
+assert.throws(() => parseDeepInterviewRequest(`${noTemplates}输出文件模板：\n/a/details.pdf`), /输出文件模板/);
+assert.throws(() => parseDeepInterviewRequest(`${noTemplates}输出文件模板：\n/a/1.docx\n/a/2.docx\n/a/3.docx`), /输出文件模板/);
+assert.throws(() => parseDeepInterviewRequest(base.replace('/a/report.docx\n', '')), /输出文件模板/);
+for (const value of ['', '线上随访', '电话随访 | 深度访谈', 'phone']) {
+  assert.throws(() => parseDeepInterviewRequest(withMethod(value)), /调研方式只能/);
+}
+assert.throws(() => parseDeepInterviewRequest(withMethod('电话随访\n调研方式：深度访谈')), /调研方式.*重复/);
+console.log('Deep interview severity, research method and deliverable routing tests passed');

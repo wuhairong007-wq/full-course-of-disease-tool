@@ -55,16 +55,18 @@ const run = (script, args) => spawnSync(process.execPath, [path.join(scriptDir, 
   env: { ...process.env, CODEX_NODE_MODULES: nodeModulesPath },
 });
 
-const extractResult = run("extract_adverse_reaction_patients.mjs", ["--input", sourcePath, "--count", "2", "--output", extractedPath]);
+const extractResult = run("extract_adverse_reaction_patients.mjs", ["--input", sourcePath, "--count", "2", "--product", "利伐沙班片", "--output", extractedPath]);
 assert.equal(extractResult.status, 0, `${extractResult.stdout}\n${extractResult.stderr}`);
 const extracted = JSON.parse(await fs.readFile(extractedPath, "utf8"));
 assert.deepEqual(extracted.map(({ userid }) => userid), ["U001", "U003"]);
 assert.deepEqual(extracted.map(({ adverseReactionLevel }) => adverseReactionLevel), ["中度", "高度"]);
+assert(extracted.every((patient) => patient.productName === "利伐沙班片"));
 
 const buildResult = run("build_adverse_reaction_workbook.mjs", [
   "--input", sourcePath,
   "--records", recordsPath,
   "--count", "2",
+  "--product", "利伐沙班片",
   "--template", path.join(skillDir, "assets", "adverse-reaction-list-template.xlsx"),
   "--output", outputPath,
 ]);
@@ -78,6 +80,7 @@ assert.deepEqual(outputRows.slice(1).map((row) => row[1]), ["U001", "U003"]);
 assert.deepEqual(outputRows.slice(1).map((row) => row[5]), ["中度", "高度"]);
 assert.deepEqual(outputRows.slice(1).map((row) => row[8]), ["否", "是"]);
 assert.equal(outputSheet.tables.items.length, 1);
+assert.deepEqual(outputRows.slice(1).map((row) => row[4]), records.map((record) => record.symptomDescription));
 
 for (let index = 0; index < extracted.length; index += 1) {
   const occurrence = new Date(outputRows[index + 1][3].replace(" ", "T"));
@@ -98,6 +101,17 @@ const repeatResult = run("build_adverse_reaction_workbook.mjs", [
 assert.equal(repeatResult.status, 0, `${repeatResult.stdout}\n${repeatResult.stderr}`);
 const repeatedWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(repeatedOutput));
 assert.deepEqual(repeatedWorkbook.worksheets.getItemAt(0).getUsedRange(true).values, outputRows);
+
+const rejectedOutput = path.join(tempDir, "不得导出的含产品描述.xlsx");
+await fs.writeFile(recordsPath, JSON.stringify([{ ...records[0], symptomDescription: "利伐沙班片用药期间出现瘙痒。" }, records[1]]), "utf8");
+const productLeak = run("build_adverse_reaction_workbook.mjs", [
+  "--input", sourcePath, "--records", recordsPath, "--count", "2", "--product", "利伐沙班片",
+  "--template", path.join(skillDir, "assets", "adverse-reaction-list-template.xlsx"), "--output", rejectedOutput,
+]);
+assert.notEqual(productLeak.status, 0);
+assert.match(`${productLeak.stdout}\n${productLeak.stderr}`, /不良反应症状描述不能包含当前产品信息/);
+await assert.rejects(fs.access(rejectedOutput), { code: "ENOENT" });
+await fs.writeFile(recordsPath, JSON.stringify(records), "utf8");
 
 const missingCount = run("extract_adverse_reaction_patients.mjs", ["--input", sourcePath, "--output", extractedPath]);
 assert.notEqual(missingCount.status, 0);

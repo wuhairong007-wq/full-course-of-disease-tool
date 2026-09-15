@@ -25,4 +25,23 @@ assert.throws(() => validateAdverseReactionRecord({ ...valid, remarks: "如有�
 assert.throws(() => validateAdverseReactionRecord({ ...valid, treatmentMeasures: "在家休息并继续观察。" }, patient), /高度患者的处理措施必须体现紧急评估或专科干预/);
 assert.throws(() => validateAdverseReactionRecord({ ...valid, symptomDescription: "确诊为急性心肌梗死。" }, patient), /不得新增或确认源文件未提供的诊断/);
 
-console.log(JSON.stringify({ status: "passed", validations: 7 }));
+const productPatient = { ...patient, productName: "注射用胰蛋白酶" };
+for (const symptomDescription of [
+  "使用注射用胰蛋白酶期间出现皮疹和瘙痒。",
+  "胰蛋白酶用药期间出现皮疹。",
+  "使用注射用 胰蛋白酶期间出现皮疹。",
+  "本品使用后出现皮疹。",
+  "使用该产品期间出现皮疹。",
+]) {
+  assert.throws(() => validateAdverseReactionRecord({ ...valid, symptomDescription }, productPatient), /不良反应症状描述不能包含当前产品信息/);
+}
+assert.doesNotThrow(() => validateAdverseReactionRecord(valid, productPatient));
+assert.throws(() => validateAdverseReactionRecord({ ...valid, symptomDescription: "使用该产品期间出现皮疹。" }, patient), /不良反应症状描述不能包含当前产品信息/);
+assert.throws(() => validateAdverseReactionRecord({ ...valid, symptomDescription: "利伐沙班用药期间出现瘙痒。" }, { ...patient, productName: "利伐沙班片" }), /不良反应症状描述不能包含当前产品信息/);
+assert.throws(() => validateAdverseReactionRecord({ ...valid, symptomDescription: "使用植入式心脏起搏器期间出现胸闷。" }, { ...patient, productName: "植入式心脏起搏器" }), /不良反应症状描述不能包含当前产品信息/);
+// The exclusion applies to symptom descriptions only, not the other clinical fields.
+assert.doesNotThrow(() => validateAdverseReactionRecord({ ...valid, remarks: `${valid.remarks}注意注射用胰蛋白酶相关注意事项。` }, productPatient));
+// Other reviewed drugs are not silently treated as the current product.
+assert.doesNotThrow(() => validateAdverseReactionRecord({ ...valid, symptomDescription: "对乙酰氨基酚片：用药期间出现瘙痒。" }, productPatient));
+
+console.log(JSON.stringify({ status: "passed", validations: 18 }));

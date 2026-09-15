@@ -44,6 +44,11 @@ export function parseInsightRequest(text) {
 export function parseDeepInterviewRequest(text) {
   if (!text.includes('生成深度访谈')) throw new Error('缺少“生成深度访谈”触发词');
   const researchTime = extractValue(text, '调研时间');
+  const methodMatches = [...text.matchAll(/^[ \t]*调研方式[ \t]*[：:=][ \t]*(.*)$/gm)];
+  if (methodMatches.length > 1) throw new Error('调研方式不能重复填写');
+  const researchMethod = methodMatches.length ? methodMatches[0][1].trim() : '深度访谈';
+  if (!['电话随访', '深度访谈'].includes(researchMethod)) throw new Error('调研方式只能填写“电话随访”或“深度访谈”');
+  const outputKinds = researchMethod === '电话随访' ? ['records'] : ['analysis', 'records'];
   const countMatch = extractValue(text, '调研数量').match(/^(\d+)\s*人?$/);
   if (!countMatch || Number(countMatch[1]) < 1) throw new Error('调研数量必须为正整数，可带“人”');
   const mildMatch = text.match(/^是否轻度[：:][ \t]*(.*)$/m);
@@ -57,6 +62,9 @@ export function parseDeepInterviewRequest(text) {
   if (new Set(sourcePaths).size !== sourcePaths.length) throw new Error('依据文件路径存在重复');
   if (![5, 6].includes(sourcePaths.length)) throw new Error(`深度访谈须提供5或6个 .xlsx 文件，当前为${sourcePaths.length}个`);
   const templatePaths = (blocks[1] || '').split(/\r?\n/).map(normalizePath).filter(Boolean);
-  if (templatePaths.length && (templatePaths.length !== 2 || templatePaths.some((p) => !p.toLowerCase().endsWith('.docx')))) throw new Error('输出文件模板须为两份 .docx');
-  return { researchTime, count: Number(countMatch[1]), includeMild: mildText === '是', sourcePaths, templatePaths };
+  const allowedTemplateCounts = researchMethod === '电话随访' ? [1, 2] : [2];
+  if (templatePaths.length && (!allowedTemplateCounts.includes(templatePaths.length) || templatePaths.some((p) => !p.toLowerCase().endsWith('.docx')))) {
+    throw new Error(researchMethod === '电话随访' ? '输出文件模板须为一份明细 .docx 或原有两份 .docx' : '输出文件模板须为两份 .docx');
+  }
+  return { researchTime, researchMethod, outputKinds, count: Number(countMatch[1]), includeMild: mildText === '是', sourcePaths, templatePaths };
 }

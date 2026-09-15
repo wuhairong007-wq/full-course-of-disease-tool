@@ -41,6 +41,8 @@ function parseDateTime(value, label) {
 
 const args = parseArgs(process.argv.slice(2));
 const count = parseCount(args.count);
+const productName = normalize(args.product);
+if (args.product !== undefined && !productName) throw new Error("--product产品名称不能为空");
 const workbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input));
 const rows = workbook.worksheets.getItemAt(0).getUsedRange(true).values;
 if (!rows.length) throw new Error("审核后患者明细为空");
@@ -81,6 +83,7 @@ for (const row of rows.slice(1)) {
     prescriptionList,
     surgeryName: normalize(row[indexes["手术名称"]]),
     coursePlanName: normalize(row[indexes["全病程方案名称"]]),
+    ...(productName ? { productName } : {}),
   });
 }
 if (eligible.length < count) throw new Error(`符合条件的中度或高度患者仅${eligible.length}位，少于请求数量${count}`);

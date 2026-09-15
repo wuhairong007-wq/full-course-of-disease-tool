@@ -2,7 +2,7 @@
 name: generating-patient-full-course-data
 description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单、不良反应清单、洞察报告或深度访谈, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, “生成不良反应清单 依据文件：Excel路径 数量：N”, and “生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD 依据以下文件：6份必填Excel及选填的不良反应清单”.
 metadata:
-  version: "1.2.2"
+  version: "1.2.6"
 ---
 
 # Generating Patient Full-Course Data
@@ -18,6 +18,7 @@ Stage 1 has two explicit modes: real patient evidence (default) and authorized f
 - For stage 3, read `references/medication-tracking-schema.md` completely.
 - For stage 4, read `references/adverse-reaction-schema.md` completely.
 - For stage 5, read `references/insight-report-schema.md`, `references/insight-report-writing.md`, and `references/insight-report-template-contract.md` completely. Use `assets/patient-insight-report-generation-prompt-template.md.docx` as the authoritative source for the fixed report content and formatting contract.
+- For stage 6, read `references/deep-interview-template-contract.md` completely. Select templates according to `调研方式`: phone follow-up uses only the records template; deep interview uses both analysis and records templates. Prefer user-supplied templates; the defaults are `assets/patient-interview-analysis-template.docx` and `assets/patient-interview-records-template.docx`. These are distinct from the stage-5 insight-report template.
 - Use the matching bundled template in `assets/`; do not invent another layout.
 - Use the bundled extractor and builder scripts; do not rewrite their workbook logic.
 - Bundled Node scripts locate `@oai/artifact-tool` themselves via `scripts/lib/artifact_tool.mjs`: it honors `CODEX_NODE_MODULES` when set (e.g. after calling `load_workspace_dependencies` in Codex), otherwise it auto-detects a local Codex CLI runtime cache. No sub-skill call is required to run them in Claude Code or other environments.
@@ -29,9 +30,9 @@ Stage 1 has two explicit modes: real patient evidence (default) and authorized f
 - In real mode, `最少种数：N` is an evidence threshold, not permission to fabricate. When supplied, retain at least N distinct medications only when the disease, site/phase, symptoms, clinical context, treatment history, procedure, age, sex, allergy and safety review independently support them. Before concluding that fewer than N are supportable, complete the active combination-medication search in `references/medication-review-schema.md`. If fewer than N remain supportable after that search and patient-specific review, stop and report the affected patients, assessed candidates, and unmet clinical conditions; never randomize symptoms, add unconfirmed comorbidities, or pad the list with unrelated or contraindicated drugs. Valid N is an integer from 1 to 5.
 - `生成健康管理方案 依据文件：<source.xlsx>` invokes stage 2.
 - `生成跟踪提醒和用药清单 依据文件：<source.xlsx> 服务周期 YYYY-MM-DD 至 YYYY-MM-DD` invokes stage 3.
-- `生成不良反应清单 依据文件：<source.xlsx> 数量：N` invokes stage 4.
+- `生成不良反应清单 依据文件：<source.xlsx> 数量：N` invokes stage 4. An optional `产品：<名称>` or the current task's known product supplies the product-exclusion context for symptom descriptions.
 - `生成洞察报告` with a product, inclusive service period, and six required role-detectable Excel files plus an optional adverse-reaction workbook invokes stage 5. `服务周期：` and `服务周期:` are both accepted. The bundled patient-insight-report prompt template always controls report content and format. An optional `输出Word文件模板：<template.docx>` line supplies additional visual page furniture only; it cannot replace the bundled nine-chapter content or formatting contract unless the user explicitly requests a deviation.
-- `生成深度访谈 调研时间：<时间> 调研数量：<人数> 是否轻度：<是|否，可选，默认否>` invokes stage 6; parse with `parseDeepInterviewRequest` in `scripts/insight_request_parser.mjs`.
+- `生成深度访谈 调研时间：<时间> 调研数量：<人数> 调研方式=<电话随访|深度访谈，可选，默认深度访谈> 是否轻度：<是|否，可选，默认否>` invokes stage 6; parse with `parseDeepInterviewRequest` in `scripts/insight_request_parser.mjs`. Supply each parameter on its own line. `调研方式` accepts `=`、`：` or `:`; an explicit empty or invalid value is an error.
 - An explicit trigger always wins. If the user supplies only a path, the exact reviewed 17-column contract invokes stage 2; stage 3 requires its explicit trigger and service period; otherwise use stage 1.
 - Do not ask for fields already present in the workbook.
 
@@ -155,16 +156,19 @@ For authorized fictional test data, execute `references/fictional-test-mode.md` 
 
 ## Stage 4 — Adverse Reaction List
 
+Resolve the current product from the request, existing task context or original product-bearing data as described in `references/adverse-reaction-schema.md`. Pass it with `--product` to both commands below whenever known; do not guess it from the first combined medication in the reviewed 17-column file.
+
 1. Run:
 
    ```bash
    <bundled-node> scripts/extract_adverse_reaction_patients.mjs \
      --input <source.xlsx> \
      --count N \
+     [--product <当前产品名称>] \
      --output <temp>/adverse-reaction-patients.json
    ```
 
-2. Generate exactly one five-key JSON record per extracted patient in source order following `references/adverse-reaction-schema.md`. Generate only the clinical narrative fields; the builder sets occurrence time, severity, and intervention mapping.
+2. Generate exactly one five-key JSON record per extracted patient in source order following `references/adverse-reaction-schema.md`. Generate only the clinical narrative fields; the builder sets occurrence time, severity, and intervention mapping. `不良反应症状描述` must contain symptoms without current-product information: exclude the product name, known shorthand/brand, manufacturer, model/specification and `本品/该产品` references. If validation detects such wording, rewrite only the affected narrative without changing symptom evidence or attributing it to another drug, then validate again.
 3. Set the output to the source directory unless the user specifies another location. Use `<source-stem>_不良反应清单.xlsx`. If the source directory is not writable, use `outputs/patient-adverse-reaction/<source-stem>/`.
 4. Run:
 
@@ -173,12 +177,13 @@ For authorized fictional test data, execute `references/fictional-test-mode.md` 
      --input <source.xlsx> \
      --records <temp>/adverse-reaction-records.json \
      --count N \
+     [--product <当前产品名称>] \
      --template assets/adverse-reaction-list-template.xlsx \
      --output <output.xlsx> \
      --preview <temp>/adverse-reaction-preview.png
    ```
 
-5. Reopen and verify exact headers, exactly `N` medium/high patients in source order, no prohibited missing-input placeholders, occurrence times strictly later than activation in the same month and within `06:00:00–21:59:59`, severity and intervention mapping, one table, no formula errors, and a readable preview.
+5. Reopen and verify exact headers, exactly `N` medium/high patients in source order, no current-product information in `不良反应症状描述`, no prohibited missing-input placeholders, occurrence times strictly later than activation in the same month and within `06:00:00–21:59:59`, severity and intervention mapping, one table, no formula errors, and a readable preview. Product exclusion applies to this description column; check known aliases and product prose in addition to the builder's lexical checks.
 6. Deliver only the final workbook unless the user asks for intermediates.
 
 ## Stage 5 — Patient Insight Report
@@ -204,6 +209,9 @@ Stage 5's Python scripts need `python-docx`, `lxml`, `openpyxl`, and `Pillow`; t
 
 ## Stage 6 — 深度访谈
 
-- `生成深度访谈` invokes the patient experience interview workflow. Require `调研时间`、`调研数量` and 5–6 role-detectable Excel files (patient master, health plans, tracking, followups, symptom assessments, optional adverse-reaction list), plus the two `.docx` output templates when supplied.
+- `生成深度访谈` invokes the patient experience interview workflow. Require `调研时间`、`调研数量` and 5–6 role-detectable Excel files (patient master, health plans, tracking, followups, symptom assessments, optional adverse-reaction list). Custom `.docx` templates are optional: deep interview accepts the original pair; phone follow-up accepts one records template or the original pair, using only the records template after checking its content.
+- Optional `调研方式=电话随访 | 深度访谈` defaults to `深度访谈` when omitted. Consume the parser's `researchMethod` and `outputKinds`: `电话随访` returns `['records']` and generates only one `患者访谈记录明细`; `深度访谈` returns `['analysis', 'records']` and generates the current two documents. Do not generate an analysis report for phone follow-up even when both templates are supplied. Use the selected method consistently in the overview, method metadata and individual records; phone follow-up must not inherit `一对一线上深度访谈` wording from the template.
 - Optional parameter `是否轻度：是|否` defaults to `否`. `否` selects only medium/high adverse-reaction patients; `是` allows mild, medium and high patients, still prioritizing high then medium before using mild patients to fill the requested quantity. Match actual severity labels, normalize `高度/重度` as high, and deduplicate by patient ID using the highest recorded severity; this is event severity, not the stage-5 risk score. A missing adverse-reaction list cannot establish eligibility. Never fabricate interviewees when the eligible count is below the requested quantity; stop with the shortage and generate no false quotations.
-- Generate a detailed interview-record document and a themed analysis report from real interview transcripts when provided. Source workbooks alone do not constitute interview transcripts and cannot support invented dialogue, round counts, quotations or interview conclusions. Keep improvement suggestions as “无” when requested, and do not introduce platform complaints or feature requests.
+- Generate the selected deliverables from real interview transcripts when provided; the themed analysis report is only for deep interview mode. Source workbooks alone do not establish actual dialogue, round counts, quotations or interview conclusions. Explicit authorization for AI-generated interview scenarios, including an earlier authorization in the same task, permits scenario writing; follow the provenance and source-fidelity rules in `references/deep-interview-template-contract.md`. Otherwise request transcripts or offer an unfilled interview guide instead of inventing completed interviews. Keep individual improvement suggestions as “无” when requested, and do not introduce platform complaints or feature requests; do not falsify supplied real feedback.
+- Extract a formatting contract from the templates selected for the current research method before writing. Build each output by cloning its own template package and reusing its styled paragraphs, rows and cells. Preserve page settings, fonts, exact line spacing, column widths, shading, borders, headers, footers and page fields. Do not recreate either document from a blank Word file or route it through the stage-5 report builder.
+- Deliver exactly the Word documents listed by `outputKinds`: one records document for phone follow-up, or an analysis report and records document for deep interview. `患者访谈分析报告` contains the themed analysis; `患者访谈记录明细` contains the overview and individual records. Verify the output count as well as names and contents. Parameterize product, period, patient count and identities from the current request and evidence; do not retain template examples or hard-code a previous six-patient run. Follow the reference's content reconciliation, OOXML comparison and full-page visual checks before claiming template compliance. Fix layout defects without shrinking template fonts or equalizing its column widths.

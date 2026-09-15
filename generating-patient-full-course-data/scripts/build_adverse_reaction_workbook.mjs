@@ -41,6 +41,8 @@ function parseDateTime(value, label) {
 }
 const args = parseArgs(process.argv.slice(2));
 const count = parseCount(args.count);
+const productName = normalize(args.product);
+if (args.product !== undefined && !productName) throw new Error("--product产品名称不能为空");
 if (path.resolve(args.input) === path.resolve(args.output)) throw new Error("不得覆盖输入文件");
 const sourceWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input));
 const templateWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.template));
@@ -58,6 +60,7 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   prescriptionList: normalize(row[indexes["处方清单"]]),
   surgeryName: normalize(row[indexes["手术名称"]]),
   coursePlanName: normalize(row[indexes["全病程方案名称"]]),
+  ...(productName ? { productName } : {}),
 })).filter((patient) => ["中度", "高度"].includes(patient.adverseReactionLevel));
 if (patients.length < count) throw new Error(`符合条件的中度或高度患者仅${patients.length}位，少于请求数量${count}`);
 const selected = patients.slice(0, count);
