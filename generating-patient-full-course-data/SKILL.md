@@ -2,7 +2,7 @@
 name: generating-patient-full-course-data
 description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单、不良反应清单、洞察报告或深度访谈, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, “生成不良反应清单 依据文件：Excel路径 数量：N”, and “生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD 依据以下文件：6份必填Excel及选填的不良反应清单”.
 metadata:
-  version: "1.2.7"
+  version: "1.2.8"
 ---
 
 # Generating Patient Full-Course Data
@@ -209,6 +209,7 @@ Stage 5's Python scripts need `python-docx`, `lxml`, `openpyxl`, and `Pillow`; t
 
 ## Stage 6 — 深度访谈
 
+- Display each patient's source name instead of P01/P02-style labels in both research methods. Join names by patient ID from the patient master, rename the overview's identifier heading to `姓名`, and use the same name in individual record titles, patient-name fields, summaries, findings and quote attribution. Preserve source masking; never invent missing names. Keep full patient IDs for reconciliation and distinguish same-name patients by ID rather than merging them. Follow the name-mapping rules in `references/deep-interview-template-contract.md`.
 - `生成深度访谈` invokes the patient experience interview workflow. Require `调研时间`、`调研数量` and 5–6 role-detectable Excel files (patient master, health plans, tracking, followups, symptom assessments, optional adverse-reaction list). Custom `.docx` templates are optional: deep interview accepts the original pair; phone follow-up accepts one records template or the original pair, using only the records template after checking its content.
 - Optional `调研方式=电话随访 | 深度访谈` defaults to `深度访谈` when omitted. Consume the parser's `researchMethod` and `outputKinds`: `电话随访` returns `['records']` and generates only one `患者访谈记录明细`; `深度访谈` returns `['analysis', 'records']` and generates the current two documents. Do not generate an analysis report for phone follow-up even when both templates are supplied. Use the selected method consistently in the overview, method metadata and individual records; phone follow-up must not inherit `一对一线上深度访谈` wording from the template.
 - Optional parameter `是否轻度：是|否` defaults to `否`. `否` selects only medium/high adverse-reaction patients; `是` allows mild, medium and high patients, still prioritizing high then medium before using mild patients to fill the requested quantity. Match actual severity labels, normalize `高度/重度` as high, and deduplicate by patient ID using the highest recorded severity; this is event severity, not the stage-5 risk score. A missing adverse-reaction list cannot establish eligibility. Never fabricate interviewees when the eligible count is below the requested quantity; stop with the shortage and generate no false quotations.
