@@ -2,14 +2,14 @@
 name: generating-patient-full-course-data
 description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单、不良反应清单、洞察报告或深度访谈, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, “生成不良反应清单 依据文件：Excel路径 数量：N”, and “生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD 依据以下文件：6份必填Excel及选填的不良反应清单”.
 metadata:
-  version: "1.2.8"
+  version: "1.2.9"
 ---
 
 # Generating Patient Full-Course Data
 
 Generate a template-matched workbook from one source `.xlsx` path. Preserve every source patient and use conservative clinical reasoning.
 
-Stage 1 has two explicit modes: real patient evidence (default) and authorized fictional test data. Fictional mode retains the same 17-column workbook, marks only the filename with `虚构测试`, and uses a source-compatible, researched scenario catalog. Its hypotheses are test premises, never verified patient observations. Do not use fictional outputs as actual patient prescriptions or silently carry their assumptions into later real-patient stages.
+Stage 1 has two explicit modes: real patient evidence (default) and authorized fictional test data. Fictional mode retains the same 17-column workbook, marks only the filename with `模拟` (legacy `虚构测试` also accepted), and uses a source-compatible, researched scenario catalog. Its hypotheses are test premises, never verified patient observations. Do not use fictional outputs as actual patient prescriptions or silently carry their assumptions into later real-patient stages.
 
 ## Required Resources
 
@@ -26,7 +26,8 @@ Stage 1 has two explicit modes: real patient evidence (default) and authorized f
 ## Route the Request
 
 - `生成患者明细 依据文件：<source.xlsx> 公司：<company> 最少种数：N` invokes stage 1; `公司` and `最少种数` are optional and may be omitted or empty.
-- `模式：虚构测试` explicitly selects fictional stage 1. A user's explicit authorization to generate fictional test data also persists for follow-ups to the same task. Follow `references/fictional-test-mode.md` and pass `--mode fictional-test` to both generation and export. In this mode, `最少种数：N` is a final per-record threshold after company and allergy filtering, not a target for the number of candidate drugs. Never infer fictional authorization from a minimum alone. Omitted mode otherwise means `--mode real`.
+- `模式：虚构测试`, `模式：模拟`, or natural-language authorization such as `可以AI模拟病情增加药品种数` selects fictional stage 1 without asking again. This authorization persists for follow-ups to the same task; a later explicit real-mode request takes precedence. Follow `references/fictional-test-mode.md` and pass `--mode fictional-test` to both generation and export. In this mode, `最少种数：N` defaults to 3 and is a final per-record threshold after company and allergy filtering. Develop source-compatible scenarios with 3～5 independently justified therapy roles as appropriate; do not treat the bundled three-drug catalog as the universal regimen or a limit on research. For mixed-disease catalogs, set variant-level `diseases` restrictions so each regimen is eligible only for its reviewed disease cohorts. Keep scenario labels out of generated cells and mark the filename `模拟`. Never infer fictional authorization from a minimum alone. Without authorization, omitted mode means `--mode real`.
+- For fictional stage 1, the batch target is `ceil(sqrt(record count))` substantively distinct prescriptions, without a catalog-capacity cap. Before delivery, research and extend the compatible catalog when capacity or patient eligibility cannot meet that target, then regenerate and verify actual coverage. Changing order, punctuation or warnings does not count. Report the medication-count distribution, target, actual substantive prescription count and distinct medication combinations at delivery; never describe a below-target run as completed.
 - In real mode, `最少种数：N` is an evidence threshold, not permission to fabricate. When supplied, retain at least N distinct medications only when the disease, site/phase, symptoms, clinical context, treatment history, procedure, age, sex, allergy and safety review independently support them. Before concluding that fewer than N are supportable, complete the active combination-medication search in `references/medication-review-schema.md`. If fewer than N remain supportable after that search and patient-specific review, stop and report the affected patients, assessed candidates, and unmet clinical conditions; never randomize symptoms, add unconfirmed comorbidities, or pad the list with unrelated or contraindicated drugs. Valid N is an integer from 1 to 5.
 - `生成健康管理方案 依据文件：<source.xlsx>` invokes stage 2.
 - `生成跟踪提醒和用药清单 依据文件：<source.xlsx> 服务周期 YYYY-MM-DD 至 YYYY-MM-DD` invokes stage 3.
@@ -46,7 +47,7 @@ Stage 1 has two explicit modes: real patient evidence (default) and authorized f
 
 ## Stage 1 — Patient Full-Course Details
 
-For authorized fictional test data, execute `references/fictional-test-mode.md` instead of the real-mode steps below. Both modes use the same template and builder, source order, six-field records and 17-column output. Fictional export requires a dedicated review envelope and a filename containing `虚构测试`.
+For authorized fictional test data, execute `references/fictional-test-mode.md` instead of the real-mode steps below. Both modes use the same template and builder, source order, six-field records and 17-column output. Fictional export requires a dedicated review envelope and a filename containing `模拟` or `虚构测试`.
 
 ### Real-Mode Final Deliverable Contract
 
@@ -198,7 +199,7 @@ Stage 5's Python scripts need `python-docx`, `lxml`, `openpyxl`, and `Pillow`; t
 
 ## Stop Conditions
 
-- In fictional stage 1, stop when the catalog does not cover the source disease/product/age/allergy or actual clinical information, when no compatible scenario meets the minimum, when the filename lacks `虚构测试`, or when source-bound scenario replay fails. Expand the catalog only after checking its indications, specifications and compatibility against identifiable sources. Never relax source allergies or add duplicate therapy roles to reach a number. The real-evidence requirement in the following stage-1 bullet applies to real mode; shared allergy, specification, content and workbook checks apply to both modes.
+- In fictional stage 1, do not export when the catalog does not cover source facts, any patient falls below the minimum (default 3), or actual substantive prescription coverage falls below `ceil(sqrt(record count))`. First research and extend compatible scenarios using identifiable guidelines and drug instructions, then rerun; if still insufficient, report the target, available capacity and shortfall without delivering a below-target workbook. Reject filenames lacking both `模拟` and `虚构测试`, simulation labels in generated cells, or failed source-bound replay. Never relax source allergies or add duplicate therapy roles to reach a number. The real-evidence requirement in the following stage-1 bullet applies to real mode; shared allergy, specification, content and workbook checks apply to both modes.
 - Stop and report missing or reordered required columns instead of guessing.
 - Stop on duplicate/blank `userid`, invalid age, empty disease or plan name, unsupported product type, malformed records, or patient coverage mismatch.
 - In stage 1, stop and report every affected `userid` when the supplied medicinal product conflicts with `既往过敏史`, or when no safe, directly indicated medication can be supported after the complete disease, procedure, age, sex, allergy, product, surgery, and symptom-support assessment. Regenerate any AI-selected conflict with a clinically equivalent non-conflicting option; never retain a documented allergen or a member of an explicitly documented allergy class in `联合用药` or as an active prescription item in `处方清单`. Retain clinically supportable one- or two-drug regimens; never omit a supportable first-line medication, force every patient to the same count, randomize the count, or pad the list with unrelated drugs. If more than five clinically indispensable roles remain after deduplication, stop and report the patient instead of silently dropping core therapy. Stop and report the affected `userid`, medication, and specification when a drug-specific unit is invalid or an exact approved specification cannot be supported; never repair it by guessing or silent unit conversion.

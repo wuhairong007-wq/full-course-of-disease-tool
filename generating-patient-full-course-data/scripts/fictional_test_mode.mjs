@@ -10,6 +10,8 @@ const contextHeaders=['合并疾病','既往病史','当前用药','用药效果
 const normalize=x=>String(x??'').trim();
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
 const nonempty=x=>typeof x==='string' && x.trim().length>0;
+export const DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS = 3;
+export const hasFictionalFilename = output => /模拟|虚构测试/.test(path.basename(output));
 
 export function normalizeFictionalPatient(row) {
  const value=(key,header)=>row[key]??row[header];
@@ -56,6 +58,7 @@ function validateCatalog(catalog) {
  for(const variant of variants) {
   assert(nonempty(variant.id)&&!ids.has(variant.id),'重复或空情境编号');ids.add(variant.id);
   assert(nonempty(variant.assumption),'情境缺少假设依据');
+  if(variant.diseases!==undefined) assert(Array.isArray(variant.diseases)&&variant.diseases.length&&new Set(variant.diseases).size===variant.diseases.length&&variant.diseases.every(d=>scope.diseases.includes(d)),'情境疾病范围必须是方案库疾病的非空唯一子集');
   assert(Number.isInteger(variant.maxAge)&&variant.maxAge>=scope.minAge&&variant.maxAge<=scope.maxAge,'情境年龄上限不正确');
   assert(Array.isArray(variant.excludedAllergies)&&variant.excludedAllergies.every(nonempty),'情境缺少过敏排除规则');
   assert(Array.isArray(variant.medications)&&variant.medications.length>=1&&variant.medications.length<=5,'情境应包含1～5种药品');
@@ -73,7 +76,7 @@ function validateCatalog(catalog) {
  }
 }
 
-export function generateFictionalRecords({patients,catalog,company='',minimumMedications=1}) {
+export function generateFictionalRecords({patients,catalog,company='',minimumMedications=DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS}) {
  assert(Number.isInteger(minimumMedications)&&minimumMedications>=1&&minimumMedications<=5,'最少种数必须为1～5的整数');
  validateCatalog(catalog);
  assert(Array.isArray(patients)&&patients.length,'患者列表不能为空');
@@ -90,6 +93,7 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
  const variants=catalog.variants.map(v=>({...v,items:v.medications.map(item=>({drug:catalog.drugs[item.drug],days:item.days}))}));
  function itemsFor(p,v) {return v.items.filter(i=>!(shouldExcludeMedicinalProduct({company,productType:p.productType})&&i.drug.name===p.productName));}
  function eligible(p,v) {
+  if(v.diseases&&!v.diseases.includes(p.disease)) return false;
   if(p.age>v.maxAge||v.excludedAllergies.some(a=>p.allergyHistory.includes(a))) return false;
   const meds=itemsFor(p,v).map(i=>i.drug.name);
   if(meds.length<minimumMedications) return false;
@@ -104,40 +108,66 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
  const semanticKeys=new Map(available.map(v=>[v,semanticKey(itemsFor(patients[0],v))]));
  const keyFor=v=>semanticKeys.get(v);
  const distinct=[...new Set(available.map(keyFor))];
- const target=Math.min(distinct.length,Math.ceil(Math.sqrt(patients.length)));
- const activeKeys=new Set(distinct.slice(0,target));
- // Cover restrictive patients even when a small cohort's initial prefix does
- // not include their options. Coverage takes priority over the soft target.
- // Keep all eligibility variants of each semantic prescription: selecting
- // only its first representative could discard an older patient's option.
- for(const p of patients) {
-  const eligibleVariants=eligibleById.get(p.userid);
-  if(!eligibleVariants.some(v=>activeKeys.has(keyFor(v)))) activeKeys.add(keyFor(eligibleVariants[0]));
+ const target=Math.ceil(Math.sqrt(patients.length));
+ assert(distinct.length>=target,`实质处方目标${target}，可用${distinct.length}，缺口${target-distinct.length}；请先检索指南和说明书扩展相容方案库，再重新生成`);
+ // Match distinct prescriptions to different eligible patients before balancing
+ // repeats. Capacity alone is insufficient when many variants fit one patient.
+ const matched=new Map();
+ const ordered=[...patients].sort((a,b)=>eligibleById.get(a.userid).length-eligibleById.get(b.userid).length||hash(a.userid).localeCompare(hash(b.userid)));
+ function match(p,seen) {
+  for(const variant of eligibleById.get(p.userid)) {
+   const key=keyFor(variant);
+   if(seen.has(key))continue;
+   seen.add(key);
+   const previous=matched.get(key);
+   if(!previous||match(previous.patient,seen)) {
+    matched.set(key,{patient:p,variant});return true;
+   }
+  }
+  return false;
  }
- const choices=p=>eligibleById.get(p.userid).filter(v=>activeKeys.has(keyFor(v)));
+ for(const p of ordered) {
+  match(p,new Set());
+  if(matched.size>=target)break;
+ }
+ assert(matched.size>=target,`实质处方目标${target}，可用${distinct.length}，患者条件下最多可分配${matched.size}，缺口${target-matched.size}；请扩展适配受限患者的相容方案库`);
+ const activeKeys=new Set(matched.keys());
  const globalUse=new Map();const diseaseUse=new Map();const assigned=new Map();
- const ordered=[...patients].sort((a,b)=>choices(a).length-choices(b).length||hash(a.userid).localeCompare(hash(b.userid)));
+ const diseaseKey=(p,v)=>JSON.stringify([p.disease,keyFor(v)]);
+ function assign(p,selected) {
+  const key=keyFor(selected),cohortKey=diseaseKey(p,selected);
+  assigned.set(p.userid,selected);
+  globalUse.set(key,(globalUse.get(key)||0)+1);
+  diseaseUse.set(cohortKey,(diseaseUse.get(cohortKey)||0)+1);
+ }
+ for(const {patient,variant} of matched.values())assign(patient,variant);
  for(const p of ordered){
-  const selected=choices(p).sort((a,b)=>(diseaseUse.get(p.disease+a.id)||0)-(diseaseUse.get(p.disease+b.id)||0)||(globalUse.get(a.id)||0)-(globalUse.get(b.id)||0)||hash(p.userid+a.id).localeCompare(hash(p.userid+b.id)))[0];
-  assigned.set(p.userid,selected);globalUse.set(selected.id,(globalUse.get(selected.id)||0)+1);diseaseUse.set(p.disease+selected.id,(diseaseUse.get(p.disease+selected.id)||0)+1);
+  if(assigned.has(p.userid))continue;
+  const eligibleVariants=eligibleById.get(p.userid);
+  const active=eligibleVariants.filter(v=>activeKeys.has(keyFor(v)));
+  const selected=(active.length?active:eligibleVariants).sort((a,b)=>(diseaseUse.get(diseaseKey(p,a))||0)-(diseaseUse.get(diseaseKey(p,b))||0)||(globalUse.get(keyFor(a))||0)-(globalUse.get(keyFor(b))||0)||hash(p.userid+a.id).localeCompare(hash(p.userid+b.id)))[0];
+  activeKeys.add(keyFor(selected));assign(p,selected);
  }
  const records=patients.map(p=>{
   const selected=assigned.get(p.userid);const items=itemsFor(p,selected);
   const record={userid:p.userid,allergyHistory:p.allergyHistory,combinedMedication:items.map(i=>i.drug.name),prescriptionList:items.map(i=>prescription(i.drug,i.days)).join(' + '),surgeryName:scope.productType==='器械'?`${p.disease}腹腔镜胆囊切除术（使用${p.productName}）`:'' ,coursePlanName:p.disease+catalog.planSuffix};
   assert(!record.combinedMedication.some(m=>record.coursePlanName.includes(m)),'方案名称不得包含产品名称');
   validateGeneratedContent({userid:p.userid,fields:{prescriptionList:record.prescriptionList,coursePlanName:record.coursePlanName}});
+  assert(!/模拟|虚构/.test([record.combinedMedication.join('+'),record.prescriptionList,record.surgeryName,record.coursePlanName].join(' ')),`${p.userid}生成内容不得包含模拟说明；请仅在文件名标记`);
   return record;
  });
  const assignments=patients.map(p=>({userid:p.userid,scenarioId:assigned.get(p.userid).id}));
  const prescriptionUse=new Map();
  for(const p of patients){const key=keyFor(assigned.get(p.userid));prescriptionUse.set(key,(prescriptionUse.get(key)||0)+1);}
- const metrics={targetDistinctPrescriptions:target,availableDistinctPrescriptions:distinct.length,distinctDrugCombinations:new Set(records.map(r=>r.combinedMedication.slice().sort().join('+'))).size,distinctPrescriptions:prescriptionUse.size,distinctPrescriptionTexts:new Set(records.map(r=>r.prescriptionList)).size,largestPrescriptionGroup:Math.max(...prescriptionUse.values())};
+ const medicationCountDistribution={};
+ for(const record of records)medicationCountDistribution[record.combinedMedication.length]=(medicationCountDistribution[record.combinedMedication.length]||0)+1;
+ const metrics={targetDistinctPrescriptions:target,availableDistinctPrescriptions:distinct.length,diversityTargetMet:prescriptionUse.size>=target,medicationCountDistribution,distinctDrugCombinations:new Set(records.map(r=>r.combinedMedication.slice().sort().join('+'))).size,distinctPrescriptions:prescriptionUse.size,distinctPrescriptionTexts:new Set(records.map(r=>r.prescriptionList)).size,largestPrescriptionGroup:Math.max(...prescriptionUse.values())};
  return {records,assignments,metrics};
 }
 
 export function validateFictionalReview({review,patients,records,sourceSHA256,company='',minimumMedications,output}) {
  assert.equal(review?.kind,'fictional-test-review/v1','虚构模式需要专用情境记录，不能冒充真实用药审核');
- assert(path.basename(output).includes('虚构测试'),'虚构输出文件名必须含“虚构测试”');
+ assert(hasFictionalFilename(output),'虚构输出文件名必须含“模拟”或“虚构测试”');
  assert.equal(review.sourceSHA256,sourceSHA256,'虚构情境记录与源文件不一致');
  assert.equal(review.company,company,'虚构情境记录与公司不一致');
  assert.equal(review.minimumMedications,minimumMedications,'虚构情境记录与最少种数不一致');

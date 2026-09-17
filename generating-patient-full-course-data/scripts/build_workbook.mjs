@@ -6,7 +6,7 @@ import { validateDrugSpecification } from "./drug_specification_validator.mjs";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
 import { shouldExcludeMedicinalProduct, validateClinicalMedicationSelection } from "./clinical_medication_validator.mjs";
 import { validateMedicationReviews } from "./medication_review_validator.mjs";
-import { validateFictionalReview } from "./fictional_test_mode.mjs";
+import { validateFictionalReview, DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS, hasFictionalFilename } from "./fictional_test_mode.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -32,10 +32,10 @@ function parseArgs(argv) {
   if (args["min-medications"] !== undefined && !/^[1-5]$/.test(args["min-medications"])) {
     throw new Error("--min-medications（最少种数）必须为1～5的整数");
   }
-  args.minimumMedications = Number(args["min-medications"] ?? 1);
   args.mode ??= "real";
   if (!["real", "fictional-test"].includes(args.mode)) throw new Error("--mode必须为real或fictional-test");
-  if (args.mode === "fictional-test" && !path.basename(args.output).includes("虚构测试")) throw new Error("虚构输出文件名必须含“虚构测试”");
+  args.minimumMedications = Number(args["min-medications"] ?? (args.mode === "fictional-test" ? DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS : 1));
+  if (args.mode === "fictional-test" && !hasFictionalFilename(args.output)) throw new Error("虚构输出文件名必须含“模拟”或“虚构测试”");
   if (path.resolve(args.input) === path.resolve(args.output) || path.resolve(args.template) === path.resolve(args.output)) throw new Error("输出不得覆盖源文件或模板");
   return args;
 }

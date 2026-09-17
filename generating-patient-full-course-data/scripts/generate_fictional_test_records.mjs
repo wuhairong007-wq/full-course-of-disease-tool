@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { loadArtifactTool } from './lib/artifact_tool.mjs';
-import { generateFictionalRecords } from './fictional_test_mode.mjs';
+import { generateFictionalRecords, DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS } from './fictional_test_mode.mjs';
 
 const args={};
 const allowed=new Set(['input','records','review','mode','company','min-medications','catalog']);
@@ -15,9 +15,9 @@ for(let i=2;i<process.argv.length;i+=2){
 }
 assert.equal(args.mode,'fictional-test','必须显式指定 --mode fictional-test；最少种数不代表虚构授权');
 for(const key of ['input','records','review'])assert(args[key],`缺少参数：--${key}`);
-assert(/^[1-5]$/.test(args['min-medications']??'1'),'最少种数必须为1～5的整数');
+assert(/^[1-5]$/.test(args['min-medications']??String(DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS)),'最少种数必须为1～5的整数');
 assert.equal(new Set(['input','records','review'].map(k=>path.resolve(args[k]))).size,3,'源文件、记录和审核文件路径必须不同');
-const minimumMedications=Number(args['min-medications']??1);const company=args.company??'';
+const minimumMedications=Number(args['min-medications']??DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS);const company=args.company??'';
 const catalogPath=args.catalog??fileURLToPath(new URL('../assets/fictional-osteoarthritis-catalog.json',import.meta.url));
 const catalog=JSON.parse(await fs.readFile(catalogPath,'utf8'));
 const sourceSHA256=crypto.createHash('sha256').update(await fs.readFile(args.input)).digest('hex');

@@ -4,13 +4,32 @@ import { generateFictionalRecords, validateFictionalReview } from './fictional_t
 
 const catalog=JSON.parse(await fs.readFile(new URL('../assets/fictional-osteoarthritis-catalog.json',import.meta.url),'utf8'));
 const patients=Array.from({length:1498},(_,i)=>({userid:`TEST-${String(i).padStart(5,'0')}`,age:i%3===0?70:50,gender:i%2?'男':'女',disease:'原发性膝骨关节炎',allergyHistory:i%71===0?'磺胺类药物过敏':'无',productName:'硫酸氨基葡萄糖胶囊',productType:'用药'}));
-const options={patients,catalog,company:'江苏壹号畅达药业有限公司',minimumMedications:3};
+// The bundled catalog is sufficient up to 576 rows, never a cap on larger runs.
+const options={patients:patients.slice(0,576),catalog,company:'江苏壹号畅达药业有限公司',minimumMedications:3};
+assert.throws(()=>generateFictionalRecords({...options,minimumMedications:undefined,company:'山东利赛医药有限公司'}),/最少种数3/);
+assert.throws(()=>generateFictionalRecords({...options,patients}),/目标39.*可用24.*缺口15/);
+// Mixed-disease catalogs must never cross variant disease boundaries.
+const diseaseScoped=structuredClone(catalog);
+const otherDisease=catalog.scope.diseases.find(d=>d!==patients[1].disease);
+assert(otherDisease);
+diseaseScoped.variants=diseaseScoped.variants.slice(0,4).map((v,i)=>({...v,diseases:[i<2?patients[1].disease:otherDisease]}));
+const diseasePatients=Array.from({length:16},(_,i)=>({...patients[1],userid:`disease-scope-${i}`,age:50,disease:i<8?patients[1].disease:otherDisease}));
+const diseaseResult=generateFictionalRecords({...options,catalog:diseaseScoped,patients:diseasePatients});
+for(const assignment of diseaseResult.assignments) {
+ const source=diseasePatients.find(p=>p.userid===assignment.userid);
+ const variant=diseaseScoped.variants.find(v=>v.id===assignment.scenarioId);
+ assert(variant.diseases.includes(source.disease),'variant crossed disease boundary');
+}
+for(const diseases of [[],['未知疾病'],[otherDisease,otherDisease],'非数组']) {
+ const invalid=structuredClone(diseaseScoped);invalid.variants[0].diseases=diseases;
+ assert.throws(()=>generateFictionalRecords({...options,catalog:invalid,patients:diseasePatients}),/情境疾病范围/);
+}
 const result=generateFictionalRecords(options);
-assert.equal(result.records.length,1498);
+assert.equal(result.records.length,576);
 assert.equal(result.metrics.distinctDrugCombinations,12);
 assert.equal(result.metrics.distinctPrescriptions,24);
 assert.deepEqual(result,generateFictionalRecords(options));
-assert.deepEqual(result.records.map(r=>r.userid),patients.map(p=>p.userid));
+assert.deepEqual(result.records.map(r=>r.userid),options.patients.map(p=>p.userid));
 for(const [i,r] of result.records.entries()) {
  assert.equal(new Set(r.combinedMedication).size,3);
  const entries=r.prescriptionList.split(' + ');
@@ -20,8 +39,25 @@ for(const [i,r] of result.records.entries()) {
  if(patients[i].allergyHistory.includes('磺胺')) assert(!r.combinedMedication.includes('塞来昔布胶囊'));
  if(patients[i].age>=65) assert(entries.slice(1).every(e=>e.includes('疗程3天')));
 }
-const scaling=[10,50,200,500,1498].map(n=>generateFictionalRecords({...options,patients:patients.slice(0,n)}).metrics.distinctPrescriptions);
+const scaling=[10,50,200,500,576].map(n=>generateFictionalRecords({...options,patients:patients.slice(0,n)}).metrics.distinctPrescriptions);
 assert.deepEqual(scaling,[4,8,15,23,24]);
+// Algorithm fixture only: changed durations are NOT researched prescriptions.
+const expanded=structuredClone(catalog);
+expanded.variants.push(...catalog.variants.map(v=>({...structuredClone(v),id:v.id+'-algorithm-test',medications:v.medications.map((m,i)=>({...m,days:m.days+(i===0?1:0)}))})));
+const expandedResult=generateFictionalRecords({...options,patients,catalog:expanded});
+assert.equal(expandedResult.metrics.targetDistinctPrescriptions,39);
+assert.equal(expandedResult.metrics.distinctPrescriptions,39);
+assert.deepEqual(expandedResult,generateFictionalRecords({...options,patients,catalog:expanded}));
+assert.equal(expandedResult.metrics.diversityTargetMet,true);
+assert.deepEqual(expandedResult.metrics.medicationCountDistribution,{'3':1498});
+// Plenty of nominal variants, but only one younger patient can use most of
+// them: a capacity-only check would wrongly claim the three-key target fits.
+const bottleneck=structuredClone(catalog);
+bottleneck.variants=bottleneck.variants.slice(0,4).map((v,i)=>({...v,maxAge:i===0?80:64}));
+const restricted=Array.from({length:9},(_,i)=>({...patients[1],userid:`restricted-${i}`,age:i===0?50:70}));
+assert.throws(()=>generateFictionalRecords({...options,catalog:bottleneck,patients:restricted}),/目标3.*最多可分配2.*缺口1/);
+const labeled=structuredClone(catalog);labeled.planSuffix='模拟康复方案';
+assert.throws(()=>generateFictionalRecords({...options,catalog:labeled,patients:patients.slice(0,10)}),/生成内容不得包含模拟说明/);
 // All-sulfonamide and small cohorts must remain covered despite catalog limits.
 const constrained=patients.slice(0,30).map(p=>({...p,allergyHistory:'磺胺类药物过敏',age:70}));
 assert(generateFictionalRecords({...options,patients:constrained}).records.every(r=>!r.combinedMedication.includes('塞来昔布胶囊')));
@@ -43,16 +79,18 @@ const collapsed=structuredClone(catalog);
 const first=structuredClone(collapsed.variants[0]);first.maxAge=64;
 const second=structuredClone(first);second.id='equivalent-after-exclusion';second.maxAge=80;second.medications[0].days+=1;
 collapsed.variants=[first,second];
-const filtered=generateFictionalRecords({...options,catalog:collapsed,company:'山东利赛医药有限公司',minimumMedications:2,patients:[{...patients[1],age:50},{...patients[2],age:70}]});
-assert.equal(filtered.records.length,2);
+assert.throws(()=>generateFictionalRecords({...options,catalog:collapsed,company:'山东利赛医药有限公司',minimumMedications:2,patients:[{...patients[1],age:50},{...patients[2],age:70}]}),/目标2.*可用1/);
+const filtered=generateFictionalRecords({...options,catalog:collapsed,company:'山东利赛医药有限公司',minimumMedications:2,patients:[{...patients[2],age:70}]});
+assert.equal(filtered.records.length,1);
 assert.equal(filtered.metrics.distinctPrescriptions,1);
-assert.equal(filtered.metrics.largestPrescriptionGroup,2);
+assert.equal(filtered.metrics.largestPrescriptionGroup,1);
 const review={kind:'fictional-test-review/v1',sourceSHA256:'a'.repeat(64),company:options.company,minimumMedications:3,catalog,assignments:result.assignments};
-const validation={review,patients,records:result.records,sourceSHA256:review.sourceSHA256,company:options.company,minimumMedications:3,output:'患者_虚构测试.xlsx'};
+const validation={review,patients:options.patients,records:result.records,sourceSHA256:review.sourceSHA256,company:options.company,minimumMedications:3,output:'患者_模拟.xlsx'};
 assert.equal(validateFictionalReview(validation).distinctPrescriptions,24);
+assert.equal(validateFictionalReview({...validation,output:'患者_虚构测试.xlsx'}).distinctPrescriptions,24);
 assert.throws(()=>validateFictionalReview({...validation,output:'/虚构测试/患者.xlsx'}),/文件名/);
 assert.throws(()=>validateFictionalReview({...validation,sourceSHA256:'b'.repeat(64)}),/源文件/);
 assert.throws(()=>validateFictionalReview({...validation,company:'另一公司'}),/公司/);
 const tampered=structuredClone(result.records); tampered[0].prescriptionList=tampered[0].prescriptionList.replace('0.5g','5g');
 assert.throws(()=>validateFictionalReview({...validation,records:tampered}),/不一致/);
-console.log(JSON.stringify({status:'passed',suite:'fictional test mode',patients:1498,scaling,...result.metrics}));
+console.log(JSON.stringify({status:'passed',suite:'fictional test mode',patients:576,expandedPatients:1498,expandedDistinctPrescriptions:expandedResult.metrics.distinctPrescriptions,scaling,...result.metrics}));

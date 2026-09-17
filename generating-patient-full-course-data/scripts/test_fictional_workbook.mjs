@@ -13,7 +13,7 @@ const { Workbook, FileBlob, SpreadsheetFile } = await loadArtifactTool();
 const root = fileURLToPath(new URL('../', import.meta.url));
 const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'fictional-export-'));
 const input = path.join(temp, 'source_虚构测试.xlsx');
-const output = path.join(temp, '患者明细_虚构测试.xlsx');
+const output = path.join(temp, '患者明细_模拟.xlsx');
 const recordsPath = path.join(temp, 'records.json');
 const reviewPath = path.join(temp, 'review.json');
 const template = path.join(root, 'assets/patient-full-course-template.xlsx');
@@ -23,15 +23,18 @@ const common = ['--input',input,'--records',recordsPath,'--review',reviewPath,'-
 const generation = [path.join(root,'scripts/generate_fictional_test_records.mjs'),...common];
 const build = [path.join(root,'scripts/build_workbook.mjs'),...common,'--template',template,'--output',output];
 function replace(args,key,value) { const copy=[...args];copy[copy.indexOf(key)+1]=value;return copy; }
+function omit(args,key) { const copy=[...args];copy.splice(copy.indexOf(key),2);return copy; }
 try {
   const source = Workbook.create();
   source.worksheets.add('患者').getRange('A1:M11').values=[headers,...rows];
   await (await SpreadsheetFile.exportXlsx(source)).save(input);
   const sourceBytes=await fs.readFile(input), templateBytes=await fs.readFile(template);
   await assert.rejects(run(process.execPath,generation), /显式指定/);
-  await run(process.execPath,[...generation,'--mode','fictional-test']);
+  await assert.rejects(run(process.execPath,[...replace(omit(generation,'--min-medications'),'--company','山东利赛医药有限公司'),'--mode','fictional-test']), /最少种数3/);
+  await run(process.execPath,[...omit(generation,'--min-medications'),'--mode','fictional-test']);
   const records=JSON.parse(await fs.readFile(recordsPath,'utf8'));
   const review=JSON.parse(await fs.readFile(reviewPath,'utf8'));
+  assert.equal(review.minimumMedications,3);
   assert.equal(review.metrics.distinctPrescriptions,4);
   await assert.rejects(run(process.execPath,build), /虚构情境记录不能用于真实患者模式/);
   const fictional=[...build,'--mode','fictional-test'];
@@ -39,10 +42,12 @@ try {
   await assert.rejects(run(process.execPath,replace(fictional,'--output',input)), /不得覆盖/);
   await assert.rejects(run(process.execPath,replace(fictional,'--min-medications','4')), /最少种数不一致/);
   await assert.rejects(fs.access(output));
-  const result=await run(process.execPath,fictional);
+  const result=await run(process.execPath,omit(fictional,'--min-medications'));
   const summary=JSON.parse(result.stdout.trim().split('\n').at(-1));
   assert.equal(summary.mode,'fictional-test');
   assert.equal(summary.minimumActualMedications,3);
+  assert.equal(summary.diversityTargetMet,true);
+  assert.deepEqual(summary.medicationCountDistribution,{'3':10});
   const saved=await SpreadsheetFile.importXlsx(await FileBlob.load(output));
   assert.equal(saved.worksheets.items.length,1);
   const sheet=saved.worksheets.getItemAt(0);
