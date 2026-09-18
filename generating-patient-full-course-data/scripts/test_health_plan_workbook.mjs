@@ -74,7 +74,7 @@ assert.deepEqual(JSON.parse(await fs.readFile(extractedPath, "utf8")), [
   { userid: "U002", activateTime: "2026-08-02 11:00:00", gender: "女", age: 42, disease: "慢性胃炎", allergyHistory: "青霉素过敏", combinedMedication: ["奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"], prescriptionList: sourceRows[1][12], surgeryName: "", consumableName: "", coursePlanName: "慢性胃炎症状与用药随访方案" },
 ]);
 
-const buildArgs = ["--input", sourcePath, "--records", recordsPath, "--template", templatePath, "--output", outputPath];
+const buildArgs = ["--input", sourcePath, "--records", recordsPath, "--template", templatePath, "--output", outputPath, "--product", "植入式心脏起搏器"];
 const result = run("build_health_plan_workbook.mjs", buildArgs);
 assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 
@@ -109,5 +109,13 @@ await assertInvalidRecords([{ ...records[0], aiPharmacology: records[0].aiPharma
 await assertInvalidRecords([{ ...records[0], aiPharmacology: `${records[0].aiPharmacology}；` }, records[1]], /多余的分号|多余分号/);
 await assertInvalidRecords([{ ...records[0], followupPlan: `${records[0].followupPlan}\n• 按审核处方完成后复诊` }, records[1]], /不得引用审核处方、审核方案或已确认方案/);
 await assertInvalidRecords([{ ...records[0], aiManagerIntro: "你好！我是您的AI健康管理师，将围绕当前情况提供健康管理支持，请按医生建议完成复诊。" }, records[1]], /AI健康管理师介绍/);
+await assertInvalidRecords([{ ...records[0], aiManagerIntro: `${records[0].aiManagerIntro} 当前产品为植入式心脏起搏器。` }, records[1]], /不得出现当前产品名称/);
+await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}\n• 植入式心脏起搏器\n——【器械治疗·设备管理】` }, records[1]], /治疗方案不得出现当前产品名称/);
+await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}\n。+。` }, records[1]], /治疗方案梳理不得出现单独的特殊符号/);
+await assertInvalidRecords([{ ...records[0], aiPharmacology: `${records[0].aiPharmacology}\n华法林钠片：。+。` }, records[1]], /AI药理科普不得出现单独的特殊符号/);
+
+const missingProductResult = run("build_health_plan_workbook.mjs", ["--input", sourcePath, "--records", recordsPath, "--template", templatePath, "--output", outputPath]);
+assert.notEqual(missingProductResult.status, 0);
+assert.match(`${missingProductResult.stdout}\n${missingProductResult.stderr}`, /缺少产品参数|--product/);
 
 console.log(JSON.stringify({ status: "passed", rows: outputRows.length, columns: outputRows[0].length }));

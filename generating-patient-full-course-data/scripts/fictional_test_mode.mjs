@@ -25,7 +25,7 @@ export function normalizeFictionalPatient(row) {
 }
 
 function prescription(drug,days) {
- return `${drug.name} 规格${drug.specification}；每次用量${drug.dose}；${drug.route}，${drug.frequency}，${drug.timing}；疗程${days}天${drug.durationSuffix??''}；注意：${drug.warnings}`;
+ return `${drug.name} 规格${drug.specification}；每次用量${drug.dose}；${drug.route}，${drug.frequency}，${drug.timing}；疗程${days}天${drug.durationSuffix??''}；${drug.warnings}`;
 }
 
 function semanticKey(medications) {

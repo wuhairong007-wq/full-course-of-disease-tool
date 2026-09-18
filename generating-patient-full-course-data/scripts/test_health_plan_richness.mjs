@@ -38,7 +38,7 @@ const result = spawnSync(process.execPath, [
   path.join(scriptDir, "build_health_plan_workbook.mjs"),
   "--input", sourcePath, "--records", recordsPath,
   "--template", path.join(skillDir, "assets", "health-management-plan-template.xlsx"),
-  "--output", outputPath,
+  "--output", outputPath, "--product", "奥美拉唑肠溶胶囊",
 ], { encoding: "utf8", env: { ...process.env, CODEX_NODE_MODULES: nodeModulesPath } });
 assert.notEqual(result.status, 0, "泛化药理和三条概述式健康方案不应通过校验");
 assert.match(`${result.stdout}\n${result.stderr}`, /药理科普|健康管理方案/);

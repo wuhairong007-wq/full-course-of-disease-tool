@@ -33,11 +33,20 @@ function parseArgs(argv) {
   for (const required of ["input", "records", "template", "output"]) {
     if (!args[required]) throw new Error(`缺少参数：--${required}`);
   }
+  if (!normalize(args.product)) throw new Error("缺少参数：--product（当前产品名称）");
   return args;
 }
 
 const normalize = (value) => String(value ?? "").trim();
 const countLinesStarting = (text, marker) => normalize(text).split(/\r?\n/).filter((line) => line.trim().startsWith(marker)).length;
+
+function validateNoStandaloneSpecialSymbols(userid, text, fieldLabel) {
+  const value = normalize(text);
+  if (/[。！？；：:，,、]\s*[+＋]\s*[。！？；：:，,、]/.test(value)
+    || /(?:^|\r?\n)\s*[。！？；：:，,、+＋\-—_=~～]+\s*(?:\r?\n|$)/.test(value)) {
+    throw new Error(`${userid}的${fieldLabel}不得出现单独的特殊符号或符号拼接`);
+  }
+}
 
 function parseTreatmentItemNames(text) {
   return normalize(text).split(/\r?\n/).filter((line) => line.trim().startsWith("•")).map((line) => {
@@ -56,8 +65,9 @@ function validateMedicalRecord(userid, text) {
   }
 }
 
-function validateManagerIntro(userid, text, patient) {
+function validateManagerIntro(userid, text, patient, productName) {
   const value = normalize(text);
+  if (productName && value.includes(productName)) throw new Error(`${userid}的AI健康管理师介绍不得出现当前产品名称`);
   if (!value.startsWith(managerIntroOpening)) throw new Error(`${userid}的AI健康管理师介绍必须使用统一的专业开场结构`);
   if (!value.includes("病情监测") || !value.includes("症状观察") || !value.includes("用药管理") || !value.includes("复诊规划")) {
     throw new Error(`${userid}的AI健康管理师介绍必须说明病情监测、症状观察、用药管理和复诊规划服务`);
@@ -112,9 +122,14 @@ function validateRecord(record, patient) {
   validateHealthPlanContent({ userid, ...Object.fromEntries(contentKeys.map((key) => [key, record[key]])) });
   for (const key of contentKeys) if (!normalize(record[key])) throw new Error(`${userid}的${key}不能为空`);
   validateGeneratedContent({ userid, fields: Object.fromEntries(contentKeys.map((key) => [key, record[key]])) });
-  validateManagerIntro(userid, record.aiManagerIntro, patient);
+  validateManagerIntro(userid, record.aiManagerIntro, patient, patient.productName);
   validateMedicalRecord(userid, record.aiMedicalRecord);
   validatePharmacology(userid, record.aiPharmacology, patient);
+  validateNoStandaloneSpecialSymbols(userid, record.treatmentPlan, "治疗方案梳理");
+  validateNoStandaloneSpecialSymbols(userid, record.aiPharmacology, "AI药理科普");
+  if (patient.productName && normalize(record.treatmentPlan).includes(patient.productName)) {
+    throw new Error(`${userid}的治疗方案不得出现当前产品名称`);
+  }
   validateHealthPlan(userid, record.aiHealthPlan);
   if (normalize(record.monitoringIndicators).split(/\r?\n/).filter(Boolean).length < 4) throw new Error(`${userid}的建议监测指标必须至少4行`);
   for (const [key, label] of [["lifestyleAvoid", "生活方式建议_必须避免"], ["lifestyleRecommend", "生活方式建议_建议执行"]]) {
@@ -136,6 +151,7 @@ function validateRecord(record, patient) {
 }
 
 const args = parseArgs(process.argv.slice(2));
+const productName = normalize(args.product);
 if (path.resolve(args.input) === path.resolve(args.output)) throw new Error("不得覆盖输入文件");
 const sourceWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input));
 const templateWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.template));
@@ -157,6 +173,7 @@ const patients = patientRows.map((row) => {
     surgeryName: normalize(row[indexes["手术名称"]]),
     consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
     coursePlanName: normalize(row[indexes["全病程方案名称"]]),
+    productName,
   };
 });
 if (new Set(patients.map(({ userid }) => userid)).size !== patients.length) throw new Error("审核后患者明细存在重复userid");

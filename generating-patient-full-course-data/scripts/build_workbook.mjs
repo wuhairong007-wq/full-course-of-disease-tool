@@ -73,6 +73,7 @@ function normalizeRecordShape(record) {
 }
 
 function validatePrescriptionMapping(userid, medications, prescriptionList, policy) {
+  validatePrescriptionText(userid, prescriptionList);
   const prescriptionEntries = prescriptionList.split(" + ").map(normalize).filter(Boolean);
   const hasConsumableEntry = policy.prescriptionProductMode === "include";
   const medicationEntries = hasConsumableEntry ? prescriptionEntries.slice(0, -1) : prescriptionEntries;
@@ -97,6 +98,19 @@ function validatePrescriptionMapping(userid, medications, prescriptionList, poli
   }
   if (policy.prescriptionProductMode === "omit" && prescriptionList.includes(policy.consumableName)) {
     throw new Error(`${userid}的处方清单不得出现器械产品名称：${policy.consumableName}`);
+  }
+}
+
+function validatePrescriptionText(userid, prescriptionList) {
+  const value = normalize(prescriptionList);
+  if (/【\s*术后用药阶段(?:\s*[：:]\s*[^】]*)?\s*】/.test(value)) {
+    throw new Error(`${userid}的处方清单不得出现术后用药阶段文案`);
+  }
+  if (/注意\s*[：:]/.test(value)) {
+    throw new Error(`${userid}的处方清单不得出现注意：文案`);
+  }
+  if (/【\s*阶梯启用\s*[：:][^】]*】/.test(value)) {
+    throw new Error(`${userid}的处方清单不得出现阶梯启用文案`);
   }
 }
 
@@ -178,6 +192,9 @@ function validateRecord(record, patient, company) {
   }
   if (/高龄|老年|中老年|青年|中年|男性|女性|男患者|女患者/.test(record.coursePlanName)) {
     throw new Error(`${expectedUserid}的方案名称含年龄或性别标识`);
+  }
+  if (productName && record.coursePlanName.includes(productName)) {
+    throw new Error(`${expectedUserid}的方案名称不得出现产品名称`);
   }
   if (productType === "器械") {
     if (!normalize(record.surgeryName)) throw new Error(`${expectedUserid}的器械产品必须填写手术名称`);

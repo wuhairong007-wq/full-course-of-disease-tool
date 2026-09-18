@@ -50,11 +50,11 @@ Rules:
 - `给药途径` must be an AI clinical judgment based on disease site, treatment role, treatment setting, patient safety facts, the drug dosage form（药品剂型）, and the route supported by its instructions（药品说明书）or reviewed product data（已审核药品数据）. Do not hard-code a disease to one route or default every injectable product to `肌内注射`. For airway-clearance goals, assess whether `雾化吸入` is the supported and clinically appropriate route; for ophthalmic or soft-tissue goals, assess the corresponding local route. These are reasoning cues, not unconditional mappings. If route fit is uncertain or conflicts with the dosage form/approved route, stop and report the patient and drug instead of guessing.
 - When route judgment changes, regenerate the entire candidate-owned prescription entry: specification, single dose, route, frequency, timing, duration, warnings, and any route-specific administration instructions must all match the final choice.
 - `注射用胰蛋白酶` must use an activity specification such as `5万单位` or `5万单位/支`; `5mg` and `g`-based specifications are invalid. Tablet and capsule package denominators, when present, must match `/片` and `/粒` respectively.
-- Keep specific safety/monitoring actions, allergy substitutions, and the postoperative-stage label inside the corresponding final prescription entry; never create a standalone ` + ` segment for non-drug text.
+- Keep specific safety/monitoring actions and allergy substitutions inside the corresponding final prescription entry; do not append `【术后用药阶段：...】`, `注意：...`, or `【阶梯启用：...】` explanatory segments.
 - Each prescription entry uses `药品名 + 规格 + 每次用量 + 给药途径 + 频次 + 服药时机 + 疗程`; join complete entries with the exact separator ` + `.
 - Do not use `tid`, `bid`, `qd`, `q8h`, `prn`, `ivgtt`, `im`, `po`, `适量`, `酌情`, or `必要时`.
-- For surgery patients with actual medications, end with `【术后用药阶段：<产品名称>植入术后】` or an equally specific surgery-stage label.
-- `coursePlanName` must reflect the disease, phase, and product when relevant. Do not include age or sex labels.
+- For surgery patients with actual medications, end with the medication instructions themselves; never add a postoperative-stage label segment.
+- `coursePlanName` must reflect the disease and treatment or postoperative phase without including the source `产品名称` for either medication or device rows. Do not include age or sex labels.
 - Generated fields must not contain language that references the source file or describes absent input, including `源文件`, `未提供`, `未获取`, `未记录`, or `暂无资料`. Omit unsupported facts and labels without fabricating replacements.
 
 ## Output Workbook
