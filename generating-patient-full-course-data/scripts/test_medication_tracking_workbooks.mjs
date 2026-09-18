@@ -40,17 +40,17 @@ const sourceHeaders = [
   "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "全病程方案名称", "AI状态", "确认状态",
 ];
 const sourceRows = [
-  [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动", "", "", "重度", "无", "利伐沙班片+对乙酰氨基酚片", "利伐沙班片 规格10mg/片，每次10mg，口服，每日1次，晚餐中服用，长期 + 对乙酰氨基酚片 规格0.5g/片，每次0.5g，口服，每8小时1次，餐后服用，连续3天", "", "心房颤动用药管理方案", "已生成", "已确认"],
+  [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动", "", "", "重度", "无", "利伐沙班片+盐酸昂丹司琼注射液", "利伐沙班片 规格10mg/片，每次10mg，口服，每日1次，晚餐中服用，长期 + 盐酸昂丹司琼注射液 规格2mL:4mg，每次4mg，静脉注射，麻醉诱导前给药，单次给药", "", "心房颤动用药管理方案", "已生成", "已确认"],
   [2, "U002", "乙*", "2026-08-12 11:00:00", "女", 42, "慢性胃炎", "", "", "无", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "", "慢性胃炎用药随访方案", "已生成", "已确认"],
 ];
 const records = [
   {
     userid: "U001",
-    medicationPlan: "针对70岁男性心房颤动患者，使用利伐沙班片进行抗凝管理，并短期使用对乙酰氨基酚片进行疼痛或发热对症管理；固定时间核对用药，关注出血及肝脏相关风险，调整前核对剂量和相互作用。",
-    medicationCycle: "利伐沙班片长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。",
+    medicationPlan: "针对70岁男性心房颤动患者，使用利伐沙班片进行抗凝管理，并单次使用盐酸昂丹司琼注射液进行恶心呕吐防治；固定时间核对用药，关注出血、心律及联合用药相互作用。",
+    medicationCycle: "利伐沙班片长期维持，盐酸昂丹司琼注射液单次给药，完成后不重复使用。",
     medicationItems: [
       { drugName: "利伐沙班片", specification: "10mg/片", singleDose: "10mg", frequency: "每日1次", medicationTime: "晚餐中", treatmentDays: "长期", precautions: "随餐服用并观察牙龈出血、血尿、黑便或异常瘀斑；联合用药或新增药物前核对相互作用。" },
-      { drugName: "对乙酰氨基酚片", specification: "0.5g/片", singleDose: "0.5g", frequency: "每8小时1次", medicationTime: "餐后", treatmentDays: 3, precautions: "每日总量不得超过2g，避免与含同成分复方制剂同服；联合用药期间新增药物前咨询医生。" },
+      { drugName: "盐酸昂丹司琼注射液", specification: "2mL:4mg", singleDose: "4mg", frequency: "单次", medicationTime: "固定时间", treatmentDays: 1, precautions: "关注心悸、头晕和QT间期延长风险；联合用药期间新增药物前核对相互作用。" },
     ],
   },
   {
@@ -79,7 +79,7 @@ const extractResult = run("extract_medication_tracking_patients.mjs", ["--input"
 assert.equal(extractResult.status, 0, `${extractResult.stdout}\n${extractResult.stderr}`);
 const extracted = JSON.parse(await fs.readFile(extractedPath, "utf8"));
 assert.deepEqual(extracted.map(({ userid }) => userid), ["U001", "U002"]);
-assert.deepEqual(extracted[0].combinedMedication, ["利伐沙班片", "对乙酰氨基酚片"]);
+assert.deepEqual(extracted[0].combinedMedication, ["利伐沙班片", "盐酸昂丹司琼注射液"]);
 assert.equal(extracted[0].serviceStartDate, "2026-08-01");
 assert.equal(extracted[0].serviceEndDate, "2026-08-31");
 assert.equal(extracted[0].adverseReactionLevel, "高度");
@@ -139,7 +139,9 @@ const medicationSheet = medicationWorkbook.worksheets.getItemAt(0);
 const medicationRows = medicationSheet.getUsedRange(true).values;
 assert.deepEqual(medicationRows[0], ["userid", "用药方案确认时间", "药品名称", "规格", "单次剂量", "用药频率", "用药时间", "疗程天数", "注意事项"]);
 assert.deepEqual(medicationRows.slice(1).map((row) => row[0]), ["U001", "U001", "U002", "U002"]);
-assert.deepEqual(medicationRows.slice(1).map((row) => row[2]), ["利伐沙班片", "对乙酰氨基酚片", "奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"]);
+assert.deepEqual(medicationRows.slice(1).map((row) => row[2]), ["利伐沙班片", "盐酸昂丹司琼注射液", "奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"]);
+assert.equal(medicationRows[2][5], "单次");
+assert.equal(medicationRows[2][7], 1);
 const confirmationByUseridForMetrics = new Map(medicationRows.slice(1).map((row) => [row[0], row[1]]));
 for (const row of trackingRows.slice(1)) {
   const confirmationDate = parseDateTime(confirmationByUseridForMetrics.get(row[1]));

@@ -2,7 +2,7 @@
 
 ## Input and Selection
 
-Accept the reviewed patient workbook in the legacy 17-column sequence below or the new 18-column sequence with `耗材名称` inserted after `手术名称`:
+Accept the reviewed patient workbook in the current 16-column sequence, the legacy 17-column sequence below, or the compatible 18-column sequence with `耗材名称` inserted after `手术名称`:
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
 

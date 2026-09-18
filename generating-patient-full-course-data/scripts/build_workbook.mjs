@@ -12,7 +12,7 @@ const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
 const templateHeaders = [
   "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
-  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称", "AI状态", "确认状态",
+  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称",
 ];
 const baseHeaders = templateHeaders.slice(0, 11);
 const sourceRequiredHeaders = [...baseHeaders, "产品名称", "产品类型"];
@@ -35,7 +35,7 @@ function parseArgs(argv) {
   }
   args.mode ??= "real";
   if (!["real", "fictional-test"].includes(args.mode)) throw new Error("--mode必须为real或fictional-test");
-  args.minimumMedications = Number(args["min-medications"] ?? (args.mode === "fictional-test" ? DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS : 1));
+  args.minimumMedications = Number(args["min-medications"] ?? DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS);
   if (args.mode === "fictional-test" && !hasFictionalFilename(args.output)) throw new Error("虚构输出文件名必须含“模拟”或“虚构测试”");
   if (path.resolve(args.input) === path.resolve(args.output) || path.resolve(args.template) === path.resolve(args.output)) throw new Error("输出不得覆盖源文件或模板");
   return args;
@@ -95,6 +95,7 @@ function validatePrescriptionMapping(userid, medications, prescriptionList, poli
       throw new Error(`${userid}的处方清单必须与联合用药按顺序一一对应`);
     }
     validateDrugSpecification({ userid, medication, prescriptionEntry: entry });
+    validatePrescriptionDuration(userid, medication, entry);
   }
   if (policy.prescriptionProductMode === "omit" && prescriptionList.includes(policy.consumableName)) {
     throw new Error(`${userid}的处方清单不得出现器械产品名称：${policy.consumableName}`);
@@ -111,6 +112,16 @@ function validatePrescriptionText(userid, prescriptionList) {
   }
   if (/【\s*阶梯启用\s*[：:][^】]*】/.test(value)) {
     throw new Error(`${userid}的处方清单不得出现阶梯启用文案`);
+  }
+}
+
+function validatePrescriptionDuration(userid, medication, prescriptionEntry) {
+  if (/长期(?:治疗|用药|服用|维持)?|持续治疗|维持治疗/.test(prescriptionEntry)) {
+    throw new Error(`${userid}的${medication}处方清单必须使用具体疗程，不得使用长期治疗等模糊时长`);
+  }
+  const hasConcreteDuration = /(?:连续|共(?:计)?|疗程(?:为)?|使用|服用|给药)\s*\d+(?:\.\d+)?\s*(?:小时|天|日|周|个月|月)|疗程至术后\s*\d+(?:\.\d+)?\s*(?:天|日|周|个月|月)|(?:单次|一次性)(?:服用|给药|使用|注射)/.test(prescriptionEntry);
+  if (!hasConcreteDuration) {
+    throw new Error(`${userid}的${medication}处方清单必须填写可识别的具体疗程`);
   }
 }
 
@@ -133,22 +144,31 @@ function filterCompanyProduct(record, patient, company) {
 function applyDeviceCompanyPolicy(record, patient, company) {
   const policy = getDeviceCompanyPolicy({ company, productType: patient.productType, productName: patient.productName });
   if (patient.productType !== "器械") return { record, policy };
-  if (policy.consumableRequired && normalize(record.consumableName) !== policy.consumableName) {
-    throw new Error(`${patient.userid}的耗材名称必须等于产品名称：${policy.consumableName}`);
+  const suppliedConsumableName = normalize(record.consumableName);
+  const acceptedConsumableNames = new Set([normalize(patient.productName), policy.consumableName]);
+  if (suppliedConsumableName && !acceptedConsumableNames.has(suppliedConsumableName)) {
+    throw new Error(`${patient.userid}的耗材名称必须等于去除测试标识后的产品名称：${policy.consumableName}`);
   }
-  if (!policy.consumableRequired && normalize(record.consumableName)) {
-    throw new Error(`${patient.userid}的非目标公司器械不得填写耗材名称`);
-  }
+  const normalizedRecord = { ...record, consumableName: policy.consumableName };
   if (policy.prescriptionProductMode === "omit" && typeof record.prescriptionList === "string") {
     const prescriptionList = record.prescriptionList
       .split(" + ")
       .map(normalize)
       .filter((entry) => entry && entry !== `耗材名称：${patient.productName}` && !entry.startsWith("耗材名称："))
-      .map((entry) => entry.replaceAll(patient.productName, "器械"))
+      .map((entry) => entry.replaceAll(patient.productName, "器械").replaceAll(policy.consumableName, "器械"))
       .join(" + ");
-    return { record: { ...record, prescriptionList }, policy };
+    return { record: { ...normalizedRecord, prescriptionList }, policy };
   }
-  return { record, policy };
+  if (policy.prescriptionProductMode === "include" && typeof record.prescriptionList === "string") {
+    const rawSegment = `耗材名称：${patient.productName}`;
+    const prescriptionList = record.prescriptionList
+      .split(" + ")
+      .map(normalize)
+      .map((entry) => entry === rawSegment ? policy.consumableSegment : entry)
+      .join(" + ");
+    return { record: { ...normalizedRecord, prescriptionList }, policy };
+  }
+  return { record: normalizedRecord, policy };
 }
 
 function validateRecord(record, patient, company) {
@@ -198,9 +218,10 @@ function validateRecord(record, patient, company) {
   }
   if (productType === "器械") {
     if (!normalize(record.surgeryName)) throw new Error(`${expectedUserid}的器械产品必须填写手术名称`);
-    if (!record.surgeryName.includes(productName)) throw new Error(`${expectedUserid}的手术名称未体现器械产品`);
-    if (policy.consumableRequired && record.consumableName !== productName) throw new Error(`${expectedUserid}的耗材名称必须等于产品名称`);
-    if (!policy.consumableRequired && normalize(record.consumableName)) throw new Error(`${expectedUserid}的非目标公司器械耗材名称必须为空`);
+    if (/[（(]\s*使用[^）)]*[）)]/.test(record.surgeryName)) {
+      throw new Error(`${expectedUserid}的手术名称不得附加“使用产品”说明文案`);
+    }
+    if (policy.consumableRequired && record.consumableName !== policy.consumableName) throw new Error(`${expectedUserid}的耗材名称必须等于去除测试标识后的产品名称`);
   } else if (normalize(record.surgeryName)) {
     throw new Error(`${expectedUserid}的非器械产品手术名称必须为空`);
   } else if (normalize(record.consumableName)) {
@@ -219,7 +240,7 @@ const actualTemplateHeaders = templateSheet.getUsedRange(true).values[0].map(nor
 const records = JSON.parse(await fs.readFile(args.records, "utf8"));
 const reviews = JSON.parse(await fs.readFile(args.review, "utf8"));
 
-if (JSON.stringify(actualTemplateHeaders) !== JSON.stringify(templateHeaders)) throw new Error("模板必须使用固定18列表头");
+if (JSON.stringify(actualTemplateHeaders) !== JSON.stringify(templateHeaders)) throw new Error("模板必须使用固定16列表头");
 if (templateWorkbook.worksheets.items.length !== 1) throw new Error("患者明细模板必须仅含一个工作表，不能附加评估工作表");
 for (const header of sourceRequiredHeaders) {
   if (!sourceHeaders.includes(header)) throw new Error(`基础数据缺少必需字段：${header}`);
@@ -263,8 +284,6 @@ const outputRows = sourceRows.slice(1).map((sourceRow) => {
     record.surgeryName,
     record.consumableName,
     record.coursePlanName,
-    "已生成",
-    "待确认",
   ];
 });
 
@@ -290,11 +309,11 @@ if (belowMinimum.length) {
 }
 
 const existingRows = templateSheet.getUsedRange(true).values.length;
-if (existingRows > 1) templateSheet.getRange(`A2:R${existingRows}`).clear({ applyTo: "contents" });
+if (existingRows > 1) templateSheet.getRange(`A2:P${existingRows}`).clear({ applyTo: "contents" });
 if (outputRows.length + 1 > existingRows) {
-  const styleSource = templateSheet.getRange(`A${existingRows}:R${existingRows}`);
+  const styleSource = templateSheet.getRange(`A${existingRows}:P${existingRows}`);
   for (let rowNumber = existingRows + 1; rowNumber <= outputRows.length + 1; rowNumber += 1) {
-    templateSheet.getRange(`A${rowNumber}:R${rowNumber}`).copyFrom(styleSource, "all");
+    templateSheet.getRange(`A${rowNumber}:P${rowNumber}`).copyFrom(styleSource, "all");
   }
 }
 templateSheet.getRangeByIndexes(1, 0, outputRows.length, templateHeaders.length).values = outputRows;
@@ -302,16 +321,14 @@ templateSheet.freezePanes.freezeRows(1);
 templateSheet.showGridLines = false;
 
 for (const table of [...(templateSheet.tables.items ?? [])]) table.delete();
-templateSheet.tables.add(`A1:R${outputRows.length + 1}`, true, "PatientFullCourseData");
+templateSheet.tables.add(`A1:P${outputRows.length + 1}`, true, "PatientFullCourseData");
 
-if (args.mode === "fictional-test") {
-  // Preserve the template schema, with room for three complete prescriptions.
-  templateSheet.getRange(`A1:R${outputRows.length + 1}`).format.wrapText = true;
-  templateSheet.getRange(`A1:R${outputRows.length + 1}`).format.verticalAlignment = "top";
-  const widths = [65,335,95,180,55,55,195,130,185,140,165,280,850,90,245,245,90,90];
-  widths.forEach((width,i) => { templateSheet.getRangeByIndexes(0,i,outputRows.length+1,1).format.columnWidthPx = width; });
-  templateSheet.getRange(`A2:R${outputRows.length + 1}`).format.rowHeightPx = 216;
-}
+// Keep long medication and prescription text readable in both real and fictional output.
+templateSheet.getRange(`A1:P${outputRows.length + 1}`).format.wrapText = true;
+templateSheet.getRange(`A1:P${outputRows.length + 1}`).format.verticalAlignment = "top";
+const widths = [65,335,95,180,55,55,195,130,185,140,165,280,850,170,245,245];
+widths.forEach((width,i) => { templateSheet.getRangeByIndexes(0,i,outputRows.length+1,1).format.columnWidthPx = width; });
+templateSheet.getRange(`A2:P${outputRows.length + 1}`).format.rowHeightPx = args.mode === "fictional-test" ? 216 : 145;
 templateWorkbook.recalculate();
 
 await fs.mkdir(path.dirname(args.output), { recursive: true });
@@ -320,7 +337,7 @@ await (await SpreadsheetFile.exportXlsx(templateWorkbook)).save(args.output);
 if (args.preview) {
   const preview = await templateWorkbook.render({
     sheetName: templateSheet.name,
-    range: `A1:R${Math.min(outputRows.length + 1, 12)}`,
+    range: `A1:P${Math.min(outputRows.length + 1, 12)}`,
     scale: 1,
     format: "png",
   });

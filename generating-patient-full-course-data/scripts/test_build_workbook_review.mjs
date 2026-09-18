@@ -36,7 +36,7 @@ try {
     safetyAssessment: "测试数据：成年且原表无过敏史", eligible: true, selected: true, exclusionReason: "" }];
   review.roles[0].exclusionReason = "";
   const reviewPath = path.join(temp, "review.json");
-  const withReview = [...args, "--review", reviewPath];
+  const withReview = [...args, "--review", reviewPath, "--min-medications", "1"];
   review.roles[0].evidence[0].value = "虚构疼痛";
   await fs.writeFile(reviewPath, JSON.stringify([review]));
   await assert.rejects(run(process.execPath, withReview), /原表事实/);

@@ -15,7 +15,7 @@ const temp = await fs.mkdtemp(path.join(os.tmpdir(), "stage1-output-contract-"))
 const output = path.join(temp, "patients.xlsx");
 const template = path.join(root, "assets/patient-full-course-template.xlsx");
 const sourceHeaders = ["序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区", "患者标签", "既往过敏史", "产品名称", "产品类型"];
-const expectedHeaders = [...sourceHeaders.slice(0, 11), "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称", "AI状态", "确认状态"];
+const expectedHeaders = [...sourceHeaders.slice(0, 11), "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称"];
 const rows = ["U001", "U002"].map((id, i) => [i + 1, id, "测试", "2026-09-01 08:00:00", "男", 60, "原发性高血压", null, null, "无", "无", "缬沙坦胶囊", "用药"]);
 const prescriptions = [
   ["缬沙坦胶囊", "缬沙坦胶囊 规格80mg/粒，每次80mg，口服，每日1次，早餐后服用，连续28天"],
@@ -49,7 +49,7 @@ try {
   source.worksheets.add("患者").getRange("A1:M3").values = [sourceHeaders, ...rows];
   await (await SpreadsheetFile.exportXlsx(source)).save(path.join(temp, "source.xlsx"));
   await writeFixtures([1, 2]);
-  await assert.rejects(run(process.execPath, [...args, "--min-medications", "3"]), error => {
+  await assert.rejects(run(process.execPath, args), error => {
     assert.match(error.stderr, /最少种数3/);
     assert.match(error.stderr, /U001.*实际1种/);
     assert.match(error.stderr, /U002.*实际2种/);
@@ -58,7 +58,7 @@ try {
   await assert.rejects(fs.access(output));
 
   await writeFixtures([3, 3]);
-  const result = await run(process.execPath, [...args, "--company", "江苏壹号畅达药业有限公司", "--min-medications", "3"]);
+  const result = await run(process.execPath, [...args, "--company", "江苏壹号畅达药业有限公司"]);
   const summary = JSON.parse(result.stdout.trim().split("\n").at(-1));
   assert.equal(summary.minimumMedications, 3);
   assert.equal(summary.minimumActualMedications, 3);
@@ -73,7 +73,7 @@ try {
     assert.deepEqual(row.slice(0, 11), rows[i].slice(0, 11).map((value, column) => column === 9 ? "正常" : value));
     assert.equal(row[11].split("+").length, 3);
     assert.equal(row[12].split(" + ").length, 3);
-    assert.deepEqual(row.slice(16), ["已生成", "待确认"]);
+    assert.equal(row.length, 16);
   });
   const previousBytes = await fs.readFile(output);
   await writeFixtures([1, 2]);
@@ -89,11 +89,11 @@ try {
 
   await writeFixtures([3, 3]);
   const wrongTemplate = await SpreadsheetFile.importXlsx(await FileBlob.load(template));
-  wrongTemplate.worksheets.getItemAt(0).getRange("R1").values = [["评估结论"]];
+  wrongTemplate.worksheets.getItemAt(0).getRange("P1").values = [["评估结论"]];
   const wrongPath = path.join(temp, "wrong-template.xlsx");
   await (await SpreadsheetFile.exportXlsx(wrongTemplate)).save(wrongPath);
   const wrongArgs = [...args]; wrongArgs[wrongArgs.indexOf("--template") + 1] = wrongPath;
-  await assert.rejects(run(process.execPath, wrongArgs), /固定18列表头/);
+  await assert.rejects(run(process.execPath, wrongArgs), /固定16列表头/);
   assert.deepEqual(await fs.readFile(output), previousBytes);
   const extraSheetTemplate = await SpreadsheetFile.importXlsx(await FileBlob.load(template));
   extraSheetTemplate.worksheets.add("候选评估").getRange("A1").values = [["评估结果"]];

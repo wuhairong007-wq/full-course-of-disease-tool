@@ -43,6 +43,23 @@ assert.deepEqual(getDeviceCompanyPolicy({
   consumableName: "介入器械B",
   consumableSegment: "耗材名称：介入器械B",
 });
+assert.deepEqual(getDeviceCompanyPolicy({
+  company: "其他公司", productType: "器械", productName: "通用介入器械C",
+}), {
+  consumableRequired: true,
+  prescriptionProductMode: "omit",
+  consumableName: "通用介入器械C",
+  consumableSegment: "",
+});
+assert.equal(getDeviceCompanyPolicy({
+  company: "其他公司", productType: "器械", productName: "通用介入器械C-测试",
+}).consumableName, "通用介入器械C");
+assert.equal(getDeviceCompanyPolicy({
+  company: "其他公司", productType: "器械", productName: "通用介入器械C（测试版）",
+}).consumableName, "通用介入器械C");
+assert.equal(getDeviceCompanyPolicy({
+  company: "其他公司", productType: "器械", productName: "测试产品正式名称",
+}).consumableName, "测试产品正式名称");
 assert.doesNotThrow(() => validateClinicalMedicationSelection({
   ...base,
   company: "其他公司",

@@ -49,14 +49,15 @@ function spawnSync(command, argv, options) {
   });
   const reviewPath = path.join(tempDir, "review.json");
   writeFileSync(reviewPath, JSON.stringify(reviews));
-  return spawnProcess(command, [...argv, "--review", reviewPath], options);
+  const minimumArgs = argv.includes("--min-medications") ? [] : ["--min-medications", "1"];
+  return spawnProcess(command, [...argv, "--review", reviewPath, ...minimumArgs], options);
 }
 const records = [
   {
     userid: "U001",
     allergyHistory: "无",
     combinedMedication: ["华法林钠片", "达格列净片", "对乙酰氨基酚片"],
-    prescriptionList: "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周 + 达格列净片 规格10mg/片，每次10mg，口服，每日1次，早餐后服用，长期治疗；需根据肌酐清除率调整 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天",
+    prescriptionList: "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周 + 达格列净片 规格10mg/片，每次10mg，口服，每日1次，早餐后服用，连续1个月；需根据肌酐清除率调整 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天",
     surgeryName: "单腔永久心脏起搏器植入术（VVI模式）",
     coursePlanName: "心房颤动伴缓慢心室率合并慢性心力衰竭术后管理方案",
   },
@@ -122,7 +123,7 @@ const outputSheet = outputWorkbook.worksheets.getItemAt(0);
 const outputRows = outputSheet.getUsedRange(true).values;
 const expectedHeaders = [
   "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
-  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称", "AI状态", "确认状态",
+  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称",
 ];
 
 assert.deepEqual(outputRows[0], expectedHeaders);
@@ -134,8 +135,7 @@ assert.equal(outputRows[3][9], "正常");
 assert.equal(outputRows[3][10], "无");
 assert.equal(outputRows[3][11], "克霉唑阴道片");
 assert.equal(outputRows[4][11], "克霉唑阴道片+甲硝唑阴道泡腾片");
-assert.equal(outputRows[1][16], "已生成");
-assert.equal(outputRows[1][17], "待确认");
+assert.equal(outputRows[1].length, 16);
 assert.equal(outputSheet.tables.items.length, 1);
 
 const companyRecords = [
@@ -200,7 +200,7 @@ const variableCountRecords = [
   {
     ...records[0],
     combinedMedication: ["华法林钠片", "达格列净片", "沙库巴曲缬沙坦钠片", "螺内酯片", "对乙酰氨基酚片"],
-    prescriptionList: "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周 + 达格列净片 规格10mg/片，每次10mg，口服，每日1次，早餐后服用，长期治疗；需根据肌酐清除率调整 + 沙库巴曲缬沙坦钠片 规格50mg/片，每次25mg，口服，每日2次，早晚服用，长期治疗；需根据肌酐清除率调整 + 螺内酯片 规格20mg/片，每次10mg，口服，每日1次，早餐后服用，长期治疗；需根据肌酐清除率调整 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天",
+    prescriptionList: "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周 + 达格列净片 规格10mg/片，每次10mg，口服，每日1次，早餐后服用，连续1个月；需根据肌酐清除率调整 + 沙库巴曲缬沙坦钠片 规格50mg/片，每次25mg，口服，每日2次，早晚服用，连续2个月；需根据肌酐清除率调整 + 螺内酯片 规格20mg/片，每次10mg，口服，每日1次，早餐后服用，连续1个月；需根据肌酐清除率调整 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天",
   },
   ...records.slice(1),
 ];
@@ -304,6 +304,14 @@ await assertInvalidRecords([
   },
   ...records.slice(1),
 ], /处方清单不得出现术后用药阶段|注意：|阶梯启用/);
+
+await assertInvalidRecords([
+  {
+    ...records[0],
+    prescriptionList: records[0].prescriptionList.replace("连续1个月", "长期治疗"),
+  },
+  ...records.slice(1),
+], /处方清单.*具体疗程/);
 
 await assertInvalidRecords([
   { ...records[0], coursePlanName: "心脏起搏器全病程管理方案" },

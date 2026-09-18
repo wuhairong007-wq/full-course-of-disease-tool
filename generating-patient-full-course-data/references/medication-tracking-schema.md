@@ -2,7 +2,7 @@
 
 ## Input Workbook
 
-Accept the reviewed patient workbook in the legacy 17-column sequence below or the new 18-column sequence with `耗材名称` inserted after `手术名称`:
+Accept the reviewed patient workbook in the current 16-column sequence, the legacy 17-column sequence below, or the compatible 18-column sequence with `耗材名称` inserted after `手术名称`:
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
 
@@ -58,9 +58,9 @@ Each `medicationItems` entry must have exactly these seven keys:
 - `specification`: preserve the clinically supported specification value from the prescription and normalize only its surrounding label punctuation. Output the value alone, beginning with a number, such as `20mg/粒`, `0.5g/片`, `5mg/支`, `4000单位/支`, or `1%（20g/支）`. Never output a leading `：`/`:`, the word `规格`, or explanatory prose. Keep the exact supported unit convention; do not invent or silently convert a strength.
 - Validate the normalized specification against `drug-specification-rules.md`: it must contain a recognized numeric strength, concentration, potency, activity, or biological unit; tablet and capsule package denominators must match `/片` and `/粒`; injectables and potency-labelled drugs must retain their approved unit convention.
 - `singleDose`: preserve the reviewed dose, including age-adjusted content. Do not silently revise it.
-- `frequency`: use Chinese quantitative forms such as `每日1次`, `每日2次`, `每8小时1次`, or `每周1次`. Do not use `qd`, `bid`, `tid`, `q8h`, `prn`, or an unquantified `必要时`.
+- `frequency`: use Chinese quantitative forms such as `单次`, `每日1次`, `每日2次`, `每8小时1次`, or `每周1次`. Use `单次` only when the reviewed prescription explicitly states single-use administration. Do not use `qd`, `bid`, `tid`, `q8h`, `prn`, or an unquantified `必要时`.
 - `medicationTime`: contain only a normalized timing phrase such as `早餐前`, `餐后`, `餐后1小时`, `晚餐中`, `睡前`, `早晚`, `固定时间`, or a quantified equal interval. Do not put administration routes such as `口服`, `吸入`, `肌肉注射`, `静脉注射`, or `静脉滴注` here, and do not use non-timing text such as `按医嘱`.
-- `treatmentDays`: use a positive integer when the reviewed course gives a fixed number of days; otherwise use exactly `长期` or `无限期` only when the source explicitly supports it. Stop and report the affected `userid` when the reviewed prescription does not support any of these values; do not invent a duration.
+- `treatmentDays`: use a positive integer when the reviewed course gives a fixed number of days. Map an explicit `单次服用`、`单次给药`、`单次使用`、`单次注射` or corresponding `一次性` wording to `1`; otherwise use exactly `长期` or `无限期` only when the source explicitly supports it. Stop and report the affected `userid` when the reviewed prescription does not support any of these values; do not invent a duration.
 - `precautions`: include medication-specific safety advice. Mention every supplied non-empty allergy history. For multi-drug regimens, require clinician/pharmacist review of combined-medication interactions or spacing without inventing a specific interaction. Include bleeding, hepatic, renal, or age-related cautions only when supported. Do not invent an allergy or contraindication.
 - Generated medication items must also avoid claims such as `审核处方限量` or `已确认方案要求`; write the supported limit or safety action directly.
 

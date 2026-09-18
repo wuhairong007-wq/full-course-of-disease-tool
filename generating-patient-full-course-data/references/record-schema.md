@@ -1,6 +1,6 @@
 # Record Schema and Workbook Contract
 
-The input, seven-key record, source preservation and 18-column workbook contracts apply to stage 1 in both modes. Downstream stages accept the legacy 17-column workbook as a compatibility input. Clinical evidence, role-review and equivalent-selector instructions below describe real mode. Explicitly authorized fictional test data follows `fictional-test-mode.md` for scenario generation and its separate review envelope, while retaining the shared allergy, specification, wording, company and output checks. Fictional assumptions never overwrite actual source values.
+The input, seven-key record, source preservation and 16-column workbook contracts apply to stage 1 in both modes. Downstream stages also accept legacy 17/18-column workbooks as compatibility inputs. Clinical evidence, role-review and equivalent-selector instructions below describe real mode. Explicitly authorized fictional test data follows `fictional-test-mode.md` for scenario generation and its separate review envelope, while retaining the shared allergy, specification, wording, company and output checks. Fictional assumptions never overwrite actual source values.
 
 ## Input
 
@@ -40,7 +40,7 @@ Rules:
 - Before writing `combinedMedication`, exclude every explicitly documented allergen and every member of an explicitly documented allergy class. Match drug allergens against active-ingredient, dosage-form, salt, and combination-product names. Apply the same check to a medicinal source product; if the product conflicts, stop and report the patient instead of including or silently replacing it, except when `公司=山东利赛医药有限公司` and `产品类型=用药`, where the source `产品名称` is excluded from both generated medication fields. Do not broaden an isolated ingredient allergy to an entire class unless reviewed evidence supports that cross-reactivity; choose a supported non-conflicting alternative or stop when safety remains uncertain.
 - `combinedMedication` must be a unique JSON array containing 1–5 clinically supported drug generic names. When the source product type is medicinal, include the supplied product first. AI must add every safely determinable etiologic, first-line, maintenance, mandatory postoperative, and directly supported symptom-treatment role. Clinical need determines the count: retain a clinically supportable monotherapy or dual therapy regimen where indicated, including uncomplicated vulvovaginal candidiasis and other local vaginal infection regimens that do not require a third drug. Do not default every patient to the same number, randomize the number, or add an unrelated or contraindicated drug merely to reach an arbitrary count. If no medication is supportable without inventing clinical facts, stop and report the affected `userid`.
 - When `公司=山东利赛医药有限公司` and `产品类型=用药`, omit the exact source `产品名称` from `combinedMedication` and omit its corresponding active `prescriptionList` entry. Retain other safe, directly indicated medications; an empty result is invalid and must be reported rather than padded. With an empty or different `公司`, the medicinal product remains the first item.
-- When `产品类型=器械`, never add the device to `combinedMedication`. For `山东利赛医药有限公司`, set `consumableName` to the source product and omit that product from `prescriptionList`. For `湖南昕敷佳生物科技有限公司`, set `consumableName` to the source product and append exactly one final `耗材名称：<产品名称>` segment after the medication prescriptions. Other companies leave `consumableName` empty and retain the existing device prescription behavior.
+- When `产品类型=器械`, never add the device to `combinedMedication`. Set `consumableName` to the source `产品名称` after removing only a trailing test marker such as `-测试`, `（测试）`, `测试用`, or `测试版`. `surgeryName` contains only the standard procedure name and must not append `（使用<产品名称>）` or another product-use note. For `湖南昕敷佳生物科技有限公司`, append exactly one final `耗材名称：<清洗后的产品名称>` segment after the medication prescriptions; every other company omits the device product from `prescriptionList`.
 - For a treatment role with multiple eligible equivalents, use `scripts/equivalent_medication_selector.mjs` after clinical filtering. 不得同时开具同一治疗作用的多个等效候选药物. The stable selector may vary the chosen equivalent, but it must not vary the role set or medication count.
 - After drafting all records, review every same-disease cohort with at least two patients. When a shared role has multiple eligible equivalents, verify that each eligible patient used the stable selector rather than inheriting one disease-wide default. Regenerate the entire matching prescription entry after any equivalent substitution. Identical regimens are valid when only one safe candidate remains or patient-specific facts leave one supported option; never change roles, medication counts, doses, or durations merely to manufacture diversity.
 - Generate `prescriptionList` only after `combinedMedication` and every equivalent selection are final. Split the prescription at ` + `: the number of prescription entries must equal the medication count, and entry N must begin with medication N's exact name. AI-added medications must never lack their own complete prescription entry. This same-order one-to-one mapping prevents omissions, duplicates, and extra prescription drugs.
@@ -51,7 +51,7 @@ Rules:
 - When route judgment changes, regenerate the entire candidate-owned prescription entry: specification, single dose, route, frequency, timing, duration, warnings, and any route-specific administration instructions must all match the final choice.
 - `注射用胰蛋白酶` must use an activity specification such as `5万单位` or `5万单位/支`; `5mg` and `g`-based specifications are invalid. Tablet and capsule package denominators, when present, must match `/片` and `/粒` respectively.
 - Keep specific safety/monitoring actions and allergy substitutions inside the corresponding final prescription entry; do not append `【术后用药阶段：...】`, `注意：...`, or `【阶梯启用：...】` explanatory segments.
-- Each prescription entry uses `药品名 + 规格 + 每次用量 + 给药途径 + 频次 + 服药时机 + 疗程`; join complete entries with the exact separator ` + `.
+- Each prescription entry uses `药品名 + 规格 + 每次用量 + 给药途径 + 频次 + 服药时机 + 具体疗程`; join complete entries with the exact separator ` + `. Use a concrete duration such as `连续30天`, `连续1个月`, `连续2个月`, `疗程至术后4周`, or `单次服用`; never use `长期治疗`, `长期用药`, `持续治疗`, or another indefinite duration.
 - Do not use `tid`, `bid`, `qd`, `q8h`, `prn`, `ivgtt`, `im`, `po`, `适量`, `酌情`, or `必要时`.
 - For surgery patients with actual medications, end with the medication instructions themselves; never add a postoperative-stage label segment.
 - `coursePlanName` must reflect the disease and treatment or postoperative phase without including the source `产品名称` for either medication or device rows. Do not include age or sex labels.
@@ -59,20 +59,18 @@ Rules:
 
 ## Output Workbook
 
-Use the bundled template with these exact 18 columns:
+Use the bundled template with these exact 16 columns:
 
-`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 耗材名称 | 全病程方案名称 | AI状态 | 确认状态`
+`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 耗材名称 | 全病程方案名称`
 
 - Columns `A:K`: copied from source except `J` (`患者标签`), where legacy `无` displays as `正常`. `既往过敏史` and all non-label `无` values retain their original meaning.
 - `L`: medications joined with `+`, not JSON text.
 - `M:P`: generated prescription, surgery, consumable, and course-plan values.
-- `Q`: `已生成`.
-- `R`: `待确认`.
 
 ## Delivery Gate
 
-The final deliverable for `生成患者明细` is this 18-column workbook, with one worksheet and one table. Downstream stage extractors accept the legacy 17-column sequence and treat its missing `耗材名称` as empty. Do not add candidate, evidence, missing-condition, or review-status columns/sheets, and do not substitute an assessment workbook for this output.
+The final deliverable for `生成患者明细` is this 16-column workbook, with one worksheet and one table. Do not append `AI状态` or `确认状态`. Downstream stage extractors accept this current sequence plus legacy 17/18-column sequences and treat a missing legacy `耗材名称` as empty. Do not add candidate, evidence, missing-condition, or review-status columns/sheets, and do not substitute an assessment workbook for this output.
 
-When the request includes `最少种数：N`, invoke `build_workbook.mjs --min-medications N` (integer 1–5). The builder verifies the final selected medications after company exclusions and clinical/review checks, before writing the output. Failure leaves any existing output intact; an existing file is not proof that the current run succeeded. Without an explicit minimum, real mode defaults to one and authorized fictional mode defaults to three. Fictional mode additionally verifies at least `ceil(sqrt(record count))` substantively distinct prescriptions; follow `fictional-test-mode.md` to research and expand insufficient catalogs before export.
+When the request includes `最少种数：N`, invoke `build_workbook.mjs --min-medications N` (integer 1–5). The builder verifies the final selected medications after company exclusions and clinical/review checks, before writing the output. Failure leaves any existing output intact; an existing file is not proof that the current run succeeded. Without an explicit minimum, both real and authorized fictional modes default to three. Real mode must stop rather than fabricate when the completed active search cannot support three. Fictional mode additionally verifies at least `ceil(sqrt(record count))` substantively distinct prescriptions; follow `fictional-test-mode.md` to research and expand insufficient catalogs before export.
 
 On failure, report the unfulfilled request and concrete reasons in chat. Detailed search and candidate assessments remain internal unless separately requested. In real mode, a correctly shaped workbook cannot be produced by fabricating clinical facts. Neither mode may count unselected alternatives as active medications; authorized fictional hypotheses remain in the internal scenario catalog and never overwrite source facts.

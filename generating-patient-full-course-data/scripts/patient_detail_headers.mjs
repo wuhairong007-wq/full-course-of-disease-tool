@@ -9,13 +9,18 @@ export const PATIENT_DETAIL_HEADERS_18 = [
   ...PATIENT_DETAIL_HEADERS_17.slice(14),
 ];
 
+export const PATIENT_DETAIL_HEADERS_16 = PATIENT_DETAIL_HEADERS_18.slice(0, 16);
+
 export function parsePatientDetailHeaders(headers) {
   const normalized = headers.map((value) => String(value ?? "").trim());
+  if (JSON.stringify(normalized) === JSON.stringify(PATIENT_DETAIL_HEADERS_16)) {
+    return { headers: PATIENT_DETAIL_HEADERS_16, hasConsumableName: true };
+  }
   if (JSON.stringify(normalized) === JSON.stringify(PATIENT_DETAIL_HEADERS_18)) {
     return { headers: PATIENT_DETAIL_HEADERS_18, hasConsumableName: true };
   }
   if (JSON.stringify(normalized) === JSON.stringify(PATIENT_DETAIL_HEADERS_17)) {
     return { headers: PATIENT_DETAIL_HEADERS_17, hasConsumableName: false };
   }
-  throw new Error("患者明细必须使用固定17列旧表头或固定18列新表头及顺序");
+  throw new Error("患者明细必须使用固定16列当前表头、17列旧表头或18列兼容表头及顺序");
 }

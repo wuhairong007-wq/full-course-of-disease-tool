@@ -93,6 +93,7 @@ function getExpectedTreatmentDays(segment) {
   const finite = segment.match(/(?:连续|疗程(?:为|共)?|使用)(\d+)(天|日|周)/);
   if (finite?.[2] === "周") return Number(finite[1]) * 7;
   if (finite) return Number(finite[1]);
+  if (/(?:单次|一次性)(?:服用|给药|使用|注射)/.test(segment)) return 1;
   if (/无限期/.test(segment)) return "无限期";
   if (/长期|长期维持|持续用药/.test(segment)) return "长期";
   return null;
@@ -109,6 +110,7 @@ function getExpectedSingleDose(segment) {
 }
 
 function getExpectedFrequency(segment) {
+  if (/(?:单次|一次性)(?:服用|给药|使用|注射)/.test(segment)) return "单次";
   const match = segment.match(/(?:每日|一日)(\d+)(?:[-～至](\d+))?次|每(\d+)小时1次|每周(\d+)次|隔日1次/);
   if (!match) return "";
   if (/隔日1次/.test(match[0])) return "隔日1次";
@@ -158,7 +160,7 @@ function validateRecord(record, patient) {
     if (JSON.stringify(Object.keys(item)) !== JSON.stringify(itemKeys)) throw new Error(`${userid}的每个用药项目必须且只能依次包含7个字段`);
     for (const key of itemKeys) if (!normalize(item[key])) throw new Error(`${userid}的${item.drugName || "用药项目"}.${key}不能为空`);
     if (!patient.prescriptionList.includes(item.drugName)) throw new Error(`${userid}含处方清单之外的药物：${item.drugName}`);
-    if (latinFrequency.test(item.frequency) || !/^(?:每日[1-9]\d*(?:至[1-9]\d*)?次|每[1-9]\d*小时1次|每周[1-9]\d*次|隔日1次)$/.test(item.frequency)) {
+    if (latinFrequency.test(item.frequency) || !/^(?:单次|每日[1-9]\d*(?:至[1-9]\d*)?次|每[1-9]\d*小时1次|每周[1-9]\d*次|隔日1次)$/.test(item.frequency)) {
       throw new Error(`${userid}的${item.drugName}用药频率必须使用中文量化格式`);
     }
     if (!allowedMedicationTime.test(item.medicationTime)) throw new Error(`${userid}的${item.drugName}用药时间必须仅包含规范服药时机`);

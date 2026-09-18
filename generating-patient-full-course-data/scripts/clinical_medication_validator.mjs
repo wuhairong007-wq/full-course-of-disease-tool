@@ -23,7 +23,6 @@ const ignoredAllergyTerms = new Set(["无", "否", "既往", "药品", "药物",
 const dosageFormSuffixPattern = /(?:缓释|控释|肠溶|分散|咀嚼|泡腾)?(?:片|胶囊|颗粒|混悬液|口服液|注射液|乳膏剂?|软膏剂?|凝胶剂?|滴眼液|滴鼻液|喷雾剂|吸入剂|阴道片|栓剂?|丸剂?|散剂?|粉针剂|注射剂)$/;
 const productExclusionCompany = "山东利赛医药有限公司";
 const deviceConsumablePolicies = new Map([
-  ["山东利赛医药有限公司", "omit"],
   ["湖南昕敷佳生物科技有限公司", "include"],
 ]);
 
@@ -82,14 +81,30 @@ function normalize(value) {
   return String(value ?? "").trim();
 }
 
+export function normalizeConsumableName(productName) {
+  let value = normalize(productName);
+  const suffixPatterns = [
+    /\s*[-—–_]\s*(?:仅供)?测试(?:用|版)?\s*$/u,
+    /\s*[（(【\[]\s*(?:仅供)?测试(?:用|版)?\s*[）)】\]]\s*$/u,
+    /\s*(?:仅供)?测试(?:用|版)?\s*$/u,
+  ];
+  let previous;
+  do {
+    previous = value;
+    for (const pattern of suffixPatterns) value = value.replace(pattern, "").trim();
+    value = value.replace(/[-—–_]+$/u, "").trim();
+  } while (value !== previous);
+  return value;
+}
+
 export function shouldExcludeMedicinalProduct({ company, productType }) {
   return normalize(company) === productExclusionCompany && normalize(productType) === "用药";
 }
 
 export function getDeviceCompanyPolicy({ company, productType, productName }) {
   const normalizedType = normalize(productType);
-  const normalizedProduct = normalize(productName);
-  const mode = normalizedType === "器械" ? (deviceConsumablePolicies.get(normalize(company)) ?? "none") : "none";
+  const normalizedProduct = normalizeConsumableName(productName);
+  const mode = normalizedType === "器械" ? (deviceConsumablePolicies.get(normalize(company)) ?? "omit") : "none";
   return {
     consumableRequired: mode !== "none",
     prescriptionProductMode: mode,
