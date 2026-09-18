@@ -22,6 +22,10 @@ const negatedAllergyClausePattern = /^(?:否认|无|未发现|未诉).*(?:过敏
 const ignoredAllergyTerms = new Set(["无", "否", "既往", "药品", "药物", "不详"]);
 const dosageFormSuffixPattern = /(?:缓释|控释|肠溶|分散|咀嚼|泡腾)?(?:片|胶囊|颗粒|混悬液|口服液|注射液|乳膏剂?|软膏剂?|凝胶剂?|滴眼液|滴鼻液|喷雾剂|吸入剂|阴道片|栓剂?|丸剂?|散剂?|粉针剂|注射剂)$/;
 const productExclusionCompany = "山东利赛医药有限公司";
+const deviceConsumablePolicies = new Map([
+  ["山东利赛医药有限公司", "omit"],
+  ["湖南昕敷佳生物科技有限公司", "include"],
+]);
 
 function cleanAllergyTerm(value) {
   return String(value ?? "")
@@ -80,6 +84,18 @@ function normalize(value) {
 
 export function shouldExcludeMedicinalProduct({ company, productType }) {
   return normalize(company) === productExclusionCompany && normalize(productType) === "用药";
+}
+
+export function getDeviceCompanyPolicy({ company, productType, productName }) {
+  const normalizedType = normalize(productType);
+  const normalizedProduct = normalize(productName);
+  const mode = normalizedType === "器械" ? (deviceConsumablePolicies.get(normalize(company)) ?? "none") : "none";
+  return {
+    consumableRequired: mode !== "none",
+    prescriptionProductMode: mode,
+    consumableName: mode === "none" ? "" : normalizedProduct,
+    consumableSegment: mode === "include" && normalizedProduct ? `耗材名称：${normalizedProduct}` : "",
+  };
 }
 
 export function validateClinicalMedicationSelection({

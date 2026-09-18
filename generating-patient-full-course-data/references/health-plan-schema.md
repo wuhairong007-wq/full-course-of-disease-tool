@@ -2,7 +2,7 @@
 
 ## Reviewed Input Workbook
 
-The first worksheet must contain exactly these 17 headers, in this order:
+The first worksheet may use the legacy 17-column sequence below or the new 18-column sequence with `耗材名称` inserted after `手术名称`. The legacy form is normalized to an empty consumable name.
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
 

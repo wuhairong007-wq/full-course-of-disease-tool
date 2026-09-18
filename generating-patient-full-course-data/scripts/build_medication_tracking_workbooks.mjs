@@ -6,13 +6,10 @@ import { validateGeneratedContent } from "./generated_content_validator.mjs";
 import { validateMedicationTrackingWording } from "./medication_tracking_wording_validator.mjs";
 import { extractMedicationSpecification, validateMedicationListSpecification } from "./medication_specification.mjs";
 import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
+import { parsePatientDetailHeaders } from "./patient_detail_headers.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
-const sourceHeaders = [
-  "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
-  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "全病程方案名称", "AI状态", "确认状态",
-];
 const trackingHeaders = [
   "序号", "患者ID", "姓名", "性别", "年龄", "疾病", "既往过敏史", "联合用药", "体温监测次数",
   "血压、心率监测次数", "用药提醒次数", "用药方案", "用药周期", "方案链接", "患者响应率", "是否触发人工干预",
@@ -217,7 +214,7 @@ for (const output of [args["tracking-output"], args["medication-output"]]) {
 const sourceWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input));
 const sourceRows = sourceWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
 const actualSourceHeaders = sourceRows[0].map(normalize);
-if (JSON.stringify(actualSourceHeaders) !== JSON.stringify(sourceHeaders)) throw new Error("跟踪提醒输入必须使用固定17列表头及顺序");
+const { hasConsumableName } = parsePatientDetailHeaders(actualSourceHeaders);
 const indexes = Object.fromEntries(actualSourceHeaders.map((header, index) => [header, index]));
 const patients = sourceRows.slice(1).filter((row) => row.some((value) => normalize(value))).map((row) => {
   const userid = normalize(row[indexes.userid]);
@@ -236,6 +233,7 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   allergyHistory: normalize(row[indexes["既往过敏史"]]) || "无",
   combinedMedication: normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean),
   prescriptionList: normalize(row[indexes["处方清单"]]),
+  consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
   treatmentPlan: "",
   serviceStartDate: serviceStartDate.text,
   serviceEndDate: serviceEndDate.text,

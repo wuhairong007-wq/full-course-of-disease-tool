@@ -2,13 +2,13 @@
 
 ## Input and Selection
 
-Accept the reviewed patient workbook with these exact headers and order:
+Accept the reviewed patient workbook in the legacy 17-column sequence below or the new 18-column sequence with `耗材名称` inserted after `手术名称`:
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
 
 The trigger must include `数量：N`, where `N` is a positive integer. Accept `患者标签` values `正常 | 无 | 轻度 | 中度 | 高度 | 重度`, normalize legacy `无` to `正常` and `重度` to `高度`, then select patients whose normalized label is `轻度`, `中度` or `高度`; exclude every `正常` (including legacy `无`) patient. Preserve source order and select the first `N` eligible patients, with no repeated patient. Stop when fewer than `N` eligible patients exist instead of duplicating records.
 
-The extractor emits patient context including `userid`, activation time, disease, adverse-reaction level, age, gender, allergy history, combined medication, prescription list, surgery name, and course-plan name.
+The extractor emits patient context including `userid`, activation time, disease, adverse-reaction level, age, gender, allergy history, combined medication, prescription list, surgery name, consumable name when present, and course-plan name. A consumable is not a medication and must not be introduced as a named drug intervention.
 
 Resolve the current product from the user's `产品：<名称>`, the established task context, or the original product-bearing source when available. The reviewed 17-column input no longer has a product column: do not infer the current product from the first combined medication, because company exclusions and device products make that unreliable. Pass a known product as `--product <名称>` to both `extract_adverse_reaction_patients.mjs` and `build_adverse_reaction_workbook.mjs`; the extractor includes `productName` in internal patient context only. The five generated JSON keys and ten Excel columns remain unchanged. The flag is optional for legacy calls, but must not be omitted when the current product is known. If the product cannot be identified from available context, write symptom-only descriptions and state in internal verification that product-specific matching was unavailable; do not claim that named-product checking passed.
 

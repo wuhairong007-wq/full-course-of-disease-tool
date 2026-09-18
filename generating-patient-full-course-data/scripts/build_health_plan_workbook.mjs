@@ -1,15 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadArtifactTool } from "./lib/artifact_tool.mjs";
+import { parsePatientDetailHeaders } from "./patient_detail_headers.mjs";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
 import { validateHealthPlanContent, validateMedicalRecordContent, validatePharmacologyContent, validatePharmacologyParagraph } from "./health_plan_content_validator.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
-const inputHeaders = [
-  "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
-  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "全病程方案名称", "AI状态", "确认状态",
-];
 const outputHeaders = [
   "userid", "AI健康管理师介绍", "AI病历解读", "治疗方案梳理", "AI药理科普", "AI健康管理方案",
   "建议监测指标", "生活方式建议_必须避免", "生活方式建议_建议执行", "复诊计划", "紧急就医提醒", "AI状态", "审核状态",
@@ -144,7 +141,7 @@ const sourceWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args
 const templateWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.template));
 const sourceRows = sourceWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
 const sourceHeaders = sourceRows[0].map(normalize);
-if (JSON.stringify(sourceHeaders) !== JSON.stringify(inputHeaders)) throw new Error("审核后患者明细必须使用固定17列表头及顺序");
+const { hasConsumableName } = parsePatientDetailHeaders(sourceHeaders);
 const templateSheet = templateWorkbook.worksheets.getItemAt(0);
 const templateHeaders = templateSheet.getRange("A1:M1").values[0].map(normalize);
 if (JSON.stringify(templateHeaders) !== JSON.stringify(outputHeaders)) throw new Error("健康管理方案模板必须使用固定13列表头");
@@ -158,6 +155,7 @@ const patients = patientRows.map((row) => {
     combinedMedication: normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean),
     prescriptionList: normalize(row[indexes["处方清单"]]),
     surgeryName: normalize(row[indexes["手术名称"]]),
+    consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
     coursePlanName: normalize(row[indexes["全病程方案名称"]]),
   };
 });

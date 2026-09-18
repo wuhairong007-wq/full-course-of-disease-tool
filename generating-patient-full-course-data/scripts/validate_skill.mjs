@@ -117,6 +117,10 @@ assert.match(skill, /Never change treatment roles, medication counts, doses, or 
 assert.match(skill, /生成患者明细 依据文件：<source\.xlsx>/);
 assert.match(skill, /公司.*optional|公司.*可选/s);
 assert.match(skill, /山东利赛医药有限公司/);
+assert.match(skill, /湖南昕敷佳生物科技有限公司/);
+assert.match(skill, /耗材名称/);
+assert.match(skill, /18-column|18 columns|18列/);
+assert.match(skill, /legacy 17-column|旧17列|17-column/s);
 assert.match(skill, /产品名称.*联合用药.*处方清单/s);
 assert.match(skill, /生成健康管理方案 依据文件：<source\.xlsx>/);
 assert.match(skill, /生成跟踪提醒和用药清单 依据文件：<source\.xlsx>/);

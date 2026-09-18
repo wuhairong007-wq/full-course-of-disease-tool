@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { validateClinicalMedicationSelection } from "./clinical_medication_validator.mjs";
+import { getDeviceCompanyPolicy, validateClinicalMedicationSelection } from "./clinical_medication_validator.mjs";
 
 const base = {
   userid: "U001",
@@ -26,6 +26,23 @@ assert.throws(
   }),
   /山东利赛医药有限公司.*产品名称.*硫酸氨基葡萄糖胶囊.*不得进入联合用药/,
 );
+
+assert.deepEqual(getDeviceCompanyPolicy({
+  company: "山东利赛医药有限公司", productType: "器械", productName: "介入器械A",
+}), {
+  consumableRequired: true,
+  prescriptionProductMode: "omit",
+  consumableName: "介入器械A",
+  consumableSegment: "",
+});
+assert.deepEqual(getDeviceCompanyPolicy({
+  company: "湖南昕敷佳生物科技有限公司", productType: "器械", productName: "介入器械B",
+}), {
+  consumableRequired: true,
+  prescriptionProductMode: "include",
+  consumableName: "介入器械B",
+  consumableSegment: "耗材名称：介入器械B",
+});
 assert.doesNotThrow(() => validateClinicalMedicationSelection({
   ...base,
   company: "其他公司",
@@ -90,4 +107,4 @@ assert.throws(
   /布洛芬缓释胶囊过敏.*布洛芬片/,
 );
 
-console.log(JSON.stringify({ status: "passed", cases: 15 }));
+console.log(JSON.stringify({ status: "passed", cases: 17 }));

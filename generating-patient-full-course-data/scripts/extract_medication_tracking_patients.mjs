@@ -2,13 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
+import { parsePatientDetailHeaders } from "./patient_detail_headers.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
-
-const requiredHeaders = [
-  "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
-  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "全病程方案名称", "AI状态", "确认状态",
-];
 
 function parseArgs(argv) {
   const args = {};
@@ -44,7 +40,7 @@ const workbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input
 const rows = workbook.worksheets.getItemAt(0).getUsedRange(true).values;
 if (!rows.length) throw new Error("审核后患者明细为空");
 const headers = rows[0].map(normalize);
-if (JSON.stringify(headers) !== JSON.stringify(requiredHeaders)) throw new Error("跟踪提醒输入必须使用固定17列表头及顺序");
+const { hasConsumableName } = parsePatientDetailHeaders(headers);
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
 
 const patients = [];
@@ -83,6 +79,7 @@ for (const row of rows.slice(1)) {
     prescriptionList,
     treatmentPlan: "",
     surgeryName: normalize(row[indexes["手术名称"]]),
+    consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
     coursePlanName: normalize(row[indexes["全病程方案名称"]]),
   });
 }

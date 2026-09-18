@@ -5,13 +5,10 @@ import { validateAdverseReactionRecord } from "./adverse_reaction_validation.mjs
 import { generateAdverseReactionTime } from "./adverse_reaction_time.mjs";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
 import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
+import { parsePatientDetailHeaders } from "./patient_detail_headers.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
-const inputHeaders = [
-  "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
-  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "全病程方案名称", "AI状态", "确认状态",
-];
 const outputHeaders = ["序号", "患者ID", "疾病", "不良反应发生时间", "不良反应症状描述", "不良反应严重程度分级", "处理措施", "处理结果/转归", "是否触发人工干预", "备注"];
 const normalize = (value) => String(value ?? "").trim();
 
@@ -48,7 +45,7 @@ const sourceWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args
 const templateWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.template));
 const sourceRows = sourceWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
 const headers = sourceRows[0].map(normalize);
-if (JSON.stringify(headers) !== JSON.stringify(inputHeaders)) throw new Error("不良反应清单输入必须使用固定17列表头及顺序");
+const { hasConsumableName } = parsePatientDetailHeaders(headers);
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
 const patients = sourceRows.slice(1).filter((row) => row.some((value) => normalize(value))).map((row) => ({
   userid: normalize(row[indexes.userid]),
@@ -59,6 +56,7 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   combinedMedication: normalize(row[indexes["联合用药"]]),
   prescriptionList: normalize(row[indexes["处方清单"]]),
   surgeryName: normalize(row[indexes["手术名称"]]),
+  consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
   coursePlanName: normalize(row[indexes["全病程方案名称"]]),
   ...(productName ? { productName } : {}),
 })).filter((patient) => ["轻度", "中度", "高度"].includes(patient.adverseReactionLevel));

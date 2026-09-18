@@ -53,15 +53,15 @@ try {
   const sheet=saved.worksheets.getItemAt(0);
   assert.equal(sheet.tables.items.length,1);
   const values=sheet.getUsedRange(true).values;
-  assert.deepEqual(values[0],[...headers.slice(0,11),'联合用药','处方清单','手术名称','全病程方案名称','AI状态','确认状态']);
+  assert.deepEqual(values[0],[...headers.slice(0,11),'联合用药','处方清单','手术名称','耗材名称','全病程方案名称','AI状态','确认状态']);
   assert.equal(values.length,rows.length+1);
   values.slice(1).forEach((row,i)=>{
     assert.deepEqual(row.slice(0,11),rows[i].slice(0,11).map((value,column)=>column===9?'正常':value));
     assert.equal(row[11].split('+').length,3);
     assert.deepEqual(row[12].split(' + ').map(entry=>entry.split(' ')[0]),row[11].split('+'));
-    assert.deepEqual(row.slice(15),['已生成','待确认']);
+    assert.deepEqual(row.slice(16),['已生成','待确认']);
     assert.doesNotMatch(row.slice(11).join(' '),/虚构|模拟|由(?:临床)?医生|由医师|未提供/);
-    assert(!row[14].includes(rows[i][11]));
+    assert(!String(row[15] ?? '').includes(rows[i][11]));
   });
   assert(!values[2][11].includes('塞来昔布'));
   const previous=await fs.readFile(output);

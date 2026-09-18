@@ -45,12 +45,12 @@ const records = [
     aiManagerIntro: "你好！我是您的AI健康管理师，我将为您提供全面专业的疾病管理支持，从病情监测、症状观察、用药管理到复诊规划，协助您更安全、有序地推进康复与长期管理。针对您的【慢性胃炎治疗与随访阶段】，我将结合“慢性胃炎症状与用药随访方案”，为您梳理当前用药、每日需要关注的消化道症状、饮食调整和过敏风险提示，帮助您理解并参与日常管理过程。",
     aiMedicalRecord: "就诊科室：消化内科\n就诊日期：2026年8月2日\n处置：围绕慢性胃炎、青霉素过敏，以及奥美拉唑肠溶胶囊和铝碳酸镁咀嚼片的当前用药安排开展管理。",
     treatmentPlan: "• 奥美拉唑肠溶胶囊：奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天\n——【核心治疗·抑酸管理】\n• 铝碳酸镁咀嚼片：铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天\n——【辅助治疗·胃黏膜症状管理】",
-    aiPharmacology: "奥美拉唑肠溶胶囊：通过抑制胃壁细胞质子泵减少胃酸分泌，用于慢性胃炎相关抑酸管理；早餐前整粒服用，连续14天，不咀嚼或压碎，若反复或长期使用需由医生评估，注意持续腹泻、皮疹等不良反应。\n铝碳酸镁咀嚼片：通过中和胃酸并结合胆汁酸缓解酸相关刺激，用于慢性胃炎的胃黏膜症状管理；餐后1小时充分咀嚼，连续14天，与其他口服药保持医生建议的间隔，注意便秘或腹泻，青霉素过敏信息及全部用药应在复诊时主动说明。",
+    aiPharmacology: "奥美拉唑肠溶胶囊：通过抑制胃壁细胞质子泵减少胃酸分泌，用于慢性胃炎相关抑酸管理；早餐前整粒服用，连续14天，不咀嚼或压碎，若反复或长期使用应复诊复核，注意持续腹泻、皮疹等不良反应。\n铝碳酸镁咀嚼片：通过中和胃酸并结合胆汁酸缓解酸相关刺激，用于慢性胃炎的胃黏膜症状管理；餐后1小时充分咀嚼，连续14天，与其他口服药保持已审核处方要求的间隔，注意便秘或腹泻，青霉素过敏信息及全部用药应在复诊时主动说明。",
     aiHealthPlan: "① 病情监测：每日记录上腹不适、反酸或烧灼感的发生时段、频次及与进食关系；若症状连续加重、影响进食或夜间频繁出现，应提前联系消化内科。\n② 用药执行：每日核对奥美拉唑肠溶胶囊早餐前服用和铝碳酸镁咀嚼片餐后1小时服用的时机，保持医生建议的药物间隔，不自行延长疗程。\n③ 活动与休息：饭后安排轻度步行并避免立即平卧，每日根据耐受维持规律活动；若活动诱发明显腹痛、头晕或持续恶心，应停止活动并咨询医生。\n④ 饮食管理：采用规律、适量进餐，记录个人诱发食物并逐步减少，避免空腹饮酒及大量刺激性饮品；进食量持续下降时需提前复诊评估。\n⑤ 复诊与升级：完成14天疗程后复诊，核对症状变化、药物耐受及是否需要调整方案；如出现呕血、黑便、反复呕吐或晕厥，立即前往急诊。",
     monitoringIndicators: "上腹部不适：每日记录发生时间、持续时间及与进食关系\n反酸或烧灼感：每日记录频次，持续增加时联系医生\n进食与体重趋势：每周观察，出现不明原因持续下降时就诊\n药物耐受：用药期间观察皮疹、腹泻、便秘等变化并及时反馈",
     lifestyleAvoid: "• 避免空腹饮酒、吸烟及大量摄入刺激性饮品\n• 避免暴饮暴食、进食过快或睡前大量进食\n• 避免自行长期加量或延长奥美拉唑肠溶胶囊疗程\n• 避免忽视黑便、呕血、进行性吞咽困难等危险信号",
     lifestyleRecommend: "• 规律进餐并根据耐受情况采用少量分餐\n• 记录可能诱发反酸或上腹不适的食物并逐步调整\n• 饭后保持适度活动，避免立即平卧\n• 每次就诊主动告知青霉素过敏和当前全部用药",
-    followupPlan: "• 完成14天疗程后复诊，评估症状变化和是否需要调整方案\n• 症状反复或影响进食时提前至消化内科复诊，由医生判断是否需要进一步检查\n• 出现出血、吞咽困难或持续呕吐时立即就诊，不等待预约时间",
+    followupPlan: "• 完成14天疗程后复诊，评估症状变化和是否需要调整方案\n• 症状反复或影响进食时提前至消化内科复诊并进一步检查\n• 出现出血、吞咽困难或持续呕吐时立即就诊，不等待预约时间",
     emergencyReminder: "⚠ 呕血、咖啡色呕吐物或黑便\n⚠ 持续或迅速加重的剧烈腹痛\n⚠ 反复呕吐、无法进食饮水或出现明显脱水表现\n⚠ 进行性吞咽困难、晕厥或意识状态改变\n⚠ 出现以上任一情况，请立即前往急诊或联系急救服务。",
   },
 ];
@@ -70,8 +70,8 @@ const run = (script, args) => spawnSync(nodePath, [path.join(scriptDir, script),
 const extractResult = run("extract_health_plan_patients.mjs", ["--input", sourcePath, "--output", extractedPath]);
 assert.equal(extractResult.status, 0, `${extractResult.stdout}\n${extractResult.stderr}`);
 assert.deepEqual(JSON.parse(await fs.readFile(extractedPath, "utf8")), [
-  { userid: "U001", activateTime: "2026-08-01 10:00:00", gender: "男", age: 70, disease: "心房颤动伴缓慢心室率", allergyHistory: "无", combinedMedication: ["华法林钠片", "对乙酰氨基酚片"], prescriptionList: sourceRows[0][12], surgeryName: "单腔永久心脏起搏器植入术", coursePlanName: "心房颤动伴缓慢心室率起搏器术后管理方案" },
-  { userid: "U002", activateTime: "2026-08-02 11:00:00", gender: "女", age: 42, disease: "慢性胃炎", allergyHistory: "青霉素过敏", combinedMedication: ["奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"], prescriptionList: sourceRows[1][12], surgeryName: "", coursePlanName: "慢性胃炎症状与用药随访方案" },
+  { userid: "U001", activateTime: "2026-08-01 10:00:00", gender: "男", age: 70, disease: "心房颤动伴缓慢心室率", allergyHistory: "无", combinedMedication: ["华法林钠片", "对乙酰氨基酚片"], prescriptionList: sourceRows[0][12], surgeryName: "单腔永久心脏起搏器植入术", consumableName: "", coursePlanName: "心房颤动伴缓慢心室率起搏器术后管理方案" },
+  { userid: "U002", activateTime: "2026-08-02 11:00:00", gender: "女", age: 42, disease: "慢性胃炎", allergyHistory: "青霉素过敏", combinedMedication: ["奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"], prescriptionList: sourceRows[1][12], surgeryName: "", consumableName: "", coursePlanName: "慢性胃炎症状与用药随访方案" },
 ]);
 
 const buildArgs = ["--input", sourcePath, "--records", recordsPath, "--template", templatePath, "--output", outputPath];

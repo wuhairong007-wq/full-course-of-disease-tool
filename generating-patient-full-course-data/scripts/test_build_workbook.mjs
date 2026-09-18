@@ -122,7 +122,7 @@ const outputSheet = outputWorkbook.worksheets.getItemAt(0);
 const outputRows = outputSheet.getUsedRange(true).values;
 const expectedHeaders = [
   "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
-  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "全病程方案名称", "AI状态", "确认状态",
+  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称", "AI状态", "确认状态",
 ];
 
 assert.deepEqual(outputRows[0], expectedHeaders);
@@ -134,14 +134,15 @@ assert.equal(outputRows[3][9], "正常");
 assert.equal(outputRows[3][10], "无");
 assert.equal(outputRows[3][11], "克霉唑阴道片");
 assert.equal(outputRows[4][11], "克霉唑阴道片+甲硝唑阴道泡腾片");
-assert.equal(outputRows[1][15], "已生成");
-assert.equal(outputRows[1][16], "待确认");
+assert.equal(outputRows[1][16], "已生成");
+assert.equal(outputRows[1][17], "待确认");
 assert.equal(outputSheet.tables.items.length, 1);
 
 const companyRecords = [
   {
     ...records[0],
     combinedMedication: ["华法林钠片", "达格列净片", "对乙酰氨基酚片"],
+    consumableName: "心脏起搏器",
   },
   {
     ...records[1],

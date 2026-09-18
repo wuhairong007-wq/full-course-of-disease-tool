@@ -2,7 +2,7 @@
 name: generating-patient-full-course-data
 description: Use when a user provides an Excel file and asks to generate 患者明细、患者全病程数据、出院后个性化医疗记录、联合用药、处方清单、器械匹配手术名称、全病程方案、健康管理方案、跟踪提醒、用药清单、不良反应清单、洞察报告或深度访谈, including “生成患者明细 依据文件：Excel路径”, “生成健康管理方案 依据文件：Excel路径”, “生成跟踪提醒和用药清单 依据文件：Excel路径 服务周期 YYYY-MM-DD 至 YYYY-MM-DD”, “生成不良反应清单 依据文件：Excel路径 数量：N”, and “生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD 依据以下文件：6份必填Excel及选填的不良反应清单”.
 metadata:
-  version: "1.2.10"
+  version: "1.2.11"
 ---
 
 # Generating Patient Full-Course Data
@@ -19,7 +19,7 @@ Stage 1 has two explicit modes: real patient evidence (default) and authorized f
 - For stage 4, read `references/adverse-reaction-schema.md` completely.
 - For stage 5, read `references/insight-report-schema.md`, `references/insight-report-writing.md`, and `references/insight-report-template-contract.md` completely. Use `assets/patient-insight-report-generation-prompt-template.md.docx` as the authoritative source for the fixed report content and formatting contract.
 - For stage 6, read `references/deep-interview-template-contract.md` completely. Select templates according to `调研方式`: phone follow-up uses only the records template; deep interview uses both analysis and records templates. Prefer user-supplied templates; the defaults are `assets/patient-interview-analysis-template.docx` and `assets/patient-interview-records-template.docx`. These are distinct from the stage-5 insight-report template.
-- Use the matching bundled template in `assets/`; do not invent another layout.
+- Use the matching bundled template in `assets/`; do not invent another layout. Stage 1 uses the 18-column patient-detail template with `耗材名称` after `手术名称`; stages 2～4 accept both legacy 17-column and new 18-column patient-detail inputs.
 - Use the bundled extractor and builder scripts; do not rewrite their workbook logic.
 - Bundled Node scripts locate `@oai/artifact-tool` themselves via `scripts/lib/artifact_tool.mjs`: it honors `CODEX_NODE_MODULES` when set (e.g. after calling `load_workspace_dependencies` in Codex), otherwise it auto-detects a local Codex CLI runtime cache. No sub-skill call is required to run them in Claude Code or other environments.
 
@@ -36,6 +36,14 @@ Stage 1 has two explicit modes: real patient evidence (default) and authorized f
 - `生成深度访谈 调研时间：<时间> 调研数量：<人数> 调研方式=<电话随访|深度访谈，可选，默认深度访谈> 是否轻度：<是|否，可选，默认否>` invokes stage 6; parse with `parseDeepInterviewRequest` in `scripts/insight_request_parser.mjs`. Supply each parameter on its own line. `调研方式` accepts `=`、`：` or `:`; an explicit empty or invalid value is an error.
 - An explicit trigger always wins. If the user supplies only a path, the exact reviewed 17-column contract invokes stage 2; stage 3 requires its explicit trigger and service period; otherwise use stage 1.
 - Do not ask for fields already present in the workbook.
+
+### Company-specific device handling
+
+- Stage 1 output uses 18 columns: the new `耗材名称` column is placed after `手术名称`.
+- When `公司=山东利赛医药有限公司` and `产品类型=器械`, set `耗材名称` to the source `产品名称`, keep the device out of `联合用药`, and omit the device product name from `处方清单`.
+- When `公司=湖南昕敷佳生物科技有限公司` and `产品类型=器械`, set `耗材名称` to the source `产品名称`, keep the device out of `联合用药`, and append exactly one final `耗材名称：<产品名称>` segment to `处方清单`.
+- Other companies retain the existing device behavior and leave `耗材名称` empty. Non-device rows always leave `手术名称` and `耗材名称` empty.
+- The device product is not a medication and never counts toward the 1～5 medication limit. Stage 2～4 preserve the consumable context internally but do not generate medication rows from it.
 
 ## Shared Setup
 

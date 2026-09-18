@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { validateDrugSpecification } from './drug_specification_validator.mjs';
 import { validateGeneratedContent } from './generated_content_validator.mjs';
-import { shouldExcludeMedicinalProduct, validateClinicalMedicationSelection } from './clinical_medication_validator.mjs';
+import { getDeviceCompanyPolicy, shouldExcludeMedicinalProduct, validateClinicalMedicationSelection } from './clinical_medication_validator.mjs';
 
 const symptomHeaders=['疼痛程度','疼痛评分','炎症表现','症状','症状描述','主诉','症状持续时间','晨僵时间','关节肿胀','活动受限'];
 const contextHeaders=['合并疾病','既往病史','当前用药','用药效果','肝功能','肾功能','妊娠状态','哺乳状态','手术史'];
@@ -150,10 +150,12 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
  }
  const records=patients.map(p=>{
   const selected=assigned.get(p.userid);const items=itemsFor(p,selected);
-  const record={userid:p.userid,allergyHistory:p.allergyHistory,combinedMedication:items.map(i=>i.drug.name),prescriptionList:items.map(i=>prescription(i.drug,i.days)).join(' + '),surgeryName:scope.productType==='器械'?`${p.disease}腹腔镜胆囊切除术（使用${p.productName}）`:'' ,coursePlanName:p.disease+catalog.planSuffix};
+  const devicePolicy=getDeviceCompanyPolicy({company,productType:p.productType,productName:p.productName});
+  const medicationPrescription=items.map(i=>prescription(i.drug,i.days)).join(' + ');
+  const record={userid:p.userid,allergyHistory:p.allergyHistory,combinedMedication:items.map(i=>i.drug.name),prescriptionList:devicePolicy.prescriptionProductMode==='include'?[medicationPrescription,devicePolicy.consumableSegment].filter(Boolean).join(' + '):medicationPrescription,surgeryName:scope.productType==='器械'?`${p.disease}腹腔镜胆囊切除术（使用${p.productName}）`:'' ,consumableName:devicePolicy.consumableName,coursePlanName:p.disease+catalog.planSuffix};
   assert(!record.combinedMedication.some(m=>record.coursePlanName.includes(m)),'方案名称不得包含产品名称');
-  validateGeneratedContent({userid:p.userid,fields:{prescriptionList:record.prescriptionList,coursePlanName:record.coursePlanName}});
-  assert(!/模拟|虚构/.test([record.combinedMedication.join('+'),record.prescriptionList,record.surgeryName,record.coursePlanName].join(' ')),`${p.userid}生成内容不得包含模拟说明；请仅在文件名标记`);
+  validateGeneratedContent({userid:p.userid,fields:{prescriptionList:record.prescriptionList,consumableName:record.consumableName,coursePlanName:record.coursePlanName}});
+  assert(!/模拟|虚构/.test([record.combinedMedication.join('+'),record.prescriptionList,record.surgeryName,record.consumableName,record.coursePlanName].join(' ')),`${p.userid}生成内容不得包含模拟说明；请仅在文件名标记`);
   return record;
  });
  const assignments=patients.map(p=>({userid:p.userid,scenarioId:assigned.get(p.userid).id}));

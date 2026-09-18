@@ -60,7 +60,7 @@ Apply the allergy gate to both source-reviewed and AI-selected medications. A me
 
 ## Surgery
 
-- `产品类型=器械`: provide a standard procedure matching disease and device use; the name must contain `产品名称`.
+- `产品类型=器械`: provide a standard procedure matching disease and device use; the name must contain `产品名称`. The device is not a medication. For 山东利赛 and 湖南昕敷佳, stage 1 also writes `耗材名称=产品名称`; their prescription display follows the company rules in `record-schema.md`.
 - Other product types: return `surgeryName: ""`.
 - For cardiac pacemakers: atrial fibrillation with slow ventricular response generally maps to single-chamber permanent pacemaker implantation; sinus node dysfunction generally maps to dual-chamber rate-responsive implantation; high-grade/second-degree type II/third-degree AV block and bifascicular block generally map to dual-chamber implantation; carotid sinus hypersensitivity maps to dual-chamber implantation with rate-drop response when appropriate. For hypertrophic obstructive cardiomyopathy, use the conservative name `双腔永久心脏起搏器植入术` unless the source explicitly supplies a pacing mode; do not infer a short atrioventricular delay.
 - Do not claim a procedure occurred if the product type is not a device.
