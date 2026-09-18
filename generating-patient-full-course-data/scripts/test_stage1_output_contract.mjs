@@ -70,7 +70,7 @@ try {
   assert.equal(values.length, 3);
   assert.equal(sheet.tables.items.length, 1);
   values.slice(1).forEach((row, i) => {
-    assert.deepEqual(row.slice(0, 11), rows[i].slice(0, 11));
+    assert.deepEqual(row.slice(0, 11), rows[i].slice(0, 11).map((value, column) => column === 9 ? "正常" : value));
     assert.equal(row[11].split("+").length, 3);
     assert.equal(row[12].split(" + ").length, 3);
     assert.deepEqual(row.slice(15), ["已生成", "待确认"]);

@@ -130,6 +130,8 @@ assert.equal(outputRows.length, 5);
 assert.deepEqual(outputRows[1].slice(0, 11), sourceRows[0].slice(0, 11));
 assert.deepEqual(outputRows[2].slice(0, 11), sourceRows[1].slice(0, 11));
 assert.equal(outputRows[1][11], "华法林钠片+达格列净片+对乙酰氨基酚片");
+assert.equal(outputRows[3][9], "正常");
+assert.equal(outputRows[3][10], "无");
 assert.equal(outputRows[3][11], "克霉唑阴道片");
 assert.equal(outputRows[4][11], "克霉唑阴道片+甲硝唑阴道泡腾片");
 assert.equal(outputRows[1][15], "已生成");

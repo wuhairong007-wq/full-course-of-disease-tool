@@ -150,8 +150,8 @@ assert.match(medicationSchema, /positive integer.*`长期` or `无限期`/s);
 assert.match(medicationSchema, /specification, dose, frequency, and duration match/);
 assert.match(medicationSchema, /combined-medication interactions/);
 assert.match(medicationSchema, /患者标签.*服务周期/s);
-assert.match(medicationSchema, /normalize `重度` to `高度`/);
-assert.match(medicationSchema, /Keep `无` distinct from `轻度`/);
+assert.match(medicationSchema, /`重度` to `高度`/);
+assert.match(medicationSchema, /Keep `(?:正常|无)` distinct from `轻度`/);
 assert.match(medicationSchema, /round\(2 × D × random\[0\.4, 0\.9\)\)/);
 assert.match(medicationSchema, /45 through 70 inclusive/);
 assert.match(medicationSchema, /`中度` or `高度` → `是`; `无` or `轻度` → `否`/);
@@ -168,10 +168,10 @@ assert.match(medicationSchema, /activation date equals the service-period end da
 assert.match(medicationSchema, /must not mention the source file or describe absent input/);
 
 const adverseSchema = await fs.readFile(path.join(skillDir, "references", "adverse-reaction-schema.md"), "utf8");
-assert.match(adverseSchema, /normalize `重度` to `高度`.*select only patients whose normalized label is `中度` or `高度`/s);
+assert.match(adverseSchema, /`重度` to `高度`.*select patients whose normalized label is `轻度`, `中度` or `高度`/s);
 assert.match(adverseSchema, /fewer than `N` eligible patients exist/);
 assert.match(adverseSchema, /strictly later than `激活时间`.*same year and month.*`06:00:00` and `21:59:59`/s);
-assert.match(adverseSchema, /`高度` → `是`; `中度` → `否`/);
+assert.match(adverseSchema, /`高度` → `是`; `轻度` or `中度` → `否`/);
 assert.match(adverseSchema, /Do not introduce a medication absent from `联合用药` or `处方清单`/);
 assert.match(adverseSchema, /Never mention the source file or describe absent input/);
 

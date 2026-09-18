@@ -94,6 +94,12 @@ for (let index = 0; index < extracted.length; index += 1) {
 }
 
 const repeatedOutput = path.join(tempDir, "不良反应清单_重复生成.xlsx");
+rows[1][9] = "正常";
+sheet.getRange("A1:Q5").values = [headers, ...rows];
+await (await SpreadsheetFile.exportXlsx(workbook)).save(sourcePath);
+const normalExtract = run("extract_adverse_reaction_patients.mjs", ["--input", sourcePath, "--count", "2", "--product", "利伐沙班片", "--output", extractedPath]);
+assert.equal(normalExtract.status, 0, `${normalExtract.stdout}\n${normalExtract.stderr}`);
+assert.deepEqual(JSON.parse(await fs.readFile(extractedPath, "utf8")), extracted);
 const repeatResult = run("build_adverse_reaction_workbook.mjs", [
   "--input", sourcePath, "--records", recordsPath, "--count", "2",
   "--template", path.join(skillDir, "assets", "adverse-reaction-list-template.xlsx"), "--output", repeatedOutput,
@@ -121,7 +127,7 @@ assert.notEqual(invalidCount.status, 0);
 assert.match(`${invalidCount.stdout}\n${invalidCount.stderr}`, /数量必须为正整数/);
 const insufficient = run("extract_adverse_reaction_patients.mjs", ["--input", sourcePath, "--count", "4", "--output", extractedPath]);
 assert.notEqual(insufficient.status, 0);
-assert.match(`${insufficient.stdout}\n${insufficient.stderr}`, /符合条件的中度或高度患者仅3位/);
+assert.match(`${insufficient.stdout}\n${insufficient.stderr}`, /符合条件的轻度、中度或高度患者仅3位/);
 
 await fs.writeFile(recordsPath, JSON.stringify([{ ...records[0], extra: "禁止字段" }, records[1]], null, 2), "utf8");
 const malformed = run("build_adverse_reaction_workbook.mjs", [

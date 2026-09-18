@@ -83,6 +83,7 @@ assert.deepEqual(extracted[0].combinedMedication, ["利伐沙班片", "对乙酰
 assert.equal(extracted[0].serviceStartDate, "2026-08-01");
 assert.equal(extracted[0].serviceEndDate, "2026-08-31");
 assert.equal(extracted[0].adverseReactionLevel, "高度");
+assert.equal(extracted[1].adverseReactionLevel, "正常");
 
 const buildArgs = [
   "--input", sourcePath, "--records", recordsPath,
@@ -113,6 +114,13 @@ const repeatBuildArgs = buildArgs.map((value, index) => {
   if (buildArgs[index - 1] === "--medication-output") return repeatMedicationOutput;
   return value;
 });
+// A source already migrated to 正常 must retain identical downstream behavior.
+sourceRows[1][9] = "正常";
+sourceSheet.getRange("A1:Q3").values = [sourceHeaders, ...sourceRows];
+await (await SpreadsheetFile.exportXlsx(sourceWorkbook)).save(sourcePath);
+const normalExtract = run("extract_medication_tracking_patients.mjs", ["--input", sourcePath, ...serviceArgs, "--output", extractedPath]);
+assert.equal(normalExtract.status, 0, `${normalExtract.stdout}\n${normalExtract.stderr}`);
+assert.deepEqual(JSON.parse(await fs.readFile(extractedPath, "utf8")), extracted);
 const repeatResult = run("build_medication_tracking_workbooks.mjs", repeatBuildArgs);
 assert.equal(repeatResult.status, 0, `${repeatResult.stdout}\n${repeatResult.stderr}`);
 const repeatWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(repeatTrackingOutput));

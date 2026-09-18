@@ -61,8 +61,8 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   surgeryName: normalize(row[indexes["手术名称"]]),
   coursePlanName: normalize(row[indexes["全病程方案名称"]]),
   ...(productName ? { productName } : {}),
-})).filter((patient) => ["中度", "高度"].includes(patient.adverseReactionLevel));
-if (patients.length < count) throw new Error(`符合条件的中度或高度患者仅${patients.length}位，少于请求数量${count}`);
+})).filter((patient) => ["轻度", "中度", "高度"].includes(patient.adverseReactionLevel));
+if (patients.length < count) throw new Error(`符合条件的轻度、中度或高度患者仅${patients.length}位，少于请求数量${count}`);
 const selected = patients.slice(0, count);
 
 const records = JSON.parse(await fs.readFile(args.records, "utf8"));

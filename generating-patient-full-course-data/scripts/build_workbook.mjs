@@ -152,7 +152,10 @@ for (const record of records) {
 let allergyCount = 0;
 const finalRecords = [];
 const outputRows = sourceRows.slice(1).map((sourceRow) => {
-  const baseValues = baseHeaders.map((header) => sourceRow[indexes[header]]);
+  const baseValues = baseHeaders.map((header) => {
+    const value = sourceRow[indexes[header]];
+    return header === "患者标签" && normalize(value) === "无" ? "正常" : value;
+  });
   const userid = normalize(sourceRow[indexes.userid]);
   const sourceAllergy = normalize(sourceRow[indexes["既往过敏史"]]) || "无";
   const age = Number(sourceRow[indexes["年龄"]]);

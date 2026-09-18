@@ -8,7 +8,7 @@ The first worksheet must contain these exact headers:
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 产品名称 | 产品类型`
 
-Each source row is one patient. Preserve row count, order, values, and `userid` exactly.
+Each source row is one patient. Preserve row count, order, values, and `userid` exactly, except the requested display migration of `患者标签` from legacy `无` to `正常` in the new output. Trim only to recognize this legacy value; preserve other label values and do not interpret blank as normal. The source file itself remains unchanged.
 
 Optional source columns: `疼痛程度`, `疼痛评分`, `炎症表现`, `症状`, `症状描述`, `主诉`, `症状持续时间`, `晨僵时间`, `关节肿胀`, `活动受限`. The extractor retains populated values in `symptomEvidence` under their original column names, trimming surrounding whitespace and representing numbers as text. Preserve `0`, `无痛`, `无红肿` and other negative observations. Omit empty values; when no populated optional values exist, omit `symptomEvidence` entirely. Never assign missing values randomly or interpret `患者标签` as a symptom. This extractor-only object is not an additional key in the final six-key records or a new output column.
 
@@ -61,7 +61,7 @@ Use the bundled template with these exact 17 columns:
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
 
-- Columns `A:K`: copied from source.
+- Columns `A:K`: copied from source except `J` (`患者标签`), where legacy `无` displays as `正常`. `既往过敏史` and all non-label `无` values retain their original meaning.
 - `L`: medications joined with `+`, not JSON text.
 - `M:O`: generated prescription, surgery, and course-plan values.
 - `P`: `已生成`.
