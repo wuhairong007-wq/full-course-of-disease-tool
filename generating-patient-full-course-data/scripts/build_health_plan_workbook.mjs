@@ -67,7 +67,7 @@ function validateMedicalRecord(userid, text) {
 
 function validateManagerIntro(userid, text, patient, productName) {
   const value = normalize(text);
-  if (productName && value.includes(productName)) throw new Error(`${userid}的AI健康管理师介绍不得出现当前产品名称`);
+  if (patient.isDevice && productName && value.includes(productName)) throw new Error(`${userid}的器械AI健康管理师介绍不得出现当前产品名称`);
   if (!value.startsWith(managerIntroOpening)) throw new Error(`${userid}的AI健康管理师介绍必须使用统一的专业开场结构`);
   if (!value.includes("病情监测") || !value.includes("症状观察") || !value.includes("用药管理") || !value.includes("复诊规划")) {
     throw new Error(`${userid}的AI健康管理师介绍必须说明病情监测、症状观察、用药管理和复诊规划服务`);

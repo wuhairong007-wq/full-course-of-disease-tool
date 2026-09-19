@@ -2,7 +2,7 @@
 
 ## Goal
 
-Limit the rule that forbids the current product name in `治疗方案梳理` to device patients. Medication products may appear there when they are part of the reviewed combined-medication list.
+Limit the rule that forbids the current product name in `AI健康管理师介绍` and `治疗方案梳理` to device patients. Medication products may appear in those fields when relevant to the reviewed medication management.
 
 ## Detection
 
@@ -10,9 +10,8 @@ The reviewed patient-detail workbook does not retain `产品类型`. Treat a pat
 
 ## Validation
 
-- Device patient: reject the explicit `--product` value in `治疗方案梳理`.
-- Medication patient: do not apply the product-name exclusion; retain the existing requirement that every reviewed combined medication appears in `治疗方案梳理`.
-- Keep the existing `AI健康管理师介绍` product-name exclusion unchanged.
+- Device patient: reject the explicit `--product` value in `AI健康管理师介绍` and `治疗方案梳理`.
+- Medication patient: do not apply the product-name exclusion in either field; retain the existing requirement that every reviewed combined medication appears in `治疗方案梳理`.
 
 ## Verification
 

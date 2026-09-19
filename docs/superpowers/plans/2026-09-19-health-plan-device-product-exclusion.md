@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Apply the treatment-plan product-name exclusion only to device patients while preserving medication coverage validation.
+**Goal:** Apply the manager-introduction and treatment-plan product-name exclusions only to device patients while preserving medication coverage validation.
 
-**Architecture:** Derive a device flag from the reviewed patient-detail fields already available to stage 2. Use that flag only around the `治疗方案梳理` product-name validation, leaving all other content checks intact.
+**Architecture:** Derive a device flag from the reviewed patient-detail fields already available to stage 2. Use that flag around the `AI健康管理师介绍` and `治疗方案梳理` product-name validations, leaving all other content checks intact.
 
 **Tech Stack:** Node.js ES modules, `@oai/artifact-tool`, `node:assert`, Excel templates.
 

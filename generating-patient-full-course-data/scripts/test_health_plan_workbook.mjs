@@ -78,6 +78,11 @@ const buildArgs = ["--input", sourcePath, "--records", recordsPath, "--template"
 const result = run("build_health_plan_workbook.mjs", buildArgs);
 assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 
+const medicationProductRecords = [records[0], {
+  ...records[1],
+  aiManagerIntro: records[1].aiManagerIntro.replace("当前用药", "当前使用奥美拉唑肠溶胶囊等药物"),
+}];
+await fs.writeFile(recordsPath, JSON.stringify(medicationProductRecords, null, 2), "utf8");
 const medicationProductResult = run("build_health_plan_workbook.mjs", [
   "--input", sourcePath,
   "--records", recordsPath,
@@ -86,6 +91,7 @@ const medicationProductResult = run("build_health_plan_workbook.mjs", [
   "--product", "奥美拉唑肠溶胶囊",
 ]);
 assert.equal(medicationProductResult.status, 0, `${medicationProductResult.stdout}\n${medicationProductResult.stderr}`);
+await fs.writeFile(recordsPath, JSON.stringify(records, null, 2), "utf8");
 
 const outputWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(outputPath));
 const outputSheet = outputWorkbook.worksheets.getItemAt(0);
