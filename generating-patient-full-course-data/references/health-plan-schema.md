@@ -81,7 +81,7 @@ Never invent temperatures, pulse, respiratory rate, blood pressure, oxygen satur
 - Do not add drugs, devices, procedures, injections, supplements, or “整改补充信息”.
 - Every reviewed medication must appear by name. Preserve reviewed dose and schedule text where supplied; do not silently rewrite it.
 - When surgery exists, it may be the first treatment item. Otherwise list reviewed medications only.
-- The explicit current product supplied as `产品：<名称>` must not appear anywhere in this field. Do not compensate by adding a product-only treatment item.
+- When the patient is a device patient, the explicit current product supplied as `产品：<名称>` must not appear anywhere in this field. The current 16/18-column input identifies a device patient with a non-empty `耗材名称`; the legacy 17-column input uses a non-empty `手术名称` as the compatible device signal. Do not compensate by adding a product-only treatment item. For medication patients, the product name may and normally must appear when it is one of the reviewed `combinedMedication` items.
 - Do not output standalone punctuation or symbol joins such as `。+。`.
 
 ### aiPharmacology

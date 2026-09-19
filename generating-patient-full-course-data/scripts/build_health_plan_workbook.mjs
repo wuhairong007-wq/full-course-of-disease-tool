@@ -127,8 +127,8 @@ function validateRecord(record, patient) {
   validatePharmacology(userid, record.aiPharmacology, patient);
   validateNoStandaloneSpecialSymbols(userid, record.treatmentPlan, "治疗方案梳理");
   validateNoStandaloneSpecialSymbols(userid, record.aiPharmacology, "AI药理科普");
-  if (patient.productName && normalize(record.treatmentPlan).includes(patient.productName)) {
-    throw new Error(`${userid}的治疗方案不得出现当前产品名称`);
+  if (patient.isDevice && patient.productName && normalize(record.treatmentPlan).includes(patient.productName)) {
+    throw new Error(`${userid}的器械治疗方案不得出现当前产品名称`);
   }
   validateHealthPlan(userid, record.aiHealthPlan);
   if (normalize(record.monitoringIndicators).split(/\r?\n/).filter(Boolean).length < 4) throw new Error(`${userid}的建议监测指标必须至少4行`);
@@ -165,13 +165,16 @@ const indexes = Object.fromEntries(sourceHeaders.map((header, index) => [header,
 const patientRows = sourceRows.slice(1).filter((row) => row.some((value) => normalize(value)));
 const patients = patientRows.map((row) => {
   const userid = normalize(row[indexes.userid]);
+  const surgeryName = normalize(row[indexes["手术名称"]]);
+  const consumableName = hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "";
   return {
     userid,
     disease: normalize(row[indexes["疾病"]]),
     combinedMedication: normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean),
     prescriptionList: normalize(row[indexes["处方清单"]]),
-    surgeryName: normalize(row[indexes["手术名称"]]),
-    consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
+    surgeryName,
+    consumableName,
+    isDevice: Boolean(consumableName || surgeryName),
     coursePlanName: normalize(row[indexes["全病程方案名称"]]),
     productName,
   };

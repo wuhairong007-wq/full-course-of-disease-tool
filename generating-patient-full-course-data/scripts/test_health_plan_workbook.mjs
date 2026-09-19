@@ -19,11 +19,11 @@ const templatePath = path.join(skillDir, "assets", "health-management-plan-templ
 
 const sourceHeaders = [
   "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
-  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "全病程方案名称", "AI状态", "确认状态",
+  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称",
 ];
 const sourceRows = [
-  [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动伴缓慢心室率", "130****0001", "江苏省南京市", "术后随访", "无", "华法林钠片+对乙酰氨基酚片", "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天；【术后用药阶段】", "单腔永久心脏起搏器植入术", "心房颤动伴缓慢心室率起搏器术后管理方案", "已生成", "已确认"],
-  [2, "U002", "乙*", "2026-08-02 11:00:00", "女", 42, "慢性胃炎", "130****0002", "江苏省无锡市", "稳定期", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "", "慢性胃炎症状与用药随访方案", "已生成", "已确认"],
+  [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动伴缓慢心室率", "130****0001", "江苏省南京市", "术后随访", "无", "华法林钠片+对乙酰氨基酚片", "华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周 + 对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天；【术后用药阶段】", "单腔永久心脏起搏器植入术", "植入式心脏起搏器", "心房颤动伴缓慢心室率起搏器术后管理方案"],
+  [2, "U002", "乙*", "2026-08-02 11:00:00", "女", 42, "慢性胃炎", "130****0002", "江苏省无锡市", "稳定期", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "", "", "慢性胃炎症状与用药随访方案"],
 ];
 
 const records = [
@@ -57,7 +57,7 @@ const records = [
 
 const sourceWorkbook = Workbook.create();
 const sourceSheet = sourceWorkbook.worksheets.add("Sheet1");
-sourceSheet.getRange("A1:Q3").values = [sourceHeaders, ...sourceRows];
+sourceSheet.getRange("A1:P3").values = [sourceHeaders, ...sourceRows];
 await (await SpreadsheetFile.exportXlsx(sourceWorkbook)).save(sourcePath);
 await fs.writeFile(recordsPath, JSON.stringify(records, null, 2), "utf8");
 
@@ -70,13 +70,22 @@ const run = (script, args) => spawnSync(nodePath, [path.join(scriptDir, script),
 const extractResult = run("extract_health_plan_patients.mjs", ["--input", sourcePath, "--output", extractedPath]);
 assert.equal(extractResult.status, 0, `${extractResult.stdout}\n${extractResult.stderr}`);
 assert.deepEqual(JSON.parse(await fs.readFile(extractedPath, "utf8")), [
-  { userid: "U001", activateTime: "2026-08-01 10:00:00", gender: "男", age: 70, disease: "心房颤动伴缓慢心室率", allergyHistory: "无", combinedMedication: ["华法林钠片", "对乙酰氨基酚片"], prescriptionList: sourceRows[0][12], surgeryName: "单腔永久心脏起搏器植入术", consumableName: "", coursePlanName: "心房颤动伴缓慢心室率起搏器术后管理方案" },
+  { userid: "U001", activateTime: "2026-08-01 10:00:00", gender: "男", age: 70, disease: "心房颤动伴缓慢心室率", allergyHistory: "无", combinedMedication: ["华法林钠片", "对乙酰氨基酚片"], prescriptionList: sourceRows[0][12], surgeryName: "单腔永久心脏起搏器植入术", consumableName: "植入式心脏起搏器", coursePlanName: "心房颤动伴缓慢心室率起搏器术后管理方案" },
   { userid: "U002", activateTime: "2026-08-02 11:00:00", gender: "女", age: 42, disease: "慢性胃炎", allergyHistory: "青霉素过敏", combinedMedication: ["奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"], prescriptionList: sourceRows[1][12], surgeryName: "", consumableName: "", coursePlanName: "慢性胃炎症状与用药随访方案" },
 ]);
 
 const buildArgs = ["--input", sourcePath, "--records", recordsPath, "--template", templatePath, "--output", outputPath, "--product", "植入式心脏起搏器"];
 const result = run("build_health_plan_workbook.mjs", buildArgs);
 assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+
+const medicationProductResult = run("build_health_plan_workbook.mjs", [
+  "--input", sourcePath,
+  "--records", recordsPath,
+  "--template", templatePath,
+  "--output", path.join(tempDir, "健康管理方案_用药产品.xlsx"),
+  "--product", "奥美拉唑肠溶胶囊",
+]);
+assert.equal(medicationProductResult.status, 0, `${medicationProductResult.stdout}\n${medicationProductResult.stderr}`);
 
 const outputWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(outputPath));
 const outputSheet = outputWorkbook.worksheets.getItemAt(0);
@@ -110,7 +119,7 @@ await assertInvalidRecords([{ ...records[0], aiPharmacology: `${records[0].aiPha
 await assertInvalidRecords([{ ...records[0], followupPlan: `${records[0].followupPlan}\n• 按审核处方完成后复诊` }, records[1]], /不得引用审核处方、审核方案或已确认方案/);
 await assertInvalidRecords([{ ...records[0], aiManagerIntro: "你好！我是您的AI健康管理师，将围绕当前情况提供健康管理支持，请按医生建议完成复诊。" }, records[1]], /AI健康管理师介绍/);
 await assertInvalidRecords([{ ...records[0], aiManagerIntro: `${records[0].aiManagerIntro} 当前产品为植入式心脏起搏器。` }, records[1]], /不得出现当前产品名称/);
-await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}\n• 植入式心脏起搏器\n——【器械治疗·设备管理】` }, records[1]], /治疗方案不得出现当前产品名称/);
+await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}\n• 植入式心脏起搏器\n——【器械治疗·设备管理】` }, records[1]], /器械治疗方案不得出现当前产品名称/);
 await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}\n。+。` }, records[1]], /治疗方案梳理不得出现单独的特殊符号/);
 await assertInvalidRecords([{ ...records[0], aiPharmacology: `${records[0].aiPharmacology}\n华法林钠片：。+。` }, records[1]], /AI药理科普不得出现单独的特殊符号/);
 
