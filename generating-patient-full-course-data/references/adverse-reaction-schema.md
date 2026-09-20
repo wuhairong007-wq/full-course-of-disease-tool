@@ -39,7 +39,7 @@ The builder derives the sequence number, disease, occurrence time, severity, and
 
 ## Deterministic Fields
 
-- `不良反应发生时间`: generate a stable timestamp strictly later than `激活时间`, in the same year and month, with its clock time between `06:00:00` and `21:59:59` inclusive. Use the remaining legal seconds on the activation day first as part of the available window, then all legal daytime seconds on later days of the month. Stop and report the userid when the activation month contains no legal timestamp; never cross into the next month.
+- `不良反应发生时间`: use the activation period to choose exactly one stable target window. 上午激活（before `12:00:00`）uses `+1天`的下午 `12:00:00–21:59:59`; 下午激活（at or after `12:00:00`）uses `+2天`的上午 `07:30:00–11:59:59`. The target date must remain in the activation year and month, with no alternate date or time-window fallback. If the target would 跨月, 立即停止 the whole build, report the affected `userid` and target date, and produce no workbook. Together with the stage-3 target windows, this rule guarantees that 不良反应发生时间严格晚于用药方案确认时间.
 - `不良反应严重程度分级`: output the normalized `患者标签` (`轻度`, `中度` or `高度`); source `重度` must display as `高度`.
 - `是否触发人工干预`: `高度` → `是`; `轻度` or `中度` → `否`.
 

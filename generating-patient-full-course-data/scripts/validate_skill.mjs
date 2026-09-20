@@ -46,6 +46,8 @@ const requiredFiles = [
   "scripts/test_health_plan_content_validator.mjs",
   "scripts/extract_medication_tracking_patients.mjs",
   "scripts/build_medication_tracking_workbooks.mjs",
+  "scripts/activation_time_windows.mjs",
+  "scripts/test_activation_time_windows.mjs",
   "scripts/medication_confirmation_time.mjs",
   "scripts/medication_specification.mjs",
   "scripts/medication_tracking_wording_validator.mjs",
@@ -132,7 +134,14 @@ assert.match(skill, /integer response rates of 45～70/);
 assert.match(skill, /Do not use `按已审核处方执行`.*similar external-basis wording/s);
 assert.match(skill, /Strip a source label separator such as `规格：` to produce `5mg\/支`/);
 assert.match(skill, /Never begin with a calendar-date phrase such as `自2026-08-28起` or `自2026年-08-28起`/);
-assert.match(skill, /medication confirmation times on or after the service-period start date, strictly later than activation and no more than 7 × 24 hours after activation \(inclusive upper bound\), strictly earlier than the service-period end date, and within `07:00:00–21:59:59`/);
+assert.match(skill, /上午激活.*当日下午.*`12:00:00–21:59:59`/s);
+assert.match(skill, /下午激活.*次日上午.*`07:30:00–11:59:59`/s);
+assert.match(skill, /上午激活.*\+1天.*下午.*不良反应/s);
+assert.match(skill, /下午激活.*\+2天.*上午.*不良反应/s);
+assert.match(skill, /跨月.*停止.*userid/s);
+assert.match(skill, /不良反应发生时间.*严格晚于.*用药方案确认时间/s);
+assert.doesNotMatch(skill, /confirmation times[^\n]*`07:00:00–21:59:59`/);
+assert.doesNotMatch(skill, /occurrence times[^\n]*`06:00:00–21:59:59`/);
 assert.match(skill, /生成不良反应清单 依据文件：<source\.xlsx> 数量：N/);
 assert.match(skill, /生成洞察报告 产品：产品名 服务周期：YYYY-MM-DD 至 YYYY-MM-DD/);
 assert.match(skill, /Stage 5 — Patient Insight Report/);
@@ -167,16 +176,23 @@ assert.match(medicationSchema, /Never begin with a calendar-date phrase such as 
 assert.match(medicationSchema, /Output the value alone, beginning with a number/);
 assert.match(medicationSchema, /Never output a leading .*the word `规格`/);
 assert.match(medicationSchema, /tablet and capsule package denominators must match `\/片` and `\/粒`/);
-assert.match(medicationSchema, /strictly later than `激活时间`.*on or after the service-period start date.*`07:00:00` and `21:59:59`/s);
+assert.match(medicationSchema, /上午激活.*当日下午.*`12:00:00–21:59:59`/s);
+assert.match(medicationSchema, /下午激活.*次日上午.*`07:30:00–11:59:59`/s);
+assert.match(medicationSchema, /目标时间窗口.*服务周期.*无其他日期或时段兜底/s);
+assert.doesNotMatch(medicationSchema, /`07:00:00` and `21:59:59`/);
 assert.match(medicationSchema, /same confirmation timestamp for every medication row belonging to that patient/);
-assert.match(medicationSchema, /strictly earlier than the service-period end date/s);
+assert.match(medicationSchema, /`\[serviceStart, serviceEnd\)`/);
 assert.match(medicationSchema, /activation date equals the service-period end date.*stop.*修改激活日期/s);
 assert.match(medicationSchema, /must not mention the source file or describe absent input/);
 
 const adverseSchema = await fs.readFile(path.join(skillDir, "references", "adverse-reaction-schema.md"), "utf8");
 assert.match(adverseSchema, /`重度` to `高度`.*select patients whose normalized label is `轻度`, `中度` or `高度`/s);
 assert.match(adverseSchema, /fewer than `N` eligible patients exist/);
-assert.match(adverseSchema, /strictly later than `激活时间`.*same year and month.*`06:00:00` and `21:59:59`/s);
+assert.match(adverseSchema, /上午激活.*\+1天.*下午.*`12:00:00–21:59:59`/s);
+assert.match(adverseSchema, /下午激活.*\+2天.*上午.*`07:30:00–11:59:59`/s);
+assert.match(adverseSchema, /跨月.*停止.*userid/s);
+assert.match(adverseSchema, /不良反应发生时间.*严格晚于.*用药方案确认时间/s);
+assert.doesNotMatch(adverseSchema, /`06:00:00` and `21:59:59`/);
 assert.match(adverseSchema, /`高度` → `是`; `轻度` or `中度` → `否`/);
 assert.match(adverseSchema, /Do not introduce a medication absent from `联合用药` or `处方清单`/);
 assert.match(adverseSchema, /Never mention the source file or describe absent input/);
@@ -238,6 +254,10 @@ const insightParser = await fs.readFile(path.join(skillDir, "scripts", "insight_
 assert.match(insightParser, /\[6, 7\]\.includes\(sourcePaths\.length\)/);
 assert.match(insightParser, /templatePath.*null/);
 assert.match(insightParser, /extractOptionalValue/);
+
+const agentYaml = await fs.readFile(path.join(skillDir, "agents", "openai.yaml"), "utf8");
+assert.match(agentYaml, /上午激活.*当日下午.*下午激活.*次日上午/s);
+assert.match(agentYaml, /不良反应.*\+1天.*\+2天.*跨月.*停止/s);
 assert.match(insightParser, /委托方/);
 assert.match(insightParser, /服务商/);
 const insightExtractor = await fs.readFile(path.join(skillDir, "scripts", "extract_insight_sources.py"), "utf8");
