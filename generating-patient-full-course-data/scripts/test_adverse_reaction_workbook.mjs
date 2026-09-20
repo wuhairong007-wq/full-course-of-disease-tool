@@ -23,7 +23,7 @@ const headers = [
 const rows = [
   [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动", "", "", "中度", "青霉素过敏", "利伐沙班片", "利伐沙班片 规格10mg/片，每次10mg，口服，每日1次，晚餐中服用，长期", "", "心房颤动用药管理方案", "已生成", "已确认"],
   [2, "U002", "乙*", "2026-08-12 11:00:00", "女", 42, "慢性胃炎", "", "", "无", "青霉素过敏", "奥美拉唑肠溶胶囊", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天", "", "慢性胃炎用药随访方案", "已生成", "已确认"],
-  [3, "U003", "丙*", "2026-08-18 02:15:30", "女", 58, "二度Ⅱ型房室传导阻滞", "", "", "重度", "无", "对乙酰氨基酚片", "对乙酰氨基酚片 规格0.5g/片，每次0.5g，口服，每日2次，餐后服用，连续3天", "永久心脏起搏器植入术", "房室传导阻滞术后随访方案", "已生成", "已确认"],
+  [3, "U003", "丙*", "2026-08-18 15:20:10", "女", 58, "二度Ⅱ型房室传导阻滞", "", "", "重度", "无", "对乙酰氨基酚片", "对乙酰氨基酚片 规格0.5g/片，每次0.5g，口服，每日2次，餐后服用，连续3天", "永久心脏起搏器植入术", "房室传导阻滞术后随访方案", "已生成", "已确认"],
   [4, "U004", "丁*", "2026-09-07 15:20:10", "男", 36, "支气管哮喘", "", "", "中度", "无", "布地奈德吸入剂", "布地奈德吸入剂 规格200μg/吸，每次1吸，吸入，每日2次，早晚使用，长期", "", "支气管哮喘长期管理方案", "已生成", "已确认"],
 ];
 
@@ -85,12 +85,20 @@ assert.deepEqual(outputRows.slice(1).map((row) => row[4]), records.map((record) 
 for (let index = 0; index < extracted.length; index += 1) {
   const occurrence = new Date(outputRows[index + 1][3].replace(" ", "T"));
   const activation = new Date(extracted[index].activateTime.replace(" ", "T"));
+  const expectedDate = new Date(activation);
+  expectedDate.setDate(expectedDate.getDate() + (activation.getHours() < 12 ? 1 : 2));
   assert(occurrence > activation, `${extracted[index].userid}发生时间未严格晚于激活时间`);
   assert.equal(occurrence.getFullYear(), activation.getFullYear());
   assert.equal(occurrence.getMonth(), activation.getMonth());
+  assert.equal(occurrence.getDate(), expectedDate.getDate(), `${extracted[index].userid}发生日期偏移错误`);
   const secondsOfDay = occurrence.getHours() * 3600 + occurrence.getMinutes() * 60 + occurrence.getSeconds();
-  assert(secondsOfDay >= 6 * 3600, `${extracted[index].userid}发生时间早于06:00:00`);
-  assert(secondsOfDay <= 21 * 3600 + 59 * 60 + 59, `${extracted[index].userid}发生时间晚于21:59:59`);
+  if (activation.getHours() < 12) {
+    assert(secondsOfDay >= 12 * 3600, `${extracted[index].userid}上午激活后的发生时间早于12:00:00`);
+    assert(secondsOfDay <= 21 * 3600 + 59 * 60 + 59, `${extracted[index].userid}上午激活后的发生时间晚于21:59:59`);
+  } else {
+    assert(secondsOfDay >= 7 * 3600 + 30 * 60, `${extracted[index].userid}下午激活后的发生时间早于07:30:00`);
+    assert(secondsOfDay <= 11 * 3600 + 59 * 60 + 59, `${extracted[index].userid}下午激活后的发生时间晚于11:59:59`);
+  }
 }
 
 const repeatedOutput = path.join(tempDir, "不良反应清单_重复生成.xlsx");
@@ -118,6 +126,36 @@ assert.notEqual(productLeak.status, 0);
 assert.match(`${productLeak.stdout}\n${productLeak.stderr}`, /不良反应症状描述不能包含当前产品信息/);
 await assert.rejects(fs.access(rejectedOutput), { code: "ENOENT" });
 await fs.writeFile(recordsPath, JSON.stringify(records), "utf8");
+
+const crossMonthSource = path.join(tempDir, "含跨月患者明细.xlsx");
+const crossMonthRecords = path.join(tempDir, "跨月患者记录.json");
+const crossMonthOutput = path.join(tempDir, "不得生成的跨月不良反应清单.xlsx");
+const crossMonthWorkbook = Workbook.create();
+const crossMonthSheet = crossMonthWorkbook.worksheets.add("Sheet1");
+const crossMonthRow = [...rows[0]];
+crossMonthRow[0] = 1;
+crossMonthRow[1] = "U-CROSS-MONTH";
+crossMonthRow[2] = "跨月患者*";
+crossMonthRow[3] = "2026-09-30 09:00:00";
+crossMonthSheet.getRange("A1:Q2").values = [headers, crossMonthRow];
+await (await SpreadsheetFile.exportXlsx(crossMonthWorkbook)).save(crossMonthSource);
+await fs.writeFile(
+  crossMonthRecords,
+  JSON.stringify([{ ...records[0], userid: "U-CROSS-MONTH" }], null, 2),
+  "utf8",
+);
+const crossMonthResult = run("build_adverse_reaction_workbook.mjs", [
+  "--input", crossMonthSource, "--records", crossMonthRecords, "--count", "1",
+  "--product", "利伐沙班片",
+  "--template", path.join(skillDir, "assets", "adverse-reaction-list-template.xlsx"),
+  "--output", crossMonthOutput,
+]);
+assert.notEqual(crossMonthResult.status, 0);
+assert.match(
+  `${crossMonthResult.stdout}\n${crossMonthResult.stderr}`,
+  /U-CROSS-MONTH.*目标发生日期2026-10-01.*跨月/,
+);
+await assert.rejects(fs.access(crossMonthOutput), { code: "ENOENT" });
 
 const missingCount = run("extract_adverse_reaction_patients.mjs", ["--input", sourcePath, "--output", extractedPath]);
 assert.notEqual(missingCount.status, 0);
