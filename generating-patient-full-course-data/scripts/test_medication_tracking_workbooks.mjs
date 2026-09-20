@@ -21,6 +21,13 @@ function parseDateTime(value) {
   return new Date(String(value).replace(" ", "T"));
 }
 
+const secondsOfDay = (date) => date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds();
+const formatLocalDate = (date) => [
+  date.getFullYear(),
+  String(date.getMonth() + 1).padStart(2, "0"),
+  String(date.getDate()).padStart(2, "0"),
+].join("-");
+
 function assertValidConfirmationTime(value, activationText, serviceStartText, serviceEndText, userid) {
   const activation = parseDateTime(activationText);
   const serviceStart = parseDateTime(`${serviceStartText} 00:00:00`);
@@ -30,9 +37,17 @@ function assertValidConfirmationTime(value, activationText, serviceStartText, se
   assert(confirmation - activation <= 7 * 24 * 3600 * 1000, `${userid}用药方案确认时间必须在激活时间后7天内`);
   assert(confirmation >= serviceStart, `${userid}用药方案确认时间不得早于服务周期开始日期`);
   assert(confirmation < serviceEnd, `${userid}用药方案确认时间不得落在服务周期最后一天`);
-  const secondsOfDay = confirmation.getHours() * 3600 + confirmation.getMinutes() * 60 + confirmation.getSeconds();
-  assert(secondsOfDay >= 7 * 3600, `${userid}确认时间早于07:00:00`);
-  assert(secondsOfDay <= 21 * 3600 + 59 * 60 + 59, `${userid}确认时间晚于21:59:59`);
+  if (activation.getHours() < 12) {
+    assert.equal(formatLocalDate(confirmation), formatLocalDate(activation), `${userid}上午激活后必须当日下午确认`);
+    assert(secondsOfDay(confirmation) >= 12 * 3600, `${userid}上午激活后的确认时间早于12:00:00`);
+    assert(secondsOfDay(confirmation) <= 21 * 3600 + 59 * 60 + 59, `${userid}确认时间晚于21:59:59`);
+  } else {
+    const expected = new Date(activation);
+    expected.setDate(expected.getDate() + 1);
+    assert.equal(formatLocalDate(confirmation), formatLocalDate(expected), `${userid}下午激活后必须次日上午确认`);
+    assert(secondsOfDay(confirmation) >= 7 * 3600 + 30 * 60, `${userid}下午激活后的确认时间早于07:30:00`);
+    assert(secondsOfDay(confirmation) <= 11 * 3600 + 59 * 60 + 59, `${userid}下午激活后的确认时间晚于11:59:59`);
+  }
 }
 
 const sourceHeaders = [
@@ -41,7 +56,7 @@ const sourceHeaders = [
 ];
 const sourceRows = [
   [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动", "", "", "重度", "无", "利伐沙班片+盐酸昂丹司琼注射液", "利伐沙班片 规格10mg/片，每次10mg，口服，每日1次，晚餐中服用，长期 + 盐酸昂丹司琼注射液 规格2mL:4mg，每次4mg，静脉注射，麻醉诱导前给药，单次给药", "", "心房颤动用药管理方案", "已生成", "已确认"],
-  [2, "U002", "乙*", "2026-08-12 11:00:00", "女", 42, "慢性胃炎", "", "", "无", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "", "慢性胃炎用药随访方案", "已生成", "已确认"],
+  [2, "U002", "乙*", "2026-08-12 15:00:00", "女", 42, "慢性胃炎", "", "", "无", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "", "慢性胃炎用药随访方案", "已生成", "已确认"],
 ];
 const records = [
   {
@@ -205,22 +220,29 @@ const expiredBuildArgs = buildArgs.map((value, index) => {
 });
 const expiredResult = run("build_medication_tracking_workbooks.mjs", expiredBuildArgs);
 assert.notEqual(expiredResult.status, 0);
-assert.match(`${expiredResult.stdout}\n${expiredResult.stderr}`, /U001.*激活时间后7天内.*合法确认时间/);
+assert.match(`${expiredResult.stdout}\n${expiredResult.stderr}`, /U001.*目标确认时段.*不在服务周期/);
 await assert.rejects(fs.access(expiredTrackingOutput), { code: "ENOENT" });
 await assert.rejects(fs.access(expiredMedicationOutput), { code: "ENOENT" });
 
-sourceRows[0][3] = "2026-08-31 21:59:59";
-records[0].medicationCycle = "利伐沙班片长期维持；对乙酰氨基酚片连续3天，完成后不自行延长。";
+sourceRows[0][3] = "2026-08-30 15:00:00";
 const noWindowSourceWorkbook = Workbook.create();
 const noWindowSourceSheet = noWindowSourceWorkbook.worksheets.add("Sheet1");
 noWindowSourceSheet.getRange("A1:Q3").values = [sourceHeaders, ...sourceRows];
 await (await SpreadsheetFile.exportXlsx(noWindowSourceWorkbook)).save(sourcePath);
 await fs.writeFile(recordsPath, JSON.stringify(records, null, 2), "utf8");
-const serviceEndActivationExtractResult = run("extract_medication_tracking_patients.mjs", ["--input", sourcePath, ...serviceArgs, "--output", extractedPath]);
-assert.notEqual(serviceEndActivationExtractResult.status, 0);
-assert.match(`${serviceEndActivationExtractResult.stdout}\n${serviceEndActivationExtractResult.stderr}`, /U001的激活日期不能为服务周期最后一天，请修改激活日期/);
-const noConfirmationWindowResult = run("build_medication_tracking_workbooks.mjs", buildArgs);
+const noWindowExtractResult = run("extract_medication_tracking_patients.mjs", ["--input", sourcePath, ...serviceArgs, "--output", extractedPath]);
+assert.equal(noWindowExtractResult.status, 0, `${noWindowExtractResult.stdout}\n${noWindowExtractResult.stderr}`);
+const noWindowTrackingOutput = path.join(tempDir, "跟踪提醒_无目标时段.xlsx");
+const noWindowMedicationOutput = path.join(tempDir, "用药清单_无目标时段.xlsx");
+const noWindowBuildArgs = buildArgs.map((value, index) => {
+  if (buildArgs[index - 1] === "--tracking-output") return noWindowTrackingOutput;
+  if (buildArgs[index - 1] === "--medication-output") return noWindowMedicationOutput;
+  return value;
+});
+const noConfirmationWindowResult = run("build_medication_tracking_workbooks.mjs", noWindowBuildArgs);
 assert.notEqual(noConfirmationWindowResult.status, 0);
-assert.match(`${noConfirmationWindowResult.stdout}\n${noConfirmationWindowResult.stderr}`, /U001的激活日期不能为服务周期最后一天，请修改激活日期/);
+assert.match(`${noConfirmationWindowResult.stdout}\n${noConfirmationWindowResult.stderr}`, /U001.*目标确认时段.*2026-08-31 07:30:00.*服务周期/);
+await assert.rejects(fs.access(noWindowTrackingOutput), { code: "ENOENT" });
+await assert.rejects(fs.access(noWindowMedicationOutput), { code: "ENOENT" });
 
 console.log(JSON.stringify({ status: "passed", patients: 2, trackingRows: trackingRows.length, medicationRows: medicationRows.length }));
