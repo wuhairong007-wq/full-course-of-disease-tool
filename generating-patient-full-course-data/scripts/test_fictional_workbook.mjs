@@ -35,7 +35,8 @@ try {
   const records=JSON.parse(await fs.readFile(recordsPath,'utf8'));
   const review=JSON.parse(await fs.readFile(reviewPath,'utf8'));
   assert.equal(review.minimumMedications,3);
-  assert.equal(review.metrics.distinctPrescriptions,4);
+  assert.equal(review.metrics.distinctDrugCombinations,4);
+  assert(review.metrics.distinctPrescriptions>=4);
   await assert.rejects(run(process.execPath,build), /虚构情境记录不能用于真实患者模式/);
   const fictional=[...build,'--mode','fictional-test'];
   await assert.rejects(run(process.execPath,replace(fictional,'--output',path.join(temp,'虚构测试','patients.xlsx'))), /文件名必须含/);
@@ -46,6 +47,9 @@ try {
   const summary=JSON.parse(result.stdout.trim().split('\n').at(-1));
   assert.equal(summary.mode,'fictional-test');
   assert.equal(summary.minimumActualMedications,3);
+  assert.equal(summary.targetDistinctDrugCombinations,4);
+  assert.equal(summary.distinctDrugCombinations,4);
+  assert.equal(summary.drugCombinationTargetMet,true);
   assert.equal(summary.diversityTargetMet,true);
   assert.deepEqual(summary.medicationCountDistribution,{'3':10});
   const saved=await SpreadsheetFile.importXlsx(await FileBlob.load(output));

@@ -4,10 +4,11 @@ import { generateFictionalRecords, validateFictionalReview } from './fictional_t
 
 const catalog=JSON.parse(await fs.readFile(new URL('../assets/fictional-osteoarthritis-catalog.json',import.meta.url),'utf8'));
 const patients=Array.from({length:1498},(_,i)=>({userid:`TEST-${String(i).padStart(5,'0')}`,age:i%3===0?70:50,gender:i%2?'男':'女',disease:'原发性膝骨关节炎',allergyHistory:i%71===0?'磺胺类药物过敏':'无',productName:'硫酸氨基葡萄糖胶囊',productType:'用药'}));
-// The bundled catalog is sufficient up to 576 rows, never a cap on larger runs.
-const options={patients:patients.slice(0,576),catalog,company:'江苏壹号畅达药业有限公司',minimumMedications:3};
+// The bundled catalog has 12 distinct medication-name combinations, so it is
+// sufficient only while ceil(sqrt(patient count)) is at most 12.
+const options={patients:patients.slice(0,144),catalog,company:'江苏壹号畅达药业有限公司',minimumMedications:3};
 assert.throws(()=>generateFictionalRecords({...options,minimumMedications:undefined,company:'山东利赛医药有限公司'}),/最少种数3/);
-assert.throws(()=>generateFictionalRecords({...options,patients}),/目标39.*可用24.*缺口15/);
+assert.throws(()=>generateFictionalRecords({...options,patients}),/药品组合目标39.*可用12.*缺口27/);
 // Mixed-disease catalogs must never cross variant disease boundaries.
 const diseaseScoped=structuredClone(catalog);
 const otherDisease=catalog.scope.diseases.find(d=>d!==patients[1].disease);
@@ -25,9 +26,11 @@ for(const diseases of [[],['未知疾病'],[otherDisease,otherDisease],'非数�
  assert.throws(()=>generateFictionalRecords({...options,catalog:invalid,patients:diseasePatients}),/情境疾病范围/);
 }
 const result=generateFictionalRecords(options);
-assert.equal(result.records.length,576);
+assert.equal(result.records.length,144);
 assert.equal(result.metrics.distinctDrugCombinations,12);
-assert.equal(result.metrics.distinctPrescriptions,24);
+assert(result.metrics.distinctPrescriptions>=result.metrics.distinctDrugCombinations);
+assert.equal(result.metrics.targetDistinctDrugCombinations,12);
+assert.equal(result.metrics.drugCombinationTargetMet,true);
 assert.deepEqual(result,generateFictionalRecords(options));
 assert.deepEqual(result.records.map(r=>r.userid),options.patients.map(p=>p.userid));
 for(const [i,r] of result.records.entries()) {
@@ -39,17 +42,14 @@ for(const [i,r] of result.records.entries()) {
  if(patients[i].allergyHistory.includes('磺胺')) assert(!r.combinedMedication.includes('塞来昔布胶囊'));
  if(patients[i].age>=65) assert(entries.slice(1).every(e=>e.includes('疗程3天')));
 }
-const scaling=[10,50,200,500,576].map(n=>generateFictionalRecords({...options,patients:patients.slice(0,n)}).metrics.distinctPrescriptions);
-assert.deepEqual(scaling,[4,8,15,23,24]);
-// Algorithm fixture only: changed durations are NOT researched prescriptions.
+const scaling=[10,50,144].map(n=>generateFictionalRecords({...options,patients:patients.slice(0,n)}).metrics.distinctDrugCombinations);
+assert.deepEqual(scaling,[4,8,12]);
+assert.throws(()=>generateFictionalRecords({...options,patients:patients.slice(0,200)}),/药品组合目标15.*可用12.*缺口3/);
+// Algorithm fixture only: changed durations are NOT new medication-name
+// combinations and therefore cannot satisfy a larger cohort.
 const expanded=structuredClone(catalog);
 expanded.variants.push(...catalog.variants.map(v=>({...structuredClone(v),id:v.id+'-algorithm-test',medications:v.medications.map((m,i)=>({...m,days:m.days+(i===0?1:0)}))})));
-const expandedResult=generateFictionalRecords({...options,patients,catalog:expanded});
-assert.equal(expandedResult.metrics.targetDistinctPrescriptions,39);
-assert.equal(expandedResult.metrics.distinctPrescriptions,39);
-assert.deepEqual(expandedResult,generateFictionalRecords({...options,patients,catalog:expanded}));
-assert.equal(expandedResult.metrics.diversityTargetMet,true);
-assert.deepEqual(expandedResult.metrics.medicationCountDistribution,{'3':1498});
+assert.throws(()=>generateFictionalRecords({...options,patients,catalog:expanded}),/药品组合目标39.*可用12.*缺口27/);
 // Plenty of nominal variants, but only one younger patient can use most of
 // them: a capacity-only check would wrongly claim the three-key target fits.
 const bottleneck=structuredClone(catalog);
@@ -86,11 +86,11 @@ assert.equal(filtered.metrics.distinctPrescriptions,1);
 assert.equal(filtered.metrics.largestPrescriptionGroup,1);
 const review={kind:'fictional-test-review/v1',sourceSHA256:'a'.repeat(64),company:options.company,minimumMedications:3,catalog,assignments:result.assignments};
 const validation={review,patients:options.patients,records:result.records,sourceSHA256:review.sourceSHA256,company:options.company,minimumMedications:3,output:'患者_模拟.xlsx'};
-assert.equal(validateFictionalReview(validation).distinctPrescriptions,24);
-assert.equal(validateFictionalReview({...validation,output:'患者_虚构测试.xlsx'}).distinctPrescriptions,24);
+assert.equal(validateFictionalReview(validation).distinctDrugCombinations,12);
+assert.equal(validateFictionalReview({...validation,output:'患者_虚构测试.xlsx'}).distinctDrugCombinations,12);
 assert.throws(()=>validateFictionalReview({...validation,output:'/虚构测试/患者.xlsx'}),/文件名/);
 assert.throws(()=>validateFictionalReview({...validation,sourceSHA256:'b'.repeat(64)}),/源文件/);
 assert.throws(()=>validateFictionalReview({...validation,company:'另一公司'}),/公司/);
 const tampered=structuredClone(result.records); tampered[0].prescriptionList=tampered[0].prescriptionList.replace('0.5g','5g');
 assert.throws(()=>validateFictionalReview({...validation,records:tampered}),/不一致/);
-console.log(JSON.stringify({status:'passed',suite:'fictional test mode',patients:576,expandedPatients:1498,expandedDistinctPrescriptions:expandedResult.metrics.distinctPrescriptions,scaling,...result.metrics}));
+console.log(JSON.stringify({status:'passed',suite:'fictional test mode',patients:144,largeCohortPatients:1498,scaling,...result.metrics}));

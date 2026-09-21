@@ -34,6 +34,10 @@ function semanticKey(medications) {
  return JSON.stringify(medications.map(({drug,days})=>[drug.name,drug.specification,drug.dose,drug.route,drug.frequency,days].map(v=>normalize(v).replace(/\s/g,''))).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
 }
 
+function medicationCombinationKey(medications) {
+ return JSON.stringify(medications.map(({drug})=>normalize(drug.name)).sort((a,b)=>a.localeCompare(b)));
+}
+
 function validateCatalog(catalog) {
  assert.equal(catalog?.kind,'fictional-medication-catalog/v1','虚构方案库格式不正确');
  const {scope,drugs,variants,sources}=catalog;
@@ -104,19 +108,24 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
  const eligibleById=new Map(patients.map(p=>[p.userid,variants.filter(v=>eligible(p,v))]));
  for(const p of patients)assert(eligibleById.get(p.userid).length,`${p.userid}没有满足过敏、适用范围及最少种数${minimumMedications}的虚构方案`);
  const available=variants.filter(v=>patients.some(p=>eligibleById.get(p.userid).includes(v)));
- // Company filtering can make formerly different variants semantically equal.
+ // Company filtering can make formerly different variants semantically equal
+ // or collapse them to the same medication-name combination.
  const semanticKeys=new Map(available.map(v=>[v,semanticKey(itemsFor(patients[0],v))]));
- const keyFor=v=>semanticKeys.get(v);
- const distinct=[...new Set(available.map(keyFor))];
+ const combinationKeys=new Map(available.map(v=>[v,medicationCombinationKey(itemsFor(patients[0],v))]));
+ const semanticKeyFor=v=>semanticKeys.get(v);
+ const combinationKeyFor=v=>combinationKeys.get(v);
+ const distinctPrescriptions=[...new Set(available.map(semanticKeyFor))];
+ const distinctCombinations=[...new Set(available.map(combinationKeyFor))];
  const target=Math.ceil(Math.sqrt(patients.length));
- assert(distinct.length>=target,`实质处方目标${target}，可用${distinct.length}，缺口${target-distinct.length}；请先检索指南和说明书扩展相容方案库，再重新生成`);
- // Match distinct prescriptions to different eligible patients before balancing
- // repeats. Capacity alone is insufficient when many variants fit one patient.
+ assert(distinctCombinations.length>=target,`药品组合目标${target}，可用${distinctCombinations.length}，缺口${target-distinctCombinations.length}；请先检索指南和说明书扩展相容方案库，再重新生成`);
+ // Match distinct medication-name combinations to different eligible patients
+ // before balancing repeats. Dose, duration, order and wording changes do not
+ // create a new combination.
  const matched=new Map();
  const ordered=[...patients].sort((a,b)=>eligibleById.get(a.userid).length-eligibleById.get(b.userid).length||hash(a.userid).localeCompare(hash(b.userid)));
  function match(p,seen) {
   for(const variant of eligibleById.get(p.userid)) {
-   const key=keyFor(variant);
+   const key=combinationKeyFor(variant);
    if(seen.has(key))continue;
    seen.add(key);
    const previous=matched.get(key);
@@ -130,12 +139,12 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
   match(p,new Set());
   if(matched.size>=target)break;
  }
- assert(matched.size>=target,`实质处方目标${target}，可用${distinct.length}，患者条件下最多可分配${matched.size}，缺口${target-matched.size}；请扩展适配受限患者的相容方案库`);
+ assert(matched.size>=target,`药品组合目标${target}，可用${distinctCombinations.length}，患者条件下最多可分配${matched.size}，缺口${target-matched.size}；请扩展适配受限患者的相容方案库`);
  const activeKeys=new Set(matched.keys());
  const globalUse=new Map();const diseaseUse=new Map();const assigned=new Map();
- const diseaseKey=(p,v)=>JSON.stringify([p.disease,keyFor(v)]);
+ const diseaseKey=(p,v)=>JSON.stringify([p.disease,combinationKeyFor(v)]);
  function assign(p,selected) {
-  const key=keyFor(selected),cohortKey=diseaseKey(p,selected);
+  const key=combinationKeyFor(selected),cohortKey=diseaseKey(p,selected);
   assigned.set(p.userid,selected);
   globalUse.set(key,(globalUse.get(key)||0)+1);
   diseaseUse.set(cohortKey,(diseaseUse.get(cohortKey)||0)+1);
@@ -144,9 +153,9 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
  for(const p of ordered){
   if(assigned.has(p.userid))continue;
   const eligibleVariants=eligibleById.get(p.userid);
-  const active=eligibleVariants.filter(v=>activeKeys.has(keyFor(v)));
-  const selected=(active.length?active:eligibleVariants).sort((a,b)=>(diseaseUse.get(diseaseKey(p,a))||0)-(diseaseUse.get(diseaseKey(p,b))||0)||(globalUse.get(keyFor(a))||0)-(globalUse.get(keyFor(b))||0)||hash(p.userid+a.id).localeCompare(hash(p.userid+b.id)))[0];
-  activeKeys.add(keyFor(selected));assign(p,selected);
+  const active=eligibleVariants.filter(v=>activeKeys.has(combinationKeyFor(v)));
+  const selected=(active.length?active:eligibleVariants).sort((a,b)=>(diseaseUse.get(diseaseKey(p,a))||0)-(diseaseUse.get(diseaseKey(p,b))||0)||(globalUse.get(combinationKeyFor(a))||0)-(globalUse.get(combinationKeyFor(b))||0)||hash(p.userid+a.id).localeCompare(hash(p.userid+b.id)))[0];
+  activeKeys.add(combinationKeyFor(selected));assign(p,selected);
  }
  const records=patients.map(p=>{
   const selected=assigned.get(p.userid);const items=itemsFor(p,selected);
@@ -159,11 +168,17 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
   return record;
  });
  const assignments=patients.map(p=>({userid:p.userid,scenarioId:assigned.get(p.userid).id}));
- const prescriptionUse=new Map();
- for(const p of patients){const key=keyFor(assigned.get(p.userid));prescriptionUse.set(key,(prescriptionUse.get(key)||0)+1);}
+ const prescriptionUse=new Map();const combinationUse=new Map();
+ for(const p of patients){
+  const selected=assigned.get(p.userid);
+  const prescriptionKey=semanticKeyFor(selected),combinationKey=combinationKeyFor(selected);
+  prescriptionUse.set(prescriptionKey,(prescriptionUse.get(prescriptionKey)||0)+1);
+  combinationUse.set(combinationKey,(combinationUse.get(combinationKey)||0)+1);
+ }
  const medicationCountDistribution={};
  for(const record of records)medicationCountDistribution[record.combinedMedication.length]=(medicationCountDistribution[record.combinedMedication.length]||0)+1;
- const metrics={targetDistinctPrescriptions:target,availableDistinctPrescriptions:distinct.length,diversityTargetMet:prescriptionUse.size>=target,medicationCountDistribution,distinctDrugCombinations:new Set(records.map(r=>r.combinedMedication.slice().sort().join('+'))).size,distinctPrescriptions:prescriptionUse.size,distinctPrescriptionTexts:new Set(records.map(r=>r.prescriptionList)).size,largestPrescriptionGroup:Math.max(...prescriptionUse.values())};
+ const drugCombinationTargetMet=combinationUse.size>=target;
+ const metrics={targetDistinctDrugCombinations:target,availableDistinctDrugCombinations:distinctCombinations.length,drugCombinationTargetMet,targetDistinctPrescriptions:target,availableDistinctPrescriptions:distinctPrescriptions.length,diversityTargetMet:drugCombinationTargetMet&&prescriptionUse.size>=target,medicationCountDistribution,distinctDrugCombinations:combinationUse.size,distinctPrescriptions:prescriptionUse.size,distinctPrescriptionTexts:new Set(records.map(r=>r.prescriptionList)).size,largestPrescriptionGroup:Math.max(...prescriptionUse.values())};
  return {records,assignments,metrics};
 }
 
