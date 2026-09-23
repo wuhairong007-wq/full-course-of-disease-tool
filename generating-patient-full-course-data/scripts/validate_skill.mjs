@@ -35,6 +35,7 @@ const requiredFiles = [
   "scripts/test_insight_request_parser.mjs",
   "scripts/validate_insight_report.py",
   "scripts/test_validate_insight_report.py",
+  "scripts/test_interview_templates.py",
   "scripts/drug_specification_validator.mjs",
   "scripts/test_drug_specification_validator.mjs",
   "scripts/equivalent_medication_selector.mjs",
@@ -255,8 +256,11 @@ assert.match(deepInterviewContract, /正文主标题固定为“患者访谈分�
 assert.match(deepInterviewContract, /不得包含当前产品名称/);
 assert.match(deepInterviewContract, /一、调研对象概述.*不得写“使用<产品名称>”/s);
 assert.match(deepInterviewContract, /必须保留调研数量、事件严重程度等事实/);
+assert.match(deepInterviewContract, /概况表固定在“姓名”列前新增“序号”列/);
+assert.match(deepInterviewContract, /序号严格为1至最终患者数/);
 assert.match(skill, /`生成深度访谈` 的 Word 标题固定为 `患者访谈分析报告` 和 `患者访谈记录明细`/);
 assert.match(skill, /在 `一、调研对象概述` 中删除 `使用<产品名称>`/);
+assert.match(skill, /Both overview tables must start with `序号、姓名`/);
 const insightParser = await fs.readFile(path.join(skillDir, "scripts", "insight_request_parser.mjs"), "utf8");
 assert.match(insightParser, /\[6, 7\]\.includes\(sourcePaths\.length\)/);
 assert.match(insightParser, /templatePath.*null/);
