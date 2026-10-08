@@ -54,7 +54,7 @@ Rules:
 - Each prescription entry uses `药品名 + 规格 + 每次用量 + 给药途径 + 频次 + 服药时机 + 具体疗程`; join complete entries with the exact separator ` + `. Use a concrete duration such as `连续30天`, `连续1个月`, `连续2个月`, `疗程至术后4周`, or `单次服用`; never use `长期治疗`, `长期用药`, `持续治疗`, or another indefinite duration.
 - Do not use `tid`, `bid`, `qd`, `q8h`, `prn`, `ivgtt`, `im`, `po`, `适量`, `酌情`, or `必要时`.
 - For surgery patients with actual medications, end with the medication instructions themselves; never add a postoperative-stage label segment.
-- `coursePlanName` must reflect the disease and treatment or postoperative phase without including the source `产品名称` for either medication or device rows. Do not include age or sex labels.
+- `coursePlanName` must contain the source `疾病` wording as written and may add a clinically appropriate treatment or postoperative phase. Do not replace a disease name with a synonym, category, or export-friendly wording merely to satisfy a validator: for example, keep `老年高血压` instead of changing it to `年龄相关高血压`. Do not use one broad cross-disease name such as `心血管-代谢-肾脏联合管理` for unrelated diseases. The name must not include the source `产品名称` for either medication or device rows. Age or sex wording is allowed when it is part of the source disease name; it must not be added as an unrelated patient label.
 - Generated fields must not contain language that references the source file or describes absent input, including `源文件`, `未提供`, `未获取`, `未记录`, or `暂无资料`. Omit unsupported facts and labels without fabricating replacements.
 
 ## Output Workbook

@@ -7,6 +7,7 @@ import { validateGeneratedContent } from "./generated_content_validator.mjs";
 import { getDeviceCompanyPolicy, shouldExcludeMedicinalProduct, validateClinicalMedicationSelection } from "./clinical_medication_validator.mjs";
 import { validateMedicationReviews } from "./medication_review_validator.mjs";
 import { validateFictionalReview, DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS, hasFictionalFilename } from "./fictional_test_mode.mjs";
+import { validateCoursePlanName } from "./course_plan_name_validator.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -206,15 +207,15 @@ function validateRecord(record, patient, company) {
       coursePlanName: record.coursePlanName,
     },
   });
+  validateCoursePlanName({
+    userid: expectedUserid,
+    disease,
+    coursePlanName: record.coursePlanName,
+    productName,
+  });
   validatePrescriptionMapping(expectedUserid, record.combinedMedication, record.prescriptionList, policy);
   if (/\b(?:tid|bid|qd|q8h|prn|ivgtt|im|po)\b|适量|酌情|必要时/i.test(record.prescriptionList)) {
     throw new Error(`${expectedUserid}的处方含禁用缩写或模糊词`);
-  }
-  if (/高龄|老年|中老年|青年|中年|男性|女性|男患者|女患者/.test(record.coursePlanName)) {
-    throw new Error(`${expectedUserid}的方案名称含年龄或性别标识`);
-  }
-  if (productName && record.coursePlanName.includes(productName)) {
-    throw new Error(`${expectedUserid}的方案名称不得出现产品名称`);
   }
   if (productType === "器械") {
     if (!normalize(record.surgeryName)) throw new Error(`${expectedUserid}的器械产品必须填写手术名称`);
