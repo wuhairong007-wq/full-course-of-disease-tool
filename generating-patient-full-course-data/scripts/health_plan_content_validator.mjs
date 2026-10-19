@@ -17,7 +17,7 @@ export function validateNoRedundantSemicolon(text, userid, fieldLabel) {
 export function validateMedicalRecordContent(text, userid) {
   const value = normalize(text);
   if (medicalRecordCoursePlanPattern.test(value)) {
-    throw new Error(`${userid || "患者"}的AI病例解读不得出现全病程方案：xxxxx文案`);
+    throw new Error(`${userid || "患者"}的门诊病历摘要不得出现全病程方案：xxxxx文案`);
   }
 }
 

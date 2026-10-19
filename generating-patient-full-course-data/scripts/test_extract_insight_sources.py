@@ -102,11 +102,44 @@ class ExtractInsightSourcesTest(unittest.TestCase):
         self.assertEqual(insight["metadata"]["client"], "甲方")
         self.assertEqual(insight["metadata"]["provider"], "乙方")
 
+    def test_accepts_manufacturer_medication_patient_and_tracking_headers(self):
+        root = Path(self.temp_dir.name)
+        write_book(root / "patients.xlsx",
+                   ["序号", "userid", "性别", "年龄", "地区", "疾病", "关联厂家用药"],
+                   [[1, "P001", "女", 42, "湖北省武汉市", "软组织血肿", "注射用胰蛋白酶"]])
+        write_book(root / "tracking.xlsx",
+                   ["序号", "患者ID", "体温监测次数", "血压、心率监测次数", "用药提醒次数", "患者响应率", "关联厂家用药"],
+                   [[1, "P001", 2, 1, 3, 50, "注射用胰蛋白酶"]])
+        insight = build_insight(self.paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
+        self.assertEqual(insight["metadata"]["patientCount"], 1)
+        self.assertEqual(insight["metrics"]["medications"]["combinationCountDistribution"],
+                         [{"label": "1", "count": 1}])
+        self.assertEqual(insight["records"]["patients"][0]["关联厂家用药"], "注射用胰蛋白酶")
+        self.assertEqual(insight["records"]["tracking"][0]["关联厂家用药"], "注射用胰蛋白酶")
+
     def test_rejects_empty_patient_master(self):
         patient_path = next(path for path in self.paths if path.endswith("patients.xlsx"))
         write_book(Path(patient_path), ["序号", "userid", "性别", "年龄", "地区", "疾病"], [], "患者全病程数据")
         with self.assertRaisesRegex(ValueError, "患者主表为空"):
             build_insight(self.paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
+
+    def test_accepts_manufacturer_tracking_without_medication_column(self):
+        root = Path(self.temp_dir.name)
+        write_book(root / "patients.xlsx",
+                   ["序号", "userid", "性别", "年龄", "地区", "疾病", "关联厂家用药"],
+                   [[1, "P001", "女", 42, "湖北省武汉市", "软组织血肿", "注射用胰蛋白酶"]])
+        write_book(root / "tracking.xlsx",
+                   ["序号", "患者ID", "姓名", "性别", "年龄", "疾病", "既往过敏史",
+                    "体温监测次数", "血压、心率监测次数", "用药提醒次数", "用药方案",
+                    "用药周期", "方案链接", "患者响应率", "是否触发人工干预"],
+                   [[1, "P001", "张某", "女", 42, "软组织血肿", "无",
+                     2, 1, 3, "注射用胰蛋白酶每日1次", "连续3天", "", 50, "否"]])
+        insight = build_insight(self.paths, "注射用胰蛋白酶", "2026-07-01", "2026-07-31")
+        self.assertEqual(insight["metrics"]["trackingCoverage"]["numerator"], 1)
+        self.assertEqual(insight["metrics"]["medications"]["combinationCountDistribution"],
+                         [{"label": "1", "count": 1}])
+        self.assertNotIn("关联厂家用药", insight["records"]["tracking"][0])
+        self.assertEqual(insight["records"]["tracking"][0]["用药提醒次数"], "3")
 
 
 if __name__ == "__main__":

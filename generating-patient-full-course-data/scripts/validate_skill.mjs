@@ -10,6 +10,10 @@ const requiredFiles = [
   "scripts/extract_patients.mjs",
   "scripts/test_extract_patients.mjs",
   "scripts/build_workbook.mjs",
+  "scripts/medication_column.mjs",
+  "scripts/test_medication_column.mjs",
+  "scripts/test_manufacturer_medication_workflow.mjs",
+  "references/manufacturer-medication.md",
   "scripts/fictional_test_mode.mjs",
   "scripts/generate_fictional_test_records.mjs",
   "scripts/test_fictional_test_mode.mjs",
@@ -285,7 +289,8 @@ assert.match(insightBuilder, /w:start.*"1"/);
 assert.doesNotMatch(insightBuilder, /图表说明：/);
 
 const healthPlanSchema = await fs.readFile(path.join(skillDir, "references", "health-plan-schema.md"), "utf8");
-assert.match(healthPlanSchema, /Omit `主诉：` and `体征：` completely/);
+assert.match(healthPlanSchema, /门诊拟询问受累关节症状及对日常活动的影响/);
+assert.match(healthPlanSchema, /门诊拟检查受累关节活动情况及局部体征/);
 assert.match(healthPlanSchema, /Do not use `按审核处方`.*equivalent wording/s);
 assert.match(healthPlanSchema, /only one medication\/device paragraph per reviewed item/);
 assert.match(healthPlanSchema, /Never mention the source file or describe absent input/);

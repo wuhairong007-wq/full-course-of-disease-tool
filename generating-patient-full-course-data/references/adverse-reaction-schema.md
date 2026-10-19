@@ -2,6 +2,8 @@
 
 ## Input and Selection
 
+`联合用药` may be replaced in place by `关联厂家用药` in every supported layout. Follow `manufacturer-medication.md`: it contains exactly one current product and uses the same internal medication context. Unlike ordinary combined medications, this explicit field can identify the product for symptom-description exclusion when `--product` is absent.
+
 Accept the reviewed patient workbook in the current 16-column sequence, the legacy 17-column sequence below, or the compatible 18-column sequence with `耗材名称` inserted after `手术名称`:
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`

@@ -33,3 +33,16 @@ Compare it with `metadata.version` in the latest GitHub `SKILL.md`. Reinstall th
 ```
 
 Do not commit generated patient workbooks or source patient data to this repository.
+
+Patient medication columns also support `关联厂家用药` in place of `联合用药`.
+This explicit scope keeps only the current medicinal product and one matching
+prescription, defaults to one medication, and preserves the new heading in
+patient-detail exports. Tracking exports omit the medication column and use
+15 columns; medication-list precautions include separate diet, co-medication,
+observation, and storage sections. A requested minimum above one conflicts with
+this scope. All later stages accept either input heading; ordinary combined
+medication behavior and safety checks remain unchanged.
+
+Health-management exports use `门诊病历摘要` and `关联产品临床应用方案`.
+Medical summaries contain six labeled sections; missing complaint or examination
+facts are expressed as prospective interview or examination prompts.

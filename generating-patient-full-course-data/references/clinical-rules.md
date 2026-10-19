@@ -6,6 +6,8 @@ Generate patient-detail drafts for review, not executable prescriptions. Use onl
 
 ## Source-Supported Role Assessment
 
+For the explicit `关联厂家用药` header, follow `manufacturer-medication.md` instead of expanding combination therapy: this is a current-product-only reporting scope, not the patient's complete treatment. Assess product suitability and safety; other roles may be outside the requested scope without implying they are clinically unnecessary.
+
 Use actual symptomEvidence when present. Preserve negative findings such as `无红肿` and numeric zero; do not assume a pain-score scale or severity cutoff when the source does not specify it; missing symptoms are unknown, not mild, moderate, or severe. `患者标签` is not a pain score or inflammation assessment. Do not fabricate symptoms, use randomized strata, or call the legacy osteoarthritis simulation generator when producing patient details. A request to omit simulation labels does not turn invented symptoms into clinical evidence.
 
 For each patient assess the supplied product, etiologic/first-line treatment, maintenance treatment, perioperative treatment, and symptom-supportive treatment independently. A diagnosis or standard procedure may support a role without an explicit symptom, but a missing symptom alone must never create a new indication. Existing symptoms do not automatically establish a drug choice: review site, severity, negation, contraindications, allergy and duplicate therapy. Report contradictory source findings rather than choosing a convenient value.

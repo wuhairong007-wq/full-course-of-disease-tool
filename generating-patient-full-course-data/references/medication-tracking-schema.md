@@ -2,6 +2,8 @@
 
 ## Input Workbook
 
+`联合用药` may be replaced in place by `关联厂家用药` in every supported layout. Read `manufacturer-medication.md`; normalize that single product to `combinedMedication` and generate exactly one medication-list row per patient. For this input variant, omit the medication column from the tracking workbook and require the four precaution sections below in the medication list. Ordinary inputs retain the `联合用药` column and existing precaution rules.
+
 Accept the reviewed patient workbook in the current 16-column sequence, the legacy 17-column sequence below, or the compatible 18-column sequence with `耗材名称` inserted after `手术名称`:
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
@@ -62,13 +64,25 @@ Each `medicationItems` entry must have exactly these seven keys:
 - `medicationTime`: contain only a normalized timing phrase such as `早餐前`, `餐后`, `餐后1小时`, `晚餐中`, `睡前`, `早晚`, `固定时间`, or a quantified equal interval. Do not put administration routes such as `口服`, `吸入`, `肌肉注射`, `静脉注射`, or `静脉滴注` here, and do not use non-timing text such as `按医嘱`.
 - `treatmentDays`: use a positive integer when the reviewed course gives a fixed number of days. Map an explicit `单次服用`、`单次给药`、`单次使用`、`单次注射` or corresponding `一次性` wording to `1`; otherwise use exactly `长期` or `无限期` only when the source explicitly supports it. Stop and report the affected `userid` when the reviewed prescription does not support any of these values; do not invent a duration.
 - `precautions`: include medication-specific safety advice. Mention every supplied non-empty allergy history. For multi-drug regimens, require clinician/pharmacist review of combined-medication interactions or spacing without inventing a specific interaction. Include bleeding, hepatic, renal, or age-related cautions only when supported. Do not invent an allergy or contraindication.
+- For `关联厂家用药` input only, write `precautions` as four separate newline-delimited sections with these exact labels and substantive content:
+  1. `饮食禁忌：` — provide supported food restrictions and administration-with-food guidance. Do not invent restrictions on foods or alcohol. If no specific food restriction is supported, give the supported meal timing or tell the patient to confirm food restrictions with a pharmacist; never assert that the medicine has no food interactions.
+  2. `合并用药：` — explain the supported interaction or spacing precautions. When no actual co-medication is established, use conditional wording such as “如正在服用其他药品，使用前咨询医生或药师核对相互作用”; do not add a drug to the regimen or assert concurrent use.
+  3. `用药观察：` — describe relevant observable adverse-effect signals and the action to take; preserve the patient's documented allergy history and existing safety advice.
+  4. `储存保存：` — use the applicable product instructions and packaging. Do not guess a temperature, shelf life, refrigeration requirement, or packaging material from the generic name. When these details are not verified, give the actionable instruction to retain the original packaging and follow its marked storage conditions, keep it out of children's reach, and check the expiry date.
+  Keep all four sections inside the existing `注意事项` cell, not as new workbook columns. Empty labels or punctuation alone are invalid. Research applicable official product instructions before adding medical details; never copy a different product's storage conditions.
 - Generated medication items must also avoid claims such as `审核处方限量` or `已确认方案要求`; write the supported limit or safety action directly.
 
 ## Tracking Reminder Workbook
 
-Use exactly these 16 headers from the bundled template:
+For ordinary `联合用药` inputs, use exactly these 16 headers from the bundled template:
 
 `序号 | 患者ID | 姓名 | 性别 | 年龄 | 疾病 | 既往过敏史 | 联合用药 | 体温监测次数 | 血压、心率监测次数 | 用药提醒次数 | 用药方案 | 用药周期 | 方案链接 | 患者响应率 | 是否触发人工干预`
+
+For `关联厂家用药` inputs, derive the output from the same template by removing the medication column, shifting its following columns and their formatting left. The worksheet and its table must have exactly these 15 headers, with no blank placeholder column and no renamed `联合用药` substitute:
+
+`序号 | 患者ID | 姓名 | 性别 | 年龄 | 疾病 | 既往过敏史 | 体温监测次数 | 血压、心率监测次数 | 用药提醒次数 | 用药方案 | 用药周期 | 方案链接 | 患者响应率 | 是否触发人工干预`
+
+This removes only the separate medication column; keep the medication names in `用药方案` and `用药周期` and retain the complete medication list.
 
 Generate one row per input patient in source order. Generate the patient's `用药方案确认时间` first, then validate the full trigger-supplied service period and let `D = max(服务结束日期 - 用药方案确认时间 + 1, 1)` using the confirmation timestamp's calendar date. The service start date and patient activation date do not replace the confirmation date in this formula. Generate stable per-user pseudorandom values so rerunning the same input and service period is reproducible while values vary between patients:
 

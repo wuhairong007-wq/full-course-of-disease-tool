@@ -4,6 +4,7 @@ import path from 'node:path';
 import { validateDrugSpecification } from './drug_specification_validator.mjs';
 import { validateGeneratedContent } from './generated_content_validator.mjs';
 import { getDeviceCompanyPolicy, shouldExcludeMedicinalProduct, validateClinicalMedicationSelection } from './clinical_medication_validator.mjs';
+import { MANUFACTURER_MEDICATION_COLUMN, resolveMedicationMinimum, validateManufacturerMedication } from './medication_column.mjs';
 
 const symptomHeaders=['疼痛程度','疼痛评分','炎症表现','症状','症状描述','主诉','症状持续时间','晨僵时间','关节肿胀','活动受限'];
 const contextHeaders=['合并疾病','既往病史','当前用药','用药效果','肝功能','肾功能','妊娠状态','哺乳状态','手术史'];
@@ -18,6 +19,7 @@ export function normalizeFictionalPatient(row) {
  const patient=Object.fromEntries([['userid','userid'],['gender','性别'],['disease','疾病'],['productName','产品名称'],['productType','产品类型'],['allergyHistory','既往过敏史']].map(([key,header])=>[key,normalize(value(key,header))]));
  patient.age=Number(value('age','年龄'));
  patient.allergyHistory ||= '无';
+ if(row.medicationColumn===MANUFACTURER_MEDICATION_COLUMN||Object.hasOwn(row,MANUFACTURER_MEDICATION_COLUMN))patient.medicationColumn=MANUFACTURER_MEDICATION_COLUMN;
  for(const [key,headers] of [['symptomEvidence',symptomHeaders],['clinicalContext',contextHeaders]]) {
   patient[key]=Object.fromEntries(Object.entries({...Object.fromEntries(headers.filter(h=>row[h]!==undefined).map(h=>[h,row[h]])),...(row[key]??{})}).filter(([,v])=>normalize(v)!=='').map(([k,v])=>[k,normalize(v)]));
  }
@@ -63,7 +65,9 @@ function validateCatalog(catalog) {
   assert(nonempty(variant.id)&&!ids.has(variant.id),'重复或空情境编号');ids.add(variant.id);
   assert(nonempty(variant.assumption),'情境缺少假设依据');
   if(variant.diseases!==undefined) assert(Array.isArray(variant.diseases)&&variant.diseases.length&&new Set(variant.diseases).size===variant.diseases.length&&variant.diseases.every(d=>scope.diseases.includes(d)),'情境疾病范围必须是方案库疾病的非空唯一子集');
+  if(variant.minAge!==undefined) assert(Number.isInteger(variant.minAge)&&variant.minAge>=scope.minAge&&variant.minAge<=variant.maxAge,'情境最低年龄边界不正确');
   assert(Number.isInteger(variant.maxAge)&&variant.maxAge>=scope.minAge&&variant.maxAge<=scope.maxAge,'情境年龄上限不正确');
+  if(variant.genders!==undefined) assert(Array.isArray(variant.genders)&&variant.genders.length&&new Set(variant.genders).size===variant.genders.length&&variant.genders.every(gender=>['男','女'].includes(gender)),'情境性别范围只能使用男、女且不得重复');
   assert(Array.isArray(variant.excludedAllergies)&&variant.excludedAllergies.every(nonempty),'情境缺少过敏排除规则');
   assert(Array.isArray(variant.medications)&&variant.medications.length>=1&&variant.medications.length<=5,'情境应包含1～5种药品');
   const items=variant.medications.map(item=>{
@@ -80,11 +84,13 @@ function validateCatalog(catalog) {
  }
 }
 
-export function generateFictionalRecords({patients,catalog,company='',minimumMedications=DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS}) {
- assert(Number.isInteger(minimumMedications)&&minimumMedications>=1&&minimumMedications<=5,'最少种数必须为1～5的整数');
+export function generateFictionalRecords({patients,catalog,company='',minimumMedications}) {
  validateCatalog(catalog);
  assert(Array.isArray(patients)&&patients.length,'患者列表不能为空');
  patients=patients.map(normalizeFictionalPatient);
+ const manufacturerOnly=patients.every(p=>p.medicationColumn===MANUFACTURER_MEDICATION_COLUMN);
+ assert(manufacturerOnly||patients.every(p=>!p.medicationColumn),'同一工作簿不能混合用药字段模式');
+ minimumMedications=resolveMedicationMinimum(manufacturerOnly?MANUFACTURER_MEDICATION_COLUMN:'联合用药',minimumMedications);
  assert.equal(new Set(patients.map(p=>p.userid)).size,patients.length,'重复userid');
  const scope=catalog.scope;
  for(const p of patients) {
@@ -93,20 +99,30 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
   assert(scope.diseases.includes(p.disease)&&p.productName===scope.productName&&p.productType===scope.productType,`${p.userid}疾病或产品不在虚构方案库适用范围`);
   assert(scope.allergyHistories.includes(p.allergyHistory),`${p.userid}过敏史尚未被该方案库核对`);
   assert.deepEqual({...p.symptomEvidence,...p.clinicalContext},scope.evidenceMatches,`${p.userid}存在方案库未覆盖的源临床信息，不能用虚构假设覆盖`);
+  if(manufacturerOnly)validateManufacturerMedication({...p,medications:[p.productName]});
  }
  const variants=catalog.variants.map(v=>({...v,items:v.medications.map(item=>({drug:catalog.drugs[item.drug],days:item.days}))}));
- function itemsFor(p,v) {return v.items.filter(i=>!(shouldExcludeMedicinalProduct({company,productType:p.productType})&&i.drug.name===p.productName));}
+ function itemsFor(p,v) {return v.items.filter(i=>manufacturerOnly?i.drug.name===p.productName:!(shouldExcludeMedicinalProduct({company,productType:p.productType})&&i.drug.name===p.productName));}
  function eligible(p,v) {
   if(v.diseases&&!v.diseases.includes(p.disease)) return false;
-  if(p.age>v.maxAge||v.excludedAllergies.some(a=>p.allergyHistory.includes(a))) return false;
+  if(p.age<(v.minAge??scope.minAge)||p.age>v.maxAge) return false;
+  if(v.genders&&!v.genders.includes(p.gender)) return false;
+  if(v.excludedAllergies.some(a=>p.allergyHistory.includes(a))) return false;
   const meds=itemsFor(p,v).map(i=>i.drug.name);
   if(meds.length<minimumMedications) return false;
   // Chinese celecoxib labeling expressly contraindicates sulfonamide allergy.
   if(p.allergyHistory.includes('磺胺')&&meds.includes('塞来昔布胶囊'))return false;
-  try {validateClinicalMedicationSelection({...p,company,medications:meds});return true;}catch{return false;}
+  try {validateClinicalMedicationSelection({...p,company:manufacturerOnly?'':company,medications:meds});return true;}catch{return false;}
  }
  const eligibleById=new Map(patients.map(p=>[p.userid,variants.filter(v=>eligible(p,v))]));
- for(const p of patients)assert(eligibleById.get(p.userid).length,`${p.userid}没有满足过敏、适用范围及最少种数${minimumMedications}的虚构方案`);
+ for(const p of patients) {
+  const eligibleVariants=eligibleById.get(p.userid);
+  assert(eligibleVariants.length,`${p.userid}没有满足过敏、适用范围及最少种数${minimumMedications}的虚构方案`);
+  if(manufacturerOnly) {
+   const patientPrescriptionKeys=new Set(eligibleVariants.map(v=>semanticKey(itemsFor(p,v))));
+   assert(patientPrescriptionKeys.size===1,`${p.userid}同时匹配到多个不同的厂家产品剂量或疗程；请按疾病、年龄、性别或已提供的临床证据明确情境边界，不得随机分配处方`);
+  }
+ }
  const available=variants.filter(v=>patients.some(p=>eligibleById.get(p.userid).includes(v)));
  // Company filtering can make formerly different variants semantically equal
  // or collapse them to the same medication-name combination.
@@ -116,7 +132,7 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
  const combinationKeyFor=v=>combinationKeys.get(v);
  const distinctPrescriptions=[...new Set(available.map(semanticKeyFor))];
  const distinctCombinations=[...new Set(available.map(combinationKeyFor))];
- const target=Math.ceil(Math.sqrt(patients.length));
+ const target=manufacturerOnly?1:Math.ceil(Math.sqrt(patients.length));
  assert(distinctCombinations.length>=target,`药品组合目标${target}，可用${distinctCombinations.length}，缺口${target-distinctCombinations.length}；请先检索指南和说明书扩展相容方案库，再重新生成`);
  // Match distinct medication-name combinations to different eligible patients
  // before balancing repeats. Dose, duration, order and wording changes do not

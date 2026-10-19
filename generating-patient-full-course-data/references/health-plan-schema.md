@@ -2,6 +2,8 @@
 
 ## Reviewed Input Workbook
 
+`联合用药` may be replaced in place by `关联厂家用药` in every supported layout. Read `manufacturer-medication.md`; normalize the single reviewed product to the same `combinedMedication` array and do not add medications. The stage-2 output uses the fixed health-plan headers below.
+
 The first worksheet may use the current 16-column sequence, the legacy 17-column sequence below, or the compatible 18-column sequence with `耗材名称` inserted after `手术名称`. The legacy 17-column form is normalized to an empty consumable name; trailing historical status columns are ignored.
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
@@ -43,7 +45,7 @@ All ten content fields must be non-empty Chinese text. Status fields are not gen
 
 The output contains exactly these 13 headers, in this order:
 
-`userid | AI健康管理师介绍 | AI病历解读 | 治疗方案梳理 | AI药理科普 | AI健康管理方案 | 建议监测指标 | 生活方式建议_必须避免 | 生活方式建议_建议执行 | 复诊计划 | 紧急就医提醒 | AI状态 | 审核状态`
+`userid | AI健康管理师介绍 | 门诊病历摘要 | 关联产品临床应用方案 | AI药理科普 | AI健康管理方案 | 建议监测指标 | 生活方式建议_必须避免 | 生活方式建议_建议执行 | 复诊计划 | 紧急就医提醒 | AI状态 | 审核状态`
 
 Generate exactly one row for every input patient, in source order. Do not expose names, phone numbers, or other input-only columns.
 
@@ -60,21 +62,22 @@ The bracketed context must contain the supplied disease, or the exact reviewed s
 
 Do not copy a sample disease into another patient's record. Do not use “保证”, “确保疗效”, “快速康复”, or “帮助您安全、高效地度过康复期”, because these can imply guaranteed safety, speed, or outcome. Do not describe measurements, symptoms, or treatment response as already observed.
 
-### aiMedicalRecord
+### aiMedicalRecord (output header: `门诊病历摘要`)
 
-Use source facts only and include these labels on separate lines:
+Include these six labels on separate lines:
 
 - `就诊科室：` — choose a conventional specialty from the disease; this is routing guidance, not a new diagnosis.
 - `就诊日期：` — use the activation date.
+- `主诉：` — when source evidence contains a chief complaint, summarize it faithfully. When none exists, write a prospective interview prompt such as `门诊拟询问受累关节症状及对日常活动的影响（非患者已报告症状）`; never assert a symptom as patient-reported.
+- `体征：` — when source evidence contains examination findings, summarize them faithfully. When none exists, write a prospective examination prompt such as `门诊拟检查受累关节活动情况及局部体征（非已观察结果）`; never invent measurements, examination findings, or test results.
 - `处置：` — conservatively summarize only the reviewed disease, surgery, medication, prescription, and plan.
+- `复诊：` — state the reviewed follow-up timing and purpose from the prescription/course context, plus earlier review for worsening or urgent symptoms as appropriate.
 
-The reviewed input has no chief-complaint or physical-examination fields. Omit `主诉：` and `体征：` completely; do not output missing-input placeholders and do not simulate typical values or symptoms.
-
-Do not add a separate `全病程方案：` label or repeat the full-course plan name in this field. The plan name is used in `aiManagerIntro`; `aiMedicalRecord` must contain only the three required medical-record labels and the reviewed clinical facts.
+Do not present prospective prompts as observed or patient-reported facts. Do not add a separate `全病程方案：` label or repeat the full-course plan name in this field. The plan name is used in `aiManagerIntro`; `aiMedicalRecord` must contain only the six required labels and supported facts or clearly prospective prompts.
 
 Never invent temperatures, pulse, respiratory rate, blood pressure, oxygen saturation, laboratory values, imaging results, pathological stage, chief complaint, symptoms, examination findings, contraindications, or treatment response.
 
-### treatmentPlan
+### treatmentPlan (output header: `关联产品临床应用方案`)
 
 - Use `•` for each item and add a following classification line in the form `——【分类·作用】`.
 - Only organize the reviewed `combinedMedication`, `prescriptionList`, and non-empty `surgeryName`.

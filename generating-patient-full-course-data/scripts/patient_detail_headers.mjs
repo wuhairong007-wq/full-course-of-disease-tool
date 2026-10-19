@@ -1,3 +1,5 @@
+import { getMedicationColumn, MANUFACTURER_MEDICATION_COLUMN } from "./medication_column.mjs";
+
 export const PATIENT_DETAIL_HEADERS_17 = [
   "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
   "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "全病程方案名称", "AI状态", "确认状态",
@@ -12,7 +14,9 @@ export const PATIENT_DETAIL_HEADERS_18 = [
 export const PATIENT_DETAIL_HEADERS_16 = PATIENT_DETAIL_HEADERS_18.slice(0, 16);
 
 export function parsePatientDetailHeaders(headers) {
-  const normalized = headers.map((value) => String(value ?? "").trim());
+  getMedicationColumn(headers);
+  const normalized = headers.map((value) => String(value ?? "").trim())
+    .map(header => header === MANUFACTURER_MEDICATION_COLUMN ? "联合用药" : header);
   if (JSON.stringify(normalized) === JSON.stringify(PATIENT_DETAIL_HEADERS_16)) {
     return { headers: PATIENT_DETAIL_HEADERS_16, hasConsumableName: true };
   }

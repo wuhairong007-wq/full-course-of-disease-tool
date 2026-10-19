@@ -6,6 +6,7 @@ import { generateAdverseReactionTime } from "./adverse_reaction_time.mjs";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
 import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
 import { parsePatientDetailHeaders } from "./patient_detail_headers.mjs";
+import { getMedicationColumn, parseMedicationCell, MANUFACTURER_MEDICATION_COLUMN } from "./medication_column.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -46,6 +47,7 @@ const templateWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(ar
 const sourceRows = sourceWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
 const headers = sourceRows[0].map(normalize);
 const { hasConsumableName } = parsePatientDetailHeaders(headers);
+const medicationColumn = getMedicationColumn(headers);
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
 const patients = sourceRows.slice(1).filter((row) => row.some((value) => normalize(value))).map((row) => ({
   userid: normalize(row[indexes.userid]),
@@ -53,12 +55,13 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   diseaseName: normalize(row[indexes["疾病"]]),
   adverseReactionLevel: normalizeAdverseReactionLevel(row[indexes["患者标签"]]),
   allergyHistory: normalize(row[indexes["既往过敏史"]]) || "无",
-  combinedMedication: normalize(row[indexes["联合用药"]]),
+  combinedMedication: parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, normalize(row[indexes.userid])).join("+"),
   prescriptionList: normalize(row[indexes["处方清单"]]),
   surgeryName: normalize(row[indexes["手术名称"]]),
   consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
   coursePlanName: normalize(row[indexes["全病程方案名称"]]),
-  ...(productName ? { productName } : {}),
+  ...(productName || medicationColumn === MANUFACTURER_MEDICATION_COLUMN
+    ? { productName: productName || normalize(row[indexes[medicationColumn]]) } : {}),
 })).filter((patient) => ["轻度", "中度", "高度"].includes(patient.adverseReactionLevel));
 if (patients.length < count) throw new Error(`符合条件的轻度、中度或高度患者仅${patients.length}位，少于请求数量${count}`);
 const selected = patients.slice(0, count);

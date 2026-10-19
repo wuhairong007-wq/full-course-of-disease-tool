@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 import { parsePatientDetailHeaders } from "./patient_detail_headers.mjs";
+import { getMedicationColumn, parseMedicationCell } from "./medication_column.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -26,6 +27,7 @@ const rows = workbook.worksheets.getItemAt(0).getUsedRange(true).values;
 if (!rows.length) throw new Error("审核后患者明细为空");
 const headers = rows[0].map(normalize);
 const { hasConsumableName } = parsePatientDetailHeaders(headers);
+const medicationColumn = getMedicationColumn(headers);
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
 
 const patients = [];
@@ -35,7 +37,7 @@ for (const row of rows.slice(1)) {
   const age = Number(row[indexes["年龄"]]);
   const disease = normalize(row[indexes["疾病"]]);
   const coursePlanName = normalize(row[indexes["全病程方案名称"]]);
-  const combinedMedication = normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean);
+  const combinedMedication = parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, userid);
   if (!userid) throw new Error("审核后患者明细存在空userid");
   if (!Number.isFinite(age) || age < 0 || age > 130) throw new Error(`${userid}存在无效年龄`);
   if (!disease) throw new Error(`${userid}的疾病不能为空`);

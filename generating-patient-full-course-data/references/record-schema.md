@@ -4,6 +4,8 @@ The input, seven-key record, source preservation and 16-column workbook contract
 
 ## Input
 
+When the source includes `关联厂家用药` instead of `联合用药` (or adds it to the base input), follow `manufacturer-medication.md`: keep exactly the current medicinal product and one matching prescription, default to one medication, and use `关联厂家用药` in output column L. All other workbook, safety and source-preservation checks remain in force.
+
 The first worksheet must contain these exact headers:
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 产品名称 | 产品类型`

@@ -180,6 +180,66 @@ const repeatMedicationWorkbook = await SpreadsheetFile.importXlsx(await FileBlob
 const repeatMedicationRows = repeatMedicationWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
 assert.deepEqual(repeatMedicationRows.slice(1).map((row) => [row[0], row[1]]), medicationRows.slice(1).map((row) => [row[0], row[1]]));
 assert.equal(medicationSheet.tables.items.length, 1);
+const manufacturerSourcePath = path.join(tempDir, "关联厂家审核后患者明细.xlsx");
+const manufacturerHeaders = [...sourceHeaders];
+manufacturerHeaders[11] = "关联厂家用药";
+const manufacturerSourceRows = sourceRows.map((row) => {
+  const values = [...row];
+  values[11] = row[11].split("+")[0];
+  values[12] = row[12].split(" + ")[0];
+  return values;
+});
+const manufacturerRecords = records.map((record) => ({
+  ...record,
+  medicationItems: [{
+    ...record.medicationItems[0],
+    precautions: `饮食禁忌：随具体药品饮食要求安排进餐。\n合并用药：新增药物前咨询医生或药师并核对相互作用。\n用药观察：${record.medicationItems[0].precautions}\n储存保存：按药盒标示的条件保存，放在儿童不能接触处。`,
+  }],
+}));
+const manufacturerRecordsPath = path.join(tempDir, "manufacturer-records.json");
+await fs.writeFile(manufacturerRecordsPath, JSON.stringify(manufacturerRecords));
+const manufacturerSourceWorkbook = Workbook.create();
+const manufacturerSourceSheet = manufacturerSourceWorkbook.worksheets.add("Sheet1");
+manufacturerSourceSheet.getRange("A1:Q3").values = [manufacturerHeaders, ...manufacturerSourceRows];
+await (await SpreadsheetFile.exportXlsx(manufacturerSourceWorkbook)).save(manufacturerSourcePath);
+const manufacturerTrackingOutput = path.join(tempDir, "关联厂家_跟踪提醒_生成.xlsx");
+const manufacturerMedicationOutput = path.join(tempDir, "关联厂家_用药清单_生成.xlsx");
+const manufacturerBuildArgs = buildArgs.map((value, index) => {
+  if (buildArgs[index - 1] === "--input") return manufacturerSourcePath;
+  if (buildArgs[index - 1] === "--records") return manufacturerRecordsPath;
+  if (buildArgs[index - 1] === "--tracking-output") return manufacturerTrackingOutput;
+  if (buildArgs[index - 1] === "--medication-output") return manufacturerMedicationOutput;
+  return value;
+});
+const manufacturerResult = run("build_medication_tracking_workbooks.mjs", manufacturerBuildArgs);
+assert.equal(manufacturerResult.status, 0, `${manufacturerResult.stdout}\n${manufacturerResult.stderr}`);
+const manufacturerTrackingWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(manufacturerTrackingOutput));
+const manufacturerTrackingRows = manufacturerTrackingWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
+assert.deepEqual(manufacturerTrackingRows[0], ["序号", "患者ID", "姓名", "性别", "年龄", "疾病", "既往过敏史", "体温监测次数", "血压、心率监测次数", "用药提醒次数", "用药方案", "用药周期", "方案链接", "患者响应率", "是否触发人工干预"]);
+assert.equal(manufacturerTrackingRows[1].length, 15);
+assert.equal(manufacturerTrackingWorkbook.worksheets.getItemAt(0).tables.items.length, 1);
+assert.deepEqual(manufacturerTrackingWorkbook.worksheets.getItemAt(0).tables.items[0].columnNames, manufacturerTrackingRows[0]);
+assert.deepEqual(manufacturerTrackingRows.slice(1), trackingRows.slice(1).map(row => row.filter((_, index) => index !== 7)));
+const manufacturerMedicationWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(manufacturerMedicationOutput));
+assert.deepEqual(manufacturerMedicationWorkbook.worksheets.getItemAt(0).getUsedRange(true).values.slice(1).map(row => [row[0], row[8]]),
+  manufacturerRecords.map(record => [record.userid, record.medicationItems[0].precautions]));
+
+for (const missing of ["饮食禁忌", "合并用药", "用药观察", "储存保存"]) {
+  const invalid = structuredClone(manufacturerRecords);
+  invalid[0].medicationItems[0].precautions = invalid[0].medicationItems[0].precautions
+    .split("\n").filter(line => !line.startsWith(`${missing}：`)).join("\n");
+  // Preserve existing allergy validation and isolate each required section.
+  await fs.writeFile(manufacturerRecordsPath, JSON.stringify(invalid));
+  const result = run("build_medication_tracking_workbooks.mjs", manufacturerBuildArgs);
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}\n${result.stderr}`, new RegExp(`注意事项.*${missing}`));
+}
+const emptySection = structuredClone(manufacturerRecords);
+emptySection[0].medicationItems[0].precautions = emptySection[0].medicationItems[0].precautions.replace(/储存保存：[^\n]*/, "储存保存：");
+await fs.writeFile(manufacturerRecordsPath, JSON.stringify(emptySection));
+const emptySectionResult = run("build_medication_tracking_workbooks.mjs", manufacturerBuildArgs);
+assert.notEqual(emptySectionResult.status, 0);
+assert.match(`${emptySectionResult.stdout}\n${emptySectionResult.stderr}`, /注意事项.*储存保存/);
 
 async function assertInvalid(invalidRecords, expectedMessage) {
   await fs.writeFile(recordsPath, JSON.stringify(invalidRecords, null, 2), "utf8");

@@ -3,6 +3,7 @@ import path from "node:path";
 import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
 import { parsePatientDetailHeaders } from "./patient_detail_headers.mjs";
+import { getMedicationColumn, parseMedicationCell } from "./medication_column.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -41,6 +42,7 @@ const rows = workbook.worksheets.getItemAt(0).getUsedRange(true).values;
 if (!rows.length) throw new Error("审核后患者明细为空");
 const headers = rows[0].map(normalize);
 const { hasConsumableName } = parsePatientDetailHeaders(headers);
+const medicationColumn = getMedicationColumn(headers);
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
 
 const patients = [];
@@ -49,7 +51,7 @@ for (const row of rows.slice(1)) {
   const userid = normalize(row[indexes.userid]);
   const age = Number(row[indexes["年龄"]]);
   const diseaseName = normalize(row[indexes["疾病"]]);
-  const combinedMedication = normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean);
+  const combinedMedication = parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, userid);
   const prescriptionList = normalize(row[indexes["处方清单"]]);
   const activateDate = parseCalendarDate(row[indexes["激活时间"]], `${userid || "未知患者"}的激活时间`);
   const adverseReactionLevel = normalizeAdverseReactionLevel(row[indexes["患者标签"]]);

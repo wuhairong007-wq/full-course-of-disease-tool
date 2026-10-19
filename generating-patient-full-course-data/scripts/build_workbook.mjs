@@ -8,6 +8,7 @@ import { getDeviceCompanyPolicy, shouldExcludeMedicinalProduct, validateClinical
 import { validateMedicationReviews } from "./medication_review_validator.mjs";
 import { validateFictionalReview, DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS, hasFictionalFilename } from "./fictional_test_mode.mjs";
 import { validateCoursePlanName } from "./course_plan_name_validator.mjs";
+import { getMedicationColumn, MANUFACTURER_MEDICATION_COLUMN, resolveMedicationMinimum, validateManufacturerMedication } from "./medication_column.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -172,7 +173,7 @@ function applyDeviceCompanyPolicy(record, patient, company) {
   return { record: normalizedRecord, policy };
 }
 
-function validateRecord(record, patient, company) {
+function validateRecord(record, patient, company, medicationColumn) {
   const { userid: expectedUserid, age, gender, disease, sourceAllergy, productName, productType } = patient;
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error(`${expectedUserid}记录必须为对象`);
   if (JSON.stringify(Object.keys(record)) !== JSON.stringify(recordKeys)) throw new Error(`${expectedUserid}必须且只能包含七个生成字段`);
@@ -183,6 +184,9 @@ function validateRecord(record, patient, company) {
   }
   if (record.combinedMedication.some((medication) => !normalize(medication) || medication === "无")) throw new Error(`${expectedUserid}的combinedMedication必须填写有效药物通用名`);
   if (new Set(record.combinedMedication).size !== record.combinedMedication.length) throw new Error(`${expectedUserid}的用药存在重复`);
+  if (medicationColumn === MANUFACTURER_MEDICATION_COLUMN) {
+    validateManufacturerMedication({ userid: expectedUserid, productName, productType, medications: record.combinedMedication });
+  }
   validateClinicalMedicationSelection({
     userid: expectedUserid,
     age,
@@ -237,6 +241,10 @@ const sourceSheet = sourceWorkbook.worksheets.getItemAt(0);
 const templateSheet = templateWorkbook.worksheets.getItemAt(0);
 const sourceRows = sourceSheet.getUsedRange(true).values;
 const sourceHeaders = sourceRows[0].map(normalize);
+const medicationColumn = getMedicationColumn(sourceHeaders);
+const manufacturerOnly = medicationColumn === MANUFACTURER_MEDICATION_COLUMN;
+args.minimumMedications = resolveMedicationMinimum(medicationColumn, args["min-medications"]);
+const effectiveCompany = manufacturerOnly ? "" : args.company;
 const actualTemplateHeaders = templateSheet.getUsedRange(true).values[0].map(normalize);
 const records = JSON.parse(await fs.readFile(args.records, "utf8"));
 const reviews = JSON.parse(await fs.readFile(args.review, "utf8"));
@@ -273,9 +281,9 @@ const outputRows = sourceRows.slice(1).map((sourceRow) => {
   const productType = normalize(sourceRow[indexes["产品类型"]]);
   const sourceRecord = recordByUserid.get(userid);
   if (!sourceRecord) throw new Error(`缺少userid记录：${userid}`);
-  const filteredRecord = filterCompanyProduct(sourceRecord, { productName, productType }, args.company);
-  const { record } = applyDeviceCompanyPolicy(filteredRecord, { userid, productName, productType }, args.company);
-  validateRecord(record, { userid, age, gender, disease, sourceAllergy, productName, productType }, args.company);
+  const filteredRecord = filterCompanyProduct(sourceRecord, { productName, productType }, effectiveCompany);
+  const { record } = applyDeviceCompanyPolicy(filteredRecord, { userid, productName, productType }, effectiveCompany);
+  validateRecord(record, { userid, age, gender, disease, sourceAllergy, productName, productType }, effectiveCompany, medicationColumn);
   finalRecords.push(record);
   if (record.allergyHistory !== "无") allergyCount += 1;
   return [
@@ -317,6 +325,7 @@ if (outputRows.length + 1 > existingRows) {
     templateSheet.getRange(`A${rowNumber}:P${rowNumber}`).copyFrom(styleSource, "all");
   }
 }
+templateSheet.getRange("L1").values = [[medicationColumn]];
 templateSheet.getRangeByIndexes(1, 0, outputRows.length, templateHeaders.length).values = outputRows;
 templateSheet.freezePanes.freezeRows(1);
 templateSheet.showGridLines = false;
@@ -355,5 +364,6 @@ console.log(JSON.stringify({
   minimumMedications: args.minimumMedications,
   minimumActualMedications: Math.min(...finalRecords.map(record => record.combinedMedication.length)),
   mode: args.mode,
+  medicationColumn,
   ...(fictionalMetrics ?? {}),
 }));

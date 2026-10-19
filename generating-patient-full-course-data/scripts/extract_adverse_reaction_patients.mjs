@@ -3,6 +3,7 @@ import path from "node:path";
 import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
 import { parsePatientDetailHeaders } from "./patient_detail_headers.mjs";
+import { getMedicationColumn, parseMedicationCell, MANUFACTURER_MEDICATION_COLUMN } from "./medication_column.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -44,6 +45,7 @@ const rows = workbook.worksheets.getItemAt(0).getUsedRange(true).values;
 if (!rows.length) throw new Error("审核后患者明细为空");
 const headers = rows[0].map(normalize);
 const { hasConsumableName } = parsePatientDetailHeaders(headers);
+const medicationColumn = getMedicationColumn(headers);
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
 
 const allUserids = new Set();
@@ -62,7 +64,7 @@ for (const row of rows.slice(1)) {
   if (!["正常", "轻度", "中度", "高度"].includes(level)) throw new Error(`${userid}的不良反应分层必须为正常、轻度、中度或高度（兼容旧值无、重度）`);
   const activateTime = parseDateTime(row[indexes["激活时间"]], `${userid}的激活时间`);
   if (!["轻度", "中度", "高度"].includes(level)) continue;
-  const combinedMedication = normalize(row[indexes["联合用药"]]);
+  const combinedMedication = parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, userid).join("+");
   const prescriptionList = normalize(row[indexes["处方清单"]]);
   if (!combinedMedication) throw new Error(`${userid}的联合用药不能为空`);
   if (!prescriptionList) throw new Error(`${userid}的处方清单不能为空`);
@@ -80,7 +82,7 @@ for (const row of rows.slice(1)) {
     surgeryName: normalize(row[indexes["手术名称"]]),
     consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
     coursePlanName: normalize(row[indexes["全病程方案名称"]]),
-    ...(productName ? { productName } : {}),
+    ...(productName || medicationColumn === MANUFACTURER_MEDICATION_COLUMN ? { productName: productName || combinedMedication } : {}),
   });
 }
 if (eligible.length < count) throw new Error(`符合条件的轻度、中度或高度患者仅${eligible.length}位，少于请求数量${count}`);

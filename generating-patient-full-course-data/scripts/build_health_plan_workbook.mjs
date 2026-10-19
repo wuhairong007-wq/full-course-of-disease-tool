@@ -2,13 +2,14 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { loadArtifactTool } from "./lib/artifact_tool.mjs";
 import { parsePatientDetailHeaders } from "./patient_detail_headers.mjs";
+import { getMedicationColumn, parseMedicationCell } from "./medication_column.mjs";
 import { validateGeneratedContent } from "./generated_content_validator.mjs";
 import { validateHealthPlanContent, validateMedicalRecordContent, validatePharmacologyContent, validatePharmacologyParagraph } from "./health_plan_content_validator.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
 const outputHeaders = [
-  "userid", "AI健康管理师介绍", "AI病历解读", "治疗方案梳理", "AI药理科普", "AI健康管理方案",
+  "userid", "AI健康管理师介绍", "门诊病历摘要", "关联产品临床应用方案", "AI药理科普", "AI健康管理方案",
   "建议监测指标", "生活方式建议_必须避免", "生活方式建议_建议执行", "复诊计划", "紧急就医提醒", "AI状态", "审核状态",
 ];
 const recordKeys = [
@@ -57,11 +58,17 @@ function parseTreatmentItemNames(text) {
 
 function validateMedicalRecord(userid, text) {
   validateMedicalRecordContent(text, userid);
-  if (/^(?:主诉|体征)[：:]/m.test(text)) {
-    throw new Error(`${userid}的AI病历解读不得虚构主诉、体征或生命体征数值`);
+  for (const required of ["就诊科室：", "就诊日期：", "主诉：", "体征：", "处置：", "复诊："]) {
+    if (!text.includes(required)) throw new Error(`${userid}的门诊病历摘要缺少：${required}`);
   }
-  for (const required of ["就诊科室：", "就诊日期：", "处置："]) {
-    if (!text.includes(required)) throw new Error(`${userid}的AI病历解读缺少：${required}`);
+  if (!/^主诉：门诊拟询问.+(?:非患者已报告症状|拟采集提示)/m.test(text)) {
+    throw new Error(`${userid}的门诊病历摘要主诉必须明确为拟询问提示，不得写成已报告症状`);
+  }
+  if (!/^体征：门诊拟检查.+(?:非已观察结果|拟检查提示)/m.test(text)) {
+    throw new Error(`${userid}的门诊病历摘要体征必须明确为拟检查提示，不得写成已观察结果`);
+  }
+  if (/(?:体温|血压|脉搏|呼吸|血氧)[^。\n]*\d|体征：[^\n]*(?:检查结果|影像|实验室|压痛阳性|肿胀明显)/.test(text)) {
+    throw new Error(`${userid}的门诊病历摘要不得伪造体征或检查结果`);
   }
 }
 
@@ -125,7 +132,7 @@ function validateRecord(record, patient) {
   validateManagerIntro(userid, record.aiManagerIntro, patient, patient.productName);
   validateMedicalRecord(userid, record.aiMedicalRecord);
   validatePharmacology(userid, record.aiPharmacology, patient);
-  validateNoStandaloneSpecialSymbols(userid, record.treatmentPlan, "治疗方案梳理");
+  validateNoStandaloneSpecialSymbols(userid, record.treatmentPlan, "关联产品临床应用方案");
   validateNoStandaloneSpecialSymbols(userid, record.aiPharmacology, "AI药理科普");
   if (patient.isDevice && patient.productName && normalize(record.treatmentPlan).includes(patient.productName)) {
     throw new Error(`${userid}的器械治疗方案不得出现当前产品名称`);
@@ -158,6 +165,7 @@ const templateWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(ar
 const sourceRows = sourceWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
 const sourceHeaders = sourceRows[0].map(normalize);
 const { hasConsumableName } = parsePatientDetailHeaders(sourceHeaders);
+const medicationColumn = getMedicationColumn(sourceHeaders);
 const templateSheet = templateWorkbook.worksheets.getItemAt(0);
 const templateHeaders = templateSheet.getRange("A1:M1").values[0].map(normalize);
 if (JSON.stringify(templateHeaders) !== JSON.stringify(outputHeaders)) throw new Error("健康管理方案模板必须使用固定13列表头");
@@ -170,7 +178,7 @@ const patients = patientRows.map((row) => {
   return {
     userid,
     disease: normalize(row[indexes["疾病"]]),
-    combinedMedication: normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean),
+    combinedMedication: parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, userid),
     prescriptionList: normalize(row[indexes["处方清单"]]),
     surgeryName,
     consumableName,

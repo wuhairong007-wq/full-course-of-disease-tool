@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadArtifactTool } from "./lib/artifact_tool.mjs";
+import { getMedicationColumn, MANUFACTURER_MEDICATION_COLUMN } from "./medication_column.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -32,6 +33,7 @@ const args = parseArgs(process.argv.slice(2));
 const workbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input));
 const rows = workbook.worksheets.getItemAt(0).getUsedRange(true).values;
 const headers = rows[0].map((value) => String(value ?? "").trim());
+const medicationColumn = getMedicationColumn(headers);
 for (const [, sourceHeader] of fields) {
   if (!headers.includes(sourceHeader)) throw new Error(`基础数据缺少必需字段：${sourceHeader}`);
 }
@@ -52,6 +54,7 @@ const patients = rows.slice(1).map((row) => Object.fromEntries(fields.map(([outp
 })));
 
 patients.forEach((patient, index) => {
+  if (medicationColumn === MANUFACTURER_MEDICATION_COLUMN) patient.medicationColumn = medicationColumn;
   const row = rows[index + 1];
   for (const [key, optionalHeaders] of [["symptomEvidence", symptomHeaders], ["clinicalContext", clinicalHeaders]]) {
     const evidence = Object.fromEntries(optionalHeaders

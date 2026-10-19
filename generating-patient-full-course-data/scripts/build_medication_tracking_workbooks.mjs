@@ -7,6 +7,7 @@ import { validateMedicationTrackingWording } from "./medication_tracking_wording
 import { extractMedicationSpecification, validateMedicationListSpecification } from "./medication_specification.mjs";
 import { normalizeAdverseReactionLevel } from "./adverse_reaction_level.mjs";
 import { parsePatientDetailHeaders } from "./patient_detail_headers.mjs";
+import { getMedicationColumn, parseMedicationCell, MANUFACTURER_MEDICATION_COLUMN } from "./medication_column.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -183,6 +184,16 @@ function validateRecord(record, patient) {
     if (patient.combinedMedication.length > 1 && !/(?:联合用药|相互作用)/.test(item.precautions)) {
       throw new Error(`${userid}的${item.drugName}注意事项必须提示联合用药核对或相互作用风险`);
     }
+    if (patient.isManufacturerMedication) {
+      for (const label of ["饮食禁忌", "合并用药", "用药观察", "储存保存"]) {
+        const section = item.precautions.split(/\r?\n/)
+          .find(line => new RegExp(`^\\s*${label}\\s*[：:]`).test(line));
+        const content = section?.replace(new RegExp(`^\\s*${label}\\s*[：:]`), "").trim();
+        if (!content || !/[\p{L}\p{N}]/u.test(content)) {
+          throw new Error(`${userid}的${item.drugName}注意事项必须包含有具体内容的${label}分项`);
+        }
+      }
+    }
   }
 }
 
@@ -217,6 +228,9 @@ const sourceWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args
 const sourceRows = sourceWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
 const actualSourceHeaders = sourceRows[0].map(normalize);
 const { hasConsumableName } = parsePatientDetailHeaders(actualSourceHeaders);
+const medicationColumn = getMedicationColumn(actualSourceHeaders);
+const isManufacturerMedication = medicationColumn === MANUFACTURER_MEDICATION_COLUMN;
+const outputTrackingHeaders = trackingHeaders.filter((_, index) => !isManufacturerMedication || index !== 7);
 const indexes = Object.fromEntries(actualSourceHeaders.map((header, index) => [header, index]));
 const patients = sourceRows.slice(1).filter((row) => row.some((value) => normalize(value))).map((row) => {
   const userid = normalize(row[indexes.userid]);
@@ -233,7 +247,8 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   age: Number(row[indexes["年龄"]]),
   diseaseName: normalize(row[indexes["疾病"]]),
   allergyHistory: normalize(row[indexes["既往过敏史"]]) || "无",
-  combinedMedication: normalize(row[indexes["联合用药"]]).split("+").map(normalize).filter(Boolean),
+  combinedMedication: parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, userid),
+  isManufacturerMedication,
   prescriptionList: normalize(row[indexes["处方清单"]]),
   consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
   treatmentPlan: "",
@@ -267,12 +282,13 @@ for (let index = 0; index < patients.length; index += 1) {
     serviceEndDate: patient.serviceEndDate,
   });
   const metrics = trackingMetrics(patient, medicationConfirmationTime);
-  trackingRows.push([
+  const trackingRow = [
     index + 1, patient.userid, patient.patientName, patient.gender, patient.age, patient.diseaseName,
     patient.allergyHistory, patient.combinedMedication.join("+"), metrics.temperature, metrics.bloodPressureHeartRate,
     metrics.medicationReminder, record.medicationPlan, record.medicationCycle, "", metrics.patientResponseRate,
     metrics.manualIntervention,
-  ]);
+  ];
+  trackingRows.push(trackingRow.filter((_, columnIndex) => !isManufacturerMedication || columnIndex !== 7));
   for (const item of record.medicationItems) {
     const treatmentDays = /^[1-9]\d*$/.test(normalize(item.treatmentDays)) ? Number(item.treatmentDays) : item.treatmentDays;
     medicationRows.push([
@@ -287,7 +303,20 @@ const trackingSheet = trackingWorkbook.worksheets.getItemAt(0);
 if (JSON.stringify(trackingSheet.getRange("A1:P1").values[0].map(normalize)) !== JSON.stringify(trackingHeaders)) {
   throw new Error("跟踪提醒模板必须使用固定16列表头");
 }
-await extendTemplate(trackingSheet, trackingHeaders.length, trackingRows, "PatientMedicationTracking");
+if (isManufacturerMedication) {
+  // Shift the template's existing styles with their fields; leave no blank medication column.
+  for (const table of [...(trackingSheet.tables.items ?? [])]) table.delete();
+  const templateRows = trackingSheet.getUsedRange(true).values.length;
+  for (let column = 7; column < trackingHeaders.length - 1; column += 1) {
+    const sourceColumn = trackingSheet.getRangeByIndexes(0, column + 1, templateRows, 1);
+    const targetColumn = trackingSheet.getRangeByIndexes(0, column, templateRows, 1);
+    const width = sourceColumn.format.columnWidth;
+    targetColumn.copyFrom(sourceColumn, "all");
+    targetColumn.format.columnWidth = width;
+  }
+  trackingSheet.getRangeByIndexes(0, trackingHeaders.length - 1, templateRows, 1).clear({ applyTo: "all" });
+}
+await extendTemplate(trackingSheet, outputTrackingHeaders.length, trackingRows, "PatientMedicationTracking");
 
 const medicationWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args["medication-template"]));
 const medicationSheet = medicationWorkbook.worksheets.getItemAt(0);
@@ -296,12 +325,15 @@ if (JSON.stringify(medicationSheet.getRange("A1:I1").values[0].map(normalize)) !
 }
 await extendTemplate(medicationSheet, medicationHeaders.length, medicationRows, "PatientMedicationList");
 
+trackingWorkbook.recalculate();
+medicationWorkbook.recalculate();
 for (const output of [args["tracking-output"], args["medication-output"]]) await fs.mkdir(path.dirname(output), { recursive: true });
 await (await SpreadsheetFile.exportXlsx(trackingWorkbook)).save(args["tracking-output"]);
 await (await SpreadsheetFile.exportXlsx(medicationWorkbook)).save(args["medication-output"]);
 
 if (args["tracking-preview"]) {
-  const preview = await trackingWorkbook.render({ sheetName: trackingSheet.name, range: `A1:P${Math.min(trackingRows.length + 1, 8)}`, scale: 1, format: "png" });
+  const lastColumn = isManufacturerMedication ? "O" : "P";
+  const preview = await trackingWorkbook.render({ sheetName: trackingSheet.name, range: `A1:${lastColumn}${Math.min(trackingRows.length + 1, 8)}`, scale: 1, format: "png" });
   await fs.mkdir(path.dirname(args["tracking-preview"]), { recursive: true });
   await fs.writeFile(args["tracking-preview"], new Uint8Array(await preview.arrayBuffer()));
 }

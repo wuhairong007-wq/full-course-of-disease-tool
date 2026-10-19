@@ -20,6 +20,13 @@ assert.deepEqual(parsePatientDetailHeaders(PATIENT_DETAIL_HEADERS_18), {
 });
 assert.equal(PATIENT_DETAIL_HEADERS_18[14], "耗材名称");
 assert.equal(PATIENT_DETAIL_HEADERS_16.at(-1), "全病程方案名称");
+for (const expected of [PATIENT_DETAIL_HEADERS_16, PATIENT_DETAIL_HEADERS_17, PATIENT_DETAIL_HEADERS_18]) {
+  const manufacturerHeaders = expected.map(header => header === "联合用药" ? "关联厂家用药" : header);
+  assert.deepEqual(parsePatientDetailHeaders(manufacturerHeaders), {
+    headers: expected,
+    hasConsumableName: expected.length !== 17,
+  });
+}
 assert.throws(
   () => parsePatientDetailHeaders([...PATIENT_DETAIL_HEADERS_18].reverse()),
   /固定16列当前表头、17列旧表头或18列兼容表头/,
