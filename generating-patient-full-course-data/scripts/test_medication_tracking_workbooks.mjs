@@ -56,7 +56,7 @@ const sourceHeaders = [
 ];
 const sourceRows = [
   [1, "U001", "甲*", "2026-08-01 10:00:00", "男", 70, "心房颤动", "", "", "重度", "无", "利伐沙班片+盐酸昂丹司琼注射液", "利伐沙班片 规格10mg/片，每次10mg，口服，每日1次，晚餐中服用，长期 + 盐酸昂丹司琼注射液 规格2mL:4mg，每次4mg，静脉注射，麻醉诱导前给药，单次给药", "", "心房颤动用药管理方案", "已生成", "已确认"],
-  [2, "U002", "乙*", "2026-08-12 15:00:00", "女", 42, "慢性胃炎", "", "", "无", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "", "慢性胃炎用药随访方案", "已生成", "已确认"],
+  [2, "U002", "乙*", "2026-08-12 15:00:00", "女", 42, "慢性胃炎", "", "", "无", "青霉素过敏", "奥美拉唑肠溶胶囊+铝碳酸镁咀嚼片", "奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日2次，早晚餐前服用，连续14天 + 铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天", "", "慢性胃炎用药随访方案", "已生成", "已确认"],
 ];
 const records = [
   {
@@ -64,8 +64,8 @@ const records = [
     medicationPlan: "针对70岁男性心房颤动患者，使用利伐沙班片进行抗凝管理，并单次使用盐酸昂丹司琼注射液进行恶心呕吐防治；固定时间核对用药，关注出血、心律及联合用药相互作用。",
     medicationCycle: "利伐沙班片长期维持，盐酸昂丹司琼注射液单次给药，完成后不重复使用。",
     medicationItems: [
-      { drugName: "利伐沙班片", specification: "10mg/片", singleDose: "10mg", frequency: "每日1次", medicationTime: "晚餐中", treatmentDays: "长期", precautions: "随餐服用并观察牙龈出血、血尿、黑便或异常瘀斑；联合用药或新增药物前核对相互作用。" },
-      { drugName: "盐酸昂丹司琼注射液", specification: "2mL:4mg", singleDose: "4mg", frequency: "单次", medicationTime: "固定时间", treatmentDays: 1, precautions: "关注心悸、头晕和QT间期延长风险；联合用药期间新增药物前核对相互作用。" },
+      { drugName: "利伐沙班片", specification: "10mg/片", singleDose: "10mg", frequency: "每日1次", medicationTime: "18:00", treatmentDays: "长期", precautions: "晚餐中随餐服用并观察牙龈出血、血尿、黑便或异常瘀斑；联合用药或新增药物前核对相互作用。" },
+      { drugName: "盐酸昂丹司琼注射液", specification: "2mL:4mg", singleDose: "4mg", frequency: "单次", medicationTime: "08:00", treatmentDays: 1, precautions: "麻醉诱导前给药；关注心悸、头晕和QT间期延长风险；联合用药期间新增药物前核对相互作用。" },
     ],
   },
   {
@@ -73,8 +73,8 @@ const records = [
     medicationPlan: "针对42岁女性慢性胃炎患者，使用奥美拉唑肠溶胶囊和铝碳酸镁咀嚼片，规范餐前与餐后时机并保持药物间隔；结合青霉素过敏史核对新增药物，核对疗程。",
     medicationCycle: "奥美拉唑肠溶胶囊与铝碳酸镁咀嚼片均连续14天，疗程结束后根据症状和复诊意见决定是否调整。",
     medicationItems: [
-      { drugName: "奥美拉唑肠溶胶囊", specification: "20mg/粒", singleDose: "20mg", frequency: "每日1次", medicationTime: "早餐前", treatmentDays: 14, precautions: "整粒吞服，不自行延长疗程；既往青霉素过敏，联合用药期间新增药物前核对过敏风险。" },
-      { drugName: "铝碳酸镁咀嚼片", specification: "0.5g/片", singleDose: "1g", frequency: "每日3次", medicationTime: "餐后1小时", treatmentDays: 14, precautions: "充分咀嚼，与其他口服药间隔至少2小时；既往青霉素过敏，联合用药期间注意核对相互作用。" },
+      { drugName: "奥美拉唑肠溶胶囊", specification: "20mg/粒", singleDose: "20mg", frequency: "每日2次", medicationTime: "08:00, 18:00", treatmentDays: 14, precautions: "早晚餐前整粒吞服，不自行延长疗程；既往青霉素过敏，联合用药期间新增药物前核对过敏风险。" },
+      { drugName: "铝碳酸镁咀嚼片", specification: "0.5g/片", singleDose: "1g", frequency: "每日3次", medicationTime: "09:00, 13:00, 19:00", treatmentDays: 14, precautions: "餐后1小时充分咀嚼，与其他口服药间隔至少2小时；既往青霉素过敏，联合用药期间注意核对相互作用。" },
     ],
   },
 ];
@@ -155,6 +155,8 @@ const medicationRows = medicationSheet.getUsedRange(true).values;
 assert.deepEqual(medicationRows[0], ["userid", "用药方案确认时间", "药品名称", "规格", "单次剂量", "用药频率", "用药时间", "疗程天数", "注意事项"]);
 assert.deepEqual(medicationRows.slice(1).map((row) => row[0]), ["U001", "U001", "U002", "U002"]);
 assert.deepEqual(medicationRows.slice(1).map((row) => row[2]), ["利伐沙班片", "盐酸昂丹司琼注射液", "奥美拉唑肠溶胶囊", "铝碳酸镁咀嚼片"]);
+assert.deepEqual(medicationRows.slice(1).map((row) => row[6]), ["18:00", "08:00", "08:00, 18:00", "09:00, 13:00, 19:00"]);
+assert.deepEqual(medicationRows.slice(1).map((row) => row[8]), records.flatMap(record => record.medicationItems.map(item => item.precautions)));
 assert.equal(medicationRows[2][5], "单次");
 assert.equal(medicationRows[2][7], 1);
 const confirmationByUseridForMetrics = new Map(medicationRows.slice(1).map((row) => [row[0], row[1]]));
@@ -251,10 +253,28 @@ async function assertInvalid(invalidRecords, expectedMessage) {
 await assertInvalid([{ ...records[0], medicationCycle: "自2026年-08-28起，长期治疗", medicationItems: records[0].medicationItems }, records[1]], /开头不得使用日期文案/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], drugName: "阿司匹林肠溶片" }, records[0].medicationItems[1]] }, records[1]], /同序一一对应/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], frequency: "qd" }, records[0].medicationItems[1]] }, records[1]], /中文量化格式/);
-await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], medicationTime: "口服" }, records[0].medicationItems[1]] }, records[1]], /规范服药时机/);
+await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], medicationTime: "口服" }, records[0].medicationItems[1]] }, records[1]], /HH:mm/);
 await assertInvalid([records[0], { ...records[1], medicationItems: [{ ...records[1].medicationItems[0], precautions: "整粒吞服。" }, records[1].medicationItems[1]] }], /必须提示既往过敏史/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], frequency: "每日1次随便" }, records[0].medicationItems[1]] }, records[1]], /中文量化格式/);
-await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], medicationTime: "吸入" }, records[0].medicationItems[1]] }, records[1]], /规范服药时机/);
+await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], medicationTime: "吸入" }, records[0].medicationItems[1]] }, records[1]], /HH:mm/);
+for (const medicationTime of ["早晚", "早中晚", "餐后", "固定时间", "8:00", "24:00", "08:60", "08:00，18:00", "08:00,18:00", "08:00 餐后"]) {
+  const invalid = structuredClone(records);
+  invalid[1].medicationItems[0].medicationTime = medicationTime;
+  await assertInvalid(invalid, /U002.*奥美拉唑.*HH:mm/);
+}
+for (const medicationTime of ["18:00, 08:00", "08:00, 08:00"]) {
+  const invalid = structuredClone(records);
+  invalid[1].medicationItems[0].medicationTime = medicationTime;
+  await assertInvalid(invalid, /用药时间.*递增.*重复/);
+}
+for (const medicationTime of ["08:00", "08:00, 12:00, 18:00"]) {
+  const invalid = structuredClone(records);
+  invalid[1].medicationItems[0].medicationTime = medicationTime;
+  await assertInvalid(invalid, /用药时间.*数量.*用药频率/);
+}
+const repeatedSingle = structuredClone(records);
+repeatedSingle[0].medicationItems[1].medicationTime = "08:00, 18:00";
+await assertInvalid(repeatedSingle, /用药时间.*数量.*用药频率/);
 await assertInvalid([{ ...records[0], medicationItems: [{ ...records[0].medicationItems[0], treatmentDays: 7 }, records[0].medicationItems[1]] }, records[1]], /疗程必须与审核处方一致/);
 await assertInvalid([{ ...records[0], medicationCycle: "激活后第7天开始长期治疗", medicationItems: records[0].medicationItems }, records[1]], /不得使用激活后的相对偏移/);
 await assertInvalid([{ ...records[0], medicationPlan: records[0].medicationPlan.replace("利伐沙班片", "抗凝药"), medicationItems: records[0].medicationItems }, records[1]], /medicationPlan遗漏联合用药/);

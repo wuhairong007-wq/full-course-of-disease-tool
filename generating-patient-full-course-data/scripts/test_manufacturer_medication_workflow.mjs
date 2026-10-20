@@ -176,7 +176,7 @@ try {
     medicationCycle: `${product}连续30天，疗程结束后复诊。`,
     medicationItems: [{
       drugName: product, specification: "0.25g/粒", singleDose: "0.5g", frequency: "每日3次",
-      medicationTime: "餐后", treatmentDays: 30,
+      medicationTime: "08:00, 12:00, 18:00", treatmentDays: 30,
       precautions: [
         "饮食禁忌：餐后使用，食物限制使用前咨询药师。",
         "合并用药：如正在服用其他药品，使用前咨询医生或药师核对相互作用。",
@@ -210,6 +210,7 @@ try {
   assert.deepEqual(trackingRows.slice(1).map(row => row[11]), trackingRecords.map(record => record.medicationCycle));
   const medicationRows = (await readRows(medicationList)).slice(1);
   assert.deepEqual(medicationRows.map(row => row[2]), [product, product]);
+  assert.deepEqual(medicationRows.map(row => row[6]), ["08:00, 12:00, 18:00", "08:00, 12:00, 18:00"]);
   assert.deepEqual(medicationRows.map(row => row[8]), trackingRecords.map(record => record.medicationItems[0].precautions));
 
   const adverseRecords = realRecords.map(record => ({

@@ -18,7 +18,7 @@ const trackingHeaders = [
 const medicationHeaders = ["userid", "用药方案确认时间", "药品名称", "规格", "单次剂量", "用药频率", "用药时间", "疗程天数", "注意事项"];
 const recordKeys = ["userid", "medicationPlan", "medicationCycle", "medicationItems"];
 const itemKeys = ["drugName", "specification", "singleDose", "frequency", "medicationTime", "treatmentDays", "precautions"];
-const allowedMedicationTime = /^(?:早餐前|早餐后|午餐前|午餐后|晚餐前|晚餐后|晚餐中|餐前|餐中|餐后(?:\d+(?:\.\d+)?小时)?|晨起空腹|睡前|早晚|早中晚|固定时间|按\d+小时等间隔)$/;
+const allowedMedicationTime = /^(?:[01]\d|2[0-3]):[0-5]\d(?:, (?:[01]\d|2[0-3]):[0-5]\d)*$/;
 const latinFrequency = /\b(?:qd|bid|tid|qid|q\d+h|prn)\b/i;
 const activateDatePattern = /\d{4}[-年\/]\d{1,2}[-月\/]\d{1,2}/;
 const activationAnchorPattern = /(?:从|以|自)?(?:激活|启用)(?:日期|时间|当日|当天|日|时)?[^。；，]{0,12}(?:起点|算起|开始|起|后|之日起|第\d+天|锚点)/;
@@ -164,7 +164,18 @@ function validateRecord(record, patient) {
     if (latinFrequency.test(item.frequency) || !/^(?:单次|每日[1-9]\d*(?:至[1-9]\d*)?次|每[1-9]\d*小时1次|每周[1-9]\d*次|隔日1次)$/.test(item.frequency)) {
       throw new Error(`${userid}的${item.drugName}用药频率必须使用中文量化格式`);
     }
-    if (!allowedMedicationTime.test(item.medicationTime)) throw new Error(`${userid}的${item.drugName}用药时间必须仅包含规范服药时机`);
+    if (typeof item.medicationTime !== "string" || !allowedMedicationTime.test(item.medicationTime)) {
+      throw new Error(`${userid}的${item.drugName}用药时间必须使用24小时制HH:mm，多个时刻以英文逗号加空格分隔`);
+    }
+    const medicationTimes = item.medicationTime.split(", ");
+    if (medicationTimes.some((time, index) => index > 0 && time <= medicationTimes[index - 1])) {
+      throw new Error(`${userid}的${item.drugName}用药时间必须按时刻递增排列且不得重复`);
+    }
+    const dailyFrequency = item.frequency.match(/^每日(\d+)次$/);
+    const expectedTimeCount = item.frequency === "单次" ? 1 : dailyFrequency ? Number(dailyFrequency[1]) : null;
+    if (expectedTimeCount !== null && medicationTimes.length !== expectedTimeCount) {
+      throw new Error(`${userid}的${item.drugName}用药时间的时刻数量必须与用药频率一致`);
+    }
     if (!isTreatmentDaysValid(item.treatmentDays)) throw new Error(`${userid}的${item.drugName}疗程天数格式无效`);
     const segment = getPrescriptionSegment(patient.prescriptionList, item.drugName, patient.combinedMedication[itemIndex + 1]);
     const expectedTreatmentDays = getExpectedTreatmentDays(segment);
