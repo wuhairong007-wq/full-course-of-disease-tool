@@ -29,4 +29,13 @@ assert.throws(() => validateCoursePlanName({
   productName: "氨氯地平片",
 }), /不得出现产品名称/);
 
+for (const productName of ["氨氯地平片-测试", "氨氯地平片（测试）", "氨氯地平片测试用", "氨氯地平片测试版"]) {
+  assert.throws(() => validateCoursePlanName({
+    userid: "U-PRODUCT",
+    disease: "原发性高血压",
+    coursePlanName: "原发性高血压氨氯地平片管理方案",
+    productName,
+  }), /不得出现产品名称/);
+}
+
 console.log(JSON.stringify({ status: "passed" }));

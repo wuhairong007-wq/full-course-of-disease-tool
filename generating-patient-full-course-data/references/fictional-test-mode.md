@@ -79,7 +79,7 @@
 - `scope`：明确 `diseases`、`productName`、`productType: 用药`、成年 `minAge/maxAge`、已核对 `allergyHistories` 和源临床字段的精确匹配 `evidenceMatches`。不能通过删除源信息或放宽已知禁忌匹配。
 - `planSuffix`：疾病后的方案名称，不含药品名；`assumptions`：明确的测试前提数组。
 - `sources`：每项有可查证 `name`、`url`、所支持用途及限制 `scope`。不得编造来源或仅凭链接存在认定方案安全。
-- `drugs`：以稳定key索引，每药含 `name`、唯一治疗作用 `role`、`specification`、`dose`、`route`、`frequency`、`timing`、`warnings`、非空 `sourceIds`（sources数组的零基索引），可选 `durationSuffix`。
+- `drugs`：以稳定key索引，每药含 `name`、唯一治疗作用 `role`、`specification`、`dose`、`route`、`frequency`、`timing`、`warnings`、非空 `sourceIds`（sources数组的零基索引），可选 `durationSuffix`。`warnings`仅保留在内部方案库及审核材料，不拼入`处方清单`；处方只描述药品名称、规格、用法用量、服用方式、频次及疗程。`durationSuffix`只能补充疗程或给药安排，不能藏入禁忌、监测、警示或就医建议。
 - `variants`：唯一 `id`、假设情境 `assumption`、`maxAge`、`excludedAllergies` 数组、`medications` 数组（每项 `drug` 为上述key，`days` 为正整数）。可选 `minAge`、`genders`（`男`/`女`）和 `diseases`（`scope.diseases` 的非空、无重复子集）表达有来源依据的人群边界。筛选与匹配均执行这些边界；若同一患者同时匹配到核心用法不同的多个变体，必须停止并报告方案歧义。省略条件表示适用全范围，不能用它们随机区分患者。每项1～5种，不重复药品或治疗作用；普通联合用药情境须有实质处方差异，厂家单药情境不强制处方差异。
 
 ## 验证及交付

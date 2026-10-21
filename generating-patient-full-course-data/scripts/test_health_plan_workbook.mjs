@@ -30,7 +30,7 @@ const records = [
   {
     userid: "U001",
     aiManagerIntro: "你好！我是您的AI健康管理师，我将为您提供全面专业的疾病管理支持，从病情监测、症状观察、用药管理到复诊规划，协助您更安全、有序地推进康复与长期管理。针对您的【单腔永久心脏起搏器植入术后】，我将结合“心房颤动伴缓慢心室率起搏器术后管理方案”，为您梳理当前治疗、每日需要关注的切口与出血风险、活动恢复和复诊要点，帮助您理解并参与管理过程。",
-    aiMedicalRecord: "就诊科室：心血管内科\n就诊日期：2026年8月1日\n主诉：门诊拟询问心悸、头晕及日常活动影响（模拟采集提示，非患者已报告症状）\n体征：门诊拟检查脉搏、切口及植入区域情况（模拟检查提示，非已观察结果）\n处置：围绕心房颤动伴缓慢心室率、单腔永久心脏起搏器植入术，以及华法林钠片和对乙酰氨基酚片的当前用药安排开展随访。\n复诊：按手术团队安排复诊，评估切口、起搏器参数及抗凝管理；异常加重时提前就医。",
+    aiMedicalRecord: "就诊科室：心血管内科\n就诊日期：2026年8月1日\n主诉：门诊拟询问心悸、头晕及日常活动影响\n体征：门诊拟检查脉搏、切口及植入区域情况\n处置：围绕心房颤动伴缓慢心室率、单腔永久心脏起搏器植入术，以及华法林钠片和对乙酰氨基酚片的当前用药安排开展随访。\n复诊：按手术团队安排复诊，评估切口、起搏器参数及抗凝管理；异常加重时提前就医。",
     treatmentPlan: "• 单腔永久心脏起搏器植入术\n——【核心治疗·器械治疗】\n• 华法林钠片：华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周\n——【核心治疗·抗凝管理】\n• 对乙酰氨基酚片：对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天；【术后用药阶段】\n——【辅助治疗·疼痛管理】",
     aiPharmacology: "华法林钠片：通过拮抗维生素K依赖性凝血因子的合成发挥抗凝作用，用于心房颤动伴缓慢心室率的抗凝管理；晚餐中服用并完成疗程，需监测凝血指标，注意鼻出血、黑便、血尿及异常瘀斑，新增药物前复核相互作用。\n对乙酰氨基酚片：通过抑制中枢前列腺素合成发挥解热镇痛作用，用于单腔永久心脏起搏器植入术后的短期疼痛管理；餐后服用3天，避免与含同成分复方制剂重复使用，出现皮疹、明显肝区不适等异常时停用并咨询医生。\n单腔永久心脏起搏器植入术：通过植入器械提供节律支持，切口与设备参数应按手术团队计划复核，出现切口感染信号或设备相关异常感受时及时就医。",
     aiHealthPlan: "① 病情与切口监测：每日早晚各观察1次切口红肿、渗液、裂开和疼痛变化，同时记录脉搏及头晕、心悸情况；若异常持续或加重，及时联系手术团队。\n② 用药与安全：逐次核对华法林钠片和对乙酰氨基酚片的剂量、时机及疗程，不自行增减；每日观察牙龈出血、黑便、血尿和大片瘀斑，出现任一信号时尽快就医。\n③ 活动与康复：在手术团队允许范围内分次步行，每日根据耐受逐步增加活动，避免牵拉植入侧上肢；活动中出现胸痛、明显气促或晕厥感应立即停止并就医。\n④ 饮食管理：保持三餐规律，富含维生素K的食物摄入量维持相对稳定，不突然大量增加或减少；饮食调整或使用保健品前先咨询抗凝管理人员。\n⑤ 复诊与升级：按手术团队安排完成切口、起搏器参数和抗凝复核；若切口渗液、无法止血、持续心悸或意识改变，不等待预约时间，立即联系医疗机构。",
@@ -43,7 +43,7 @@ const records = [
   {
     userid: "U002",
     aiManagerIntro: "你好！我是您的AI健康管理师，我将为您提供全面专业的疾病管理支持，从病情监测、症状观察、用药管理到复诊规划，协助您更安全、有序地推进康复与长期管理。针对您的【慢性胃炎治疗与随访阶段】，我将结合“慢性胃炎症状与用药随访方案”，为您梳理当前用药、每日需要关注的消化道症状、饮食调整和过敏风险提示，帮助您理解并参与日常管理过程。",
-    aiMedicalRecord: "就诊科室：消化内科\n就诊日期：2026年8月2日\n主诉：门诊拟询问上腹不适、反酸及进食影响（模拟采集提示，非患者已报告症状）\n体征：门诊拟检查腹部情况及营养状态（模拟检查提示，非已观察结果）\n处置：围绕慢性胃炎、青霉素过敏，以及奥美拉唑肠溶胶囊和铝碳酸镁咀嚼片的当前用药安排开展管理。\n复诊：完成14天疗程后复诊评估症状变化与药物耐受；症状加重或出血信号提前就医。",
+    aiMedicalRecord: "就诊科室：消化内科\n就诊日期：2026年8月2日\n主诉：门诊拟询问上腹不适、反酸及进食影响\n体征：门诊拟检查腹部情况及营养状态\n处置：围绕慢性胃炎、青霉素过敏，以及奥美拉唑肠溶胶囊和铝碳酸镁咀嚼片的当前用药安排开展管理。\n复诊：完成14天疗程后复诊评估症状变化与药物耐受；症状加重或出血信号提前就医。",
     treatmentPlan: "• 奥美拉唑肠溶胶囊：奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续14天\n——【核心治疗·抑酸管理】\n• 铝碳酸镁咀嚼片：铝碳酸镁咀嚼片 规格0.5g/片，每次1g，口服，每日3次，餐后1小时服用，连续14天\n——【辅助治疗·胃黏膜症状管理】",
     aiPharmacology: "奥美拉唑肠溶胶囊：通过抑制胃壁细胞质子泵减少胃酸分泌，用于慢性胃炎相关抑酸管理；早餐前整粒服用，连续14天，不咀嚼或压碎，若反复或长期使用应复诊复核，注意持续腹泻、皮疹等不良反应。\n铝碳酸镁咀嚼片：通过中和胃酸并结合胆汁酸缓解酸相关刺激，用于慢性胃炎的胃黏膜症状管理；餐后1小时充分咀嚼，连续14天，与其他口服药保持已审核处方要求的间隔，注意便秘或腹泻，青霉素过敏信息及全部用药应在复诊时主动说明。",
     aiHealthPlan: "① 病情监测：每日记录上腹不适、反酸或烧灼感的发生时段、频次及与进食关系；若症状连续加重、影响进食或夜间频繁出现，应提前联系消化内科。\n② 用药执行：每日核对奥美拉唑肠溶胶囊早餐前服用和铝碳酸镁咀嚼片餐后1小时服用的时机，保持医生建议的药物间隔，不自行延长疗程。\n③ 活动与休息：饭后安排轻度步行并避免立即平卧，每日根据耐受维持规律活动；若活动诱发明显腹痛、头晕或持续恶心，应停止活动并咨询医生。\n④ 饮食管理：采用规律、适量进餐，记录个人诱发食物并逐步减少，避免空腹饮酒及大量刺激性饮品；进食量持续下降时需提前复诊评估。\n⑤ 复诊与升级：完成14天疗程后复诊，核对症状变化、药物耐受及是否需要调整方案；如出现呕血、黑便、反复呕吐或晕厥，立即前往急诊。",
@@ -115,8 +115,8 @@ await assertInvalidRecords([records[0]], /生成记录数量与患者数量不�
 await assertInvalidRecords([...records, { ...records[1], userid: "U003" }], /生成记录数量与患者数量不一致/);
 await assertInvalidRecords([{ ...records[0], userid: "CHANGED" }, records[1]], /缺少userid记录|userid被改变/);
 await assertInvalidRecords([{ ...records[0], lifestyleAvoid: "不要剧烈活动" }, records[1]], /必须包含至少4个•分项/);
-await assertInvalidRecords([{ ...records[0], aiMedicalRecord: records[0].aiMedicalRecord.replace("门诊拟检查脉搏、切口及植入区域情况（模拟检查提示，非已观察结果）", "体温36.5℃，血压120\/80mmHg") }, records[1]], /门诊病历摘要体征必须明确为拟检查提示|门诊病历摘要不得伪造体征或检查结果/);
-await assertInvalidRecords([{ ...records[0], aiMedicalRecord: records[0].aiMedicalRecord.replace("主诉：门诊拟询问心悸、头晕及日常活动影响（模拟采集提示，非患者已报告症状）", "主诉：患者持续心悸、头晕") }, records[1]], /主诉必须明确为拟询问提示/);
+await assertInvalidRecords([{ ...records[0], aiMedicalRecord: records[0].aiMedicalRecord.replace("门诊拟检查脉搏、切口及植入区域情况", "体温36.5℃，血压120\/80mmHg") }, records[1]], /门诊病历摘要体征必须明确为拟检查提示|门诊病历摘要不得伪造体征或检查结果/);
+await assertInvalidRecords([{ ...records[0], aiMedicalRecord: records[0].aiMedicalRecord.replace("主诉：门诊拟询问心悸、头晕及日常活动影响", "主诉：患者持续心悸、头晕") }, records[1]], /主诉必须明确为拟询问提示/);
 await assertInvalidRecords([{ ...records[0], aiMedicalRecord: records[0].aiMedicalRecord.replace(/复诊：.*$/, "") }, records[1]], /门诊病历摘要缺少：复诊/);
 await assertInvalidRecords([{ ...records[0], aiMedicalRecord: `${records[0].aiMedicalRecord}\n全病程方案：心房颤动伴缓慢心室率起搏器术后管理方案` }, records[1]], /不得出现全病程方案/);
 await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}\n• 阿莫西林胶囊\n——【辅助治疗·抗感染】` }, records[1]], /治疗方案项目数量|输入之外/);
@@ -128,6 +128,8 @@ await assertInvalidRecords([{ ...records[0], aiManagerIntro: "你好！我是您
 await assertInvalidRecords([{ ...records[0], aiManagerIntro: `${records[0].aiManagerIntro} 当前产品为植入式心脏起搏器。` }, records[1]], /不得出现当前产品名称/);
 await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}\n• 植入式心脏起搏器\n——【器械治疗·设备管理】` }, records[1]], /器械治疗方案不得出现当前产品名称/);
 await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}\n。+。` }, records[1]], /关联产品临床应用方案不得出现单独的特殊符号/);
+await assertInvalidRecords([{ ...records[0], aiMedicalRecord: records[0].aiMedicalRecord.replace("主诉：门诊拟询问心悸、头晕及日常活动影响", "主诉：门诊拟询问心悸、头晕及日常活动影响（非患者已报告症状）") }, records[1]], /不得出现辅助对症或事实状态说明文案/);
+await assertInvalidRecords([{ ...records[0], treatmentPlan: `${records[0].treatmentPlan}辅助对症` }, records[1]], /不得出现辅助对症或事实状态说明文案/);
 await assertInvalidRecords([{ ...records[0], aiPharmacology: `${records[0].aiPharmacology}\n华法林钠片：。+。` }, records[1]], /AI药理科普不得出现单独的特殊符号/);
 
 const missingProductResult = run("build_health_plan_workbook.mjs", ["--input", sourcePath, "--records", recordsPath, "--template", templatePath, "--output", outputPath]);
@@ -145,7 +147,7 @@ manufacturerWorkbook.worksheets.add("患者").getRange("A1:P2").values = [
 await (await SpreadsheetFile.exportXlsx(manufacturerWorkbook)).save(manufacturerSource);
 const manufacturerRecord = {
   ...records[1],
-  aiMedicalRecord: "就诊科室：消化内科\n就诊日期：2026年8月2日\n主诉：门诊拟询问上腹不适与进食影响（模拟采集提示，非患者已报告症状）\n体征：门诊拟检查腹部情况（模拟检查提示，非已观察结果）\n处置：围绕慢性胃炎和奥美拉唑肠溶胶囊的用药安排开展管理。\n复诊：疗程后复诊评估；恶化时提前就医。",
+  aiMedicalRecord: "就诊科室：消化内科\n就诊日期：2026年8月2日\n主诉：门诊拟询问上腹不适与进食影响\n体征：门诊拟检查腹部情况\n处置：围绕慢性胃炎和奥美拉唑肠溶胶囊的用药安排开展管理。\n复诊：疗程后复诊评估；恶化时提前就医。",
   treatmentPlan: records[1].treatmentPlan.split("\n").slice(0, 2).join("\n"),
   aiPharmacology: records[1].aiPharmacology.split("\n")[0],
   aiHealthPlan: records[1].aiHealthPlan.replace("和铝碳酸镁咀嚼片餐后1小时服用", ""),

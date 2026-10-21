@@ -3,6 +3,8 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { validateDrugSpecification } from './drug_specification_validator.mjs';
 import { validateGeneratedContent } from './generated_content_validator.mjs';
+import { validatePrescriptionContent } from './prescription_content_validator.mjs';
+import { validateCoursePlanName } from './course_plan_name_validator.mjs';
 import { getDeviceCompanyPolicy, shouldExcludeMedicinalProduct, validateClinicalMedicationSelection } from './clinical_medication_validator.mjs';
 import { MANUFACTURER_MEDICATION_COLUMN, resolveMedicationMinimum, validateManufacturerMedication } from './medication_column.mjs';
 
@@ -27,7 +29,7 @@ export function normalizeFictionalPatient(row) {
 }
 
 function prescription(drug,days) {
- return `${drug.name} 规格${drug.specification}；每次用量${drug.dose}；${drug.route}，${drug.frequency}，${drug.timing}；疗程${days}天${drug.durationSuffix??''}；${drug.warnings}`;
+ return `${drug.name} 规格${drug.specification}；每次用量${drug.dose}；${drug.route}，${drug.frequency}，${drug.timing}；疗程${days}天${drug.durationSuffix??''}`;
 }
 
 function semanticKey(medications) {
@@ -58,6 +60,7 @@ function validateCatalog(catalog) {
   assert(Array.isArray(drug.sourceIds)&&drug.sourceIds.length&&drug.sourceIds.every(i=>Number.isInteger(i)&&sources[i]),`${drug.name}缺少说明书依据`);
   const entry=prescription(drug,3);
   validateDrugSpecification({userid:'方案库',medication:drug.name,prescriptionEntry:entry});
+  validatePrescriptionContent({userid:'方案库',medication:drug.name,prescriptionEntry:entry});
   validateGeneratedContent({userid:'方案库',fields:{prescriptionList:entry}});
  }
  const ids=new Set();const semantics=new Set();
@@ -178,7 +181,7 @@ export function generateFictionalRecords({patients,catalog,company='',minimumMed
   const devicePolicy=getDeviceCompanyPolicy({company,productType:p.productType,productName:p.productName});
   const medicationPrescription=items.map(i=>prescription(i.drug,i.days)).join(' + ');
   const record={userid:p.userid,allergyHistory:p.allergyHistory,combinedMedication:items.map(i=>i.drug.name),prescriptionList:devicePolicy.prescriptionProductMode==='include'?[medicationPrescription,devicePolicy.consumableSegment].filter(Boolean).join(' + '):medicationPrescription,surgeryName:scope.productType==='器械'?`${p.disease}腹腔镜胆囊切除术（使用${p.productName}）`:'' ,consumableName:devicePolicy.consumableName,coursePlanName:p.disease+catalog.planSuffix};
-  assert(!record.combinedMedication.some(m=>record.coursePlanName.includes(m)),'方案名称不得包含产品名称');
+  validateCoursePlanName({userid:p.userid,disease:p.disease,coursePlanName:record.coursePlanName,productName:p.productName});
   validateGeneratedContent({userid:p.userid,fields:{prescriptionList:record.prescriptionList,consumableName:record.consumableName,coursePlanName:record.coursePlanName}});
   assert(!/模拟|虚构/.test([record.combinedMedication.join('+'),record.prescriptionList,record.surgeryName,record.consumableName,record.coursePlanName].join(' ')),`${p.userid}生成内容不得包含模拟说明；请仅在文件名标记`);
   return record;

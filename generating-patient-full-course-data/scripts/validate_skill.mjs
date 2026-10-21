@@ -26,6 +26,8 @@ const requiredFiles = [
   "scripts/test_stage1_output_contract.mjs",
   "scripts/test_build_workbook.mjs",
   "scripts/generated_content_validator.mjs",
+  "scripts/prescription_content_validator.mjs",
+  "scripts/test_prescription_content_validator.mjs",
   "scripts/test_generated_content_validator.mjs",
   "scripts/clinical_medication_validator.mjs",
   "scripts/test_clinical_medication_validator.mjs",

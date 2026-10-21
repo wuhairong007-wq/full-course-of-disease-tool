@@ -4,6 +4,7 @@ const executionPattern = /规格|每次|每日|每周|每\d+小时|口服|外用
 const safetyPattern = /注意|避免|监测|观察|风险|不良反应|咨询|就医|复核|过敏|停用|禁用/;
 const redundantSemicolonPattern = /(?:^|[\r\n。！？：:])\s*；|；\s*(?:$|[\r\n。！？；])/;
 const medicalRecordCoursePlanPattern = /全病程方案\s*[：:]\s*\S+/;
+const metaCommentaryPattern = /辅助(?:性)?对症|(?:并非|非|不是)(?:患者)?(?:已)?(?:报告|观察)(?:到)?的?(?:症状|结果|体征|事实)|(?:模拟|拟)(?:采集|检查|询问)提示/;
 
 const normalize = (value) => String(value ?? "").trim();
 
@@ -77,6 +78,9 @@ export function validateHealthPlanContent(fields) {
     else if (value && typeof value === "object") Object.values(value).forEach(visit);
   };
   visit(fields);
+  if (values.some((value) => metaCommentaryPattern.test(value.replace(/\s+/g, "")))) {
+    throw new Error(`${fields.userid || "患者"}的健康管理方案不得出现辅助对症或事实状态说明文案，请直接写明用途、拟询问内容或拟检查项目`);
+  }
   if (values.some((value) => externalBasisPattern.test(value))) {
     throw new Error(`${fields.userid || "患者"}的健康管理方案不得引用审核处方、审核方案或已确认方案，请直接写明药品、用法和处理动作`);
   }

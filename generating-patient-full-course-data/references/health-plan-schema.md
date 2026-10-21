@@ -68,8 +68,8 @@ Include these six labels on separate lines:
 
 - `就诊科室：` — choose a conventional specialty from the disease; this is routing guidance, not a new diagnosis.
 - `就诊日期：` — use the activation date.
-- `主诉：` — when source evidence contains a chief complaint, summarize it faithfully. When none exists, write a prospective interview prompt such as `门诊拟询问受累关节症状及对日常活动的影响（非患者已报告症状）`; never assert a symptom as patient-reported.
-- `体征：` — when source evidence contains examination findings, summarize them faithfully. When none exists, write a prospective examination prompt such as `门诊拟检查受累关节活动情况及局部体征（非已观察结果）`; never invent measurements, examination findings, or test results.
+- `主诉：` — when source evidence contains a chief complaint, summarize it faithfully. When none exists, write a prospective interview prompt such as `门诊拟询问受累关节症状及对日常活动的影响`; never assert a symptom as patient-reported. Do not append explanatory parentheses or phrases such as `非患者已报告症状`, `拟采集提示` or `模拟采集提示`.
+- `体征：` — when source evidence contains examination findings, summarize them faithfully. When none exists, write a prospective examination prompt such as `门诊拟检查受累关节活动情况及局部体征`; never invent measurements, examination findings, or test results. Do not append `非已观察结果`, `拟检查提示`, `模拟检查提示` or equivalent commentary.
 - `处置：` — conservatively summarize only the reviewed disease, surgery, medication, prescription, and plan.
 - `复诊：` — state the reviewed follow-up timing and purpose from the prescription/course context, plus earlier review for worsening or urgent symptoms as appropriate.
 
@@ -134,6 +134,7 @@ At least four newline-separated danger signals beginning with `⚠`. Tailor them
 
 - Keep `userid` unchanged and cover every input patient exactly once.
 - Use only supplied patient facts; do not fabricate history, comorbidities, tests, staging, contraindications, complications, or outcomes.
+- All ten content fields must avoid `辅助对症`, `辅助性对症`, `非患者已报告症状`, `非已观察结果`, `拟采集提示`, `模拟检查提示` and equivalent meta-commentary. State the supported drug use or action directly, and use plain `门诊拟询问` / `门诊拟检查` when observations are absent. Removing these phrases never authorizes inventing patient symptoms or findings.
 - `treatmentPlan` and `aiPharmacology` must each contain every medication in `combinedMedication`.
 - `AI药理科普` must contain only one medication/device paragraph per reviewed item; reject unrelated medication introductions, generic pharmacology summaries, and paragraphs whose use or execution details belong to another item.
 - Every generated field must avoid external-basis wording such as `按审核处方`, `按审核方案`, `依据经审定方案`, `根据已确认处方`, `已审核用药`, or equivalent phrases; state the supported action directly.

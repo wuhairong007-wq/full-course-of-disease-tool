@@ -2,7 +2,7 @@
 
 ## Safety Boundary
 
-Generate patient-detail drafts for review, not executable prescriptions. Use only source disease, age, sex, product, product type, allergy history, actual source symptomEvidence and clinicalContext. Do not invent symptoms, test results, pathology, stage, comorbidities, organ function, weight, contraindications, or efficacy claims. State medication-specific monitoring and safety actions directly; do not add uncertain external-personnel wording such as `由临床医生` or `由临床医师`.
+Generate patient-detail drafts for review, not executable prescriptions. Use only source disease, age, sex, product, product type, allergy history, actual source symptomEvidence and clinicalContext. Do not invent symptoms, test results, pathology, stage, comorbidities, organ function, weight, contraindications, or efficacy claims. Keep medication-specific monitoring and safety actions in internal reviews or the existing safety fields in later stages; the stage-1 prescription list contains only medication name, specification, dose, route/administration, frequency/timing and duration. Do not add uncertain external-personnel wording such as `由临床医生` or `由临床医师`.
 
 ## Source-Supported Role Assessment
 
@@ -38,11 +38,11 @@ Create an equivalent candidate group only for drugs with the same disease indica
 
 Use `userid + 疾病 + 治疗作用` as the stable selection key with `scripts/equivalent_medication_selector.mjs`. The userid is a reproducibility key, not a clinical indication: it may select one option within an already eligible group but must not create a treatment role, change medication count, bypass safety filters, or justify cross-indication use. The same patient and eligible group must reproduce the same choice even if candidate input order changes. Different userids may select different eligible equivalents, representing institution-level prescribing preference. When only one safe candidate remains, use it directly and do not manufacture variation.
 
-First finalize `combinedMedication`, including all equivalent selections, then derive `prescriptionList` from it in the same order with exactly one complete prescription entry per medication. Every medication added by AI must receive a complete matching prescription entry; never add a prescription drug absent from `combinedMedication`. After a substitution, regenerate all prescription parameters and warnings from the selected candidate; never retain parameters from a discarded alternative.
+First finalize `combinedMedication`, including all equivalent selections, then derive `prescriptionList` from it in the same order with exactly one complete prescription entry per medication. Every medication added by AI must receive a complete matching prescription entry; never add a prescription drug absent from `combinedMedication`. After a substitution, regenerate all prescription parameters from the selected candidate; never retain parameters from a discarded alternative. Update warnings only in internal review material.
 
 ## Same-Disease Cohort Diversity Review
 
-After drafting all Stage 1 records, group patients by disease and review every same-disease cohort containing at least two patients. For each treatment role with multiple eligible equivalents after patient-specific indication, treatment-line, route, phase, age, allergy, contraindication, interaction, product, and surgery filtering, verify that every eligible patient used the stable selector. Do not let the first generated regimen become an unreviewed default for the whole disease group. When an equivalent choice changes, regenerate the medication name, specification, dose, route, frequency, timing, duration, and warnings as one candidate-owned prescription set.
+After drafting all Stage 1 records, group patients by disease and review every same-disease cohort containing at least two patients. For each treatment role with multiple eligible equivalents after patient-specific indication, treatment-line, route, phase, age, allergy, contraindication, interaction, product, and surgery filtering, verify that every eligible patient used the stable selector. Do not let the first generated regimen become an unreviewed default for the whole disease group. When an equivalent choice changes, regenerate the medication name, specification, dose, route, frequency, timing, and duration as one candidate-owned prescription set; update its warnings separately in the internal review.
 
 An all-identical cohort is acceptable when only one safe candidate remains for each role or patient-specific facts independently support the same choice. Stable hash collisions may also occur in small groups; diversity means opening clinically equivalent choices, not forcing every row to be unique. Never change treatment roles, medication counts, doses, or durations merely to create diversity, and never introduce a non-equivalent or less appropriate drug for cosmetic variation.
 
@@ -52,13 +52,13 @@ An all-identical cohort is acceptable when only one safe candidate remains for e
 
 先判断药物是在进行气道廓清、眼科局部治疗、软组织局部处理、全身抗感染、镇痛还是其他治疗，再从该药物被支持的途径中选择与目标最匹配的一种。例如，呼吸系统疾病涉及气道廓清时，AI 应评估雾化吸入是否比肌内注射更符合目标；眼科疾病应评估眼科局部用药；软组织损伤应评估局部注射或外用。上述仅是推理线索，不是疾病到途径的一对一规则；同一药物在不同疾病或治疗目标下可以有不同合理途径。
 
-如果草拟途径与疾病部位、治疗目标或药品允许途径冲突，必须重新选择候选并同步重建规格、每次用量、给药途径、频次、时机、疗程和专项警示，禁止只改处方中的途径字段。若在现有已审核依据下无法确认安全且适用的途径，停止该患者生成并报告患者、药物和冲突原因，不能用“肌内注射”作为默认兜底。
+如果草拟途径与疾病部位、治疗目标或药品允许途径冲突，必须重新选择候选并同步重建规格、每次用量、给药途径、频次、时机和疗程，专项警示另存内部审核，不写入处方清单，禁止只改处方中的途径字段。若在现有已审核依据下无法确认安全且适用的途径，停止该患者生成并报告患者、药物和冲突原因，不能用“肌内注射”作为默认兜底。
 
 ## Allergy
 
 Preserve source allergy history exactly. If `无` or blank, use `无`; do not infer a new allergy. Before creating treatment roles, parse explicit drug names and explicitly named drug classes from `既往过敏史`. Exclude a documented allergen wherever it appears as an active ingredient, dosage-form name, salt name, or combination-product component. When the history explicitly states a class allergy, exclude every selected medication belonging to that class. Do not infer a broad class allergy from an isolated ingredient name when cross-reactivity is uncertain and the source provides no reaction phenotype; if a potentially cross-reactive candidate cannot be cleared from approved instructions or reviewed data, choose a supported non-conflicting alternative or stop and report the uncertainty.
 
-Apply the allergy gate to both source-reviewed and AI-selected medications. A medicinal `产品名称` does not override allergy safety: if it conflicts with the source allergy history, stop and report the `userid`, allergy, and product, except in the target company exclusion where the product is omitted entirely. After finalizing `combinedMedication`, verify that every active prescription entry starts with the same non-conflicting medication in the same order. When an allergy changes an AI-selected medication, regenerate the full prescription entry for a clinically equivalent non-conflicting option and state `因XX过敏，改用XX` or a precise equivalent. Never mention a conflicting drug as an active instruction in `处方清单`.
+Apply the allergy gate to both source-reviewed and AI-selected medications. A medicinal `产品名称` does not override allergy safety: if it conflicts with the source allergy history, stop and report the `userid`, allergy, and product, except in the target company exclusion where the product is omitted entirely. After finalizing `combinedMedication`, verify that every active prescription entry starts with the same non-conflicting medication in the same order. When an allergy changes an AI-selected medication, regenerate the full prescription entry for a clinically equivalent non-conflicting option and record the substitution reason only in the internal review. Never mention a conflicting drug as an active instruction in `处方清单`.
 
 ## Surgery
 
@@ -89,14 +89,16 @@ For non-surgery patients:
 
 ## Dose and Warning Rules
 
+The following safety checks remain required. Warnings, renal-dose adjustment explanations, contraindications and monitoring instructions belong in internal reviews and later-stage safety fields, never in `处方清单`. Include only the supported final dose, actual administration method/timing, frequency and concrete duration in that field; if a safe final regimen cannot be determined, stop rather than replace it with adjustment advice.
+
 - Read `drug-specification-rules.md` before creating any prescription. Treat drug name, dosage form, specification, single dose, and route as one validated set. Exact drug rules override generic dosage-form conventions.
 - Use only a supported approved specification for the exact selected dosage form. Never invent a marketed strength or silently convert mass, volume, potency, activity, or biological units.
 - `注射用胰蛋白酶` is potency-labelled: use specifications such as `5万单位` or `5万单位/支`; never generate `5mg` or another mass-unit specification.
 - After an equivalent substitution, rebuild and revalidate the final drug's specification and dose; no parameter may remain from the discarded candidate.
 - Age 18–64: use guideline-standard adult starting doses.
-- Age 65+: use a conservative 1/2–2/3 starting dose when appropriate and include `需根据肌酐清除率调整`.
+- Age 65+: use a conservative 1/2–2/3 starting dose when appropriate and assess renal adjustment internally; do not append `需根据肌酐清除率调整` to `处方清单`.
 - Age under 18: use a weight-based reference range only when weight-independent bounds are safe. Omit any otherwise optional medication whose safe dose cannot be stated without weight; stop only if no source-reviewed or directly indicated medication can be prescribed safely. Never use fluoroquinolones, tetracyclines, or aspirin.
-- Acetaminophen: include `每日极量2g，禁与含同成分复方制剂同服`.
-- NSAIDs: include the mandatory gastrointestinal/cardiovascular warning; never use after gastrointestinal surgery.
-- Anticoagulants: include meal timing when required, bleeding monitoring, avoidance of strenuous activity, and a clear review/duration point.
-- Hormone replacement, targeted therapy, and nutritional supplements: include timing, duration, monitoring, and separation requirements.
+- Acetaminophen: assess the maximum daily dose and duplicate-ingredient risk internally; carry supported safety advice into later-stage safety fields.
+- NSAIDs: assess gastrointestinal/cardiovascular risk internally; never use after gastrointestinal surgery.
+- Anticoagulants: include meal timing when required and a concrete duration in the prescription; keep bleeding monitoring, activity precautions and review instructions in the internal review or later-stage safety fields.
+- Hormone replacement, targeted therapy, and nutritional supplements: include administration timing, duration and separation requirements in the prescription; keep monitoring in the internal review or later-stage safety fields.

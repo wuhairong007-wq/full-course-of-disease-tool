@@ -26,6 +26,11 @@ for(const diseases of [[],['未知疾病'],[otherDisease,otherDisease],'非数�
  assert.throws(()=>generateFictionalRecords({...options,catalog:invalid,patients:diseasePatients}),/情境疾病范围/);
 }
 const result=generateFictionalRecords(options);
+for(const record of result.records) {
+ for(const drug of Object.values(catalog.drugs)) {
+  assert(!record.prescriptionList.includes(drug.warnings),'处方清单不得追加方案库警示文案');
+ }
+}
 assert.equal(result.records.length,144);
 assert.equal(result.metrics.distinctDrugCombinations,12);
 assert(result.metrics.distinctPrescriptions>=result.metrics.distinctDrugCombinations);
@@ -58,6 +63,10 @@ const restricted=Array.from({length:9},(_,i)=>({...patients[1],userid:`restricte
 assert.throws(()=>generateFictionalRecords({...options,catalog:bottleneck,patients:restricted}),/目标3.*最多可分配2.*缺口1/);
 const labeled=structuredClone(catalog);labeled.planSuffix='模拟康复方案';
 assert.throws(()=>generateFictionalRecords({...options,catalog:labeled,patients:patients.slice(0,10)}),/生成内容不得包含模拟说明/);
+const productLabeled=structuredClone(catalog);productLabeled.planSuffix=catalog.scope.productName+'管理方案';
+assert.throws(()=>generateFictionalRecords({...options,catalog:productLabeled,patients:[patients[1]],company:'山东利赛医药有限公司',minimumMedications:2}),/方案名称不得出现产品名称/);
+const warningSuffix=structuredClone(catalog);warningSuffix.drugs.glucosamine.durationSuffix='；孕妇禁用';
+assert.throws(()=>generateFictionalRecords({...options,catalog:warningSuffix}),/处方清单只允许/);
 // All-sulfonamide and small cohorts must remain covered despite catalog limits.
 const constrained=patients.slice(0,30).map(p=>({...p,allergyHistory:'磺胺类药物过敏',age:70}));
 assert(generateFictionalRecords({...options,patients:constrained}).records.every(r=>!r.combinedMedication.includes('塞来昔布胶囊')));

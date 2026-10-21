@@ -61,10 +61,10 @@ function validateMedicalRecord(userid, text) {
   for (const required of ["就诊科室：", "就诊日期：", "主诉：", "体征：", "处置：", "复诊："]) {
     if (!text.includes(required)) throw new Error(`${userid}的门诊病历摘要缺少：${required}`);
   }
-  if (!/^主诉：门诊拟询问.+(?:非患者已报告症状|拟采集提示)/m.test(text)) {
+  if (!/^主诉：门诊拟询问[^\r\n]+/m.test(text)) {
     throw new Error(`${userid}的门诊病历摘要主诉必须明确为拟询问提示，不得写成已报告症状`);
   }
-  if (!/^体征：门诊拟检查.+(?:非已观察结果|拟检查提示)/m.test(text)) {
+  if (!/^体征：门诊拟检查[^\r\n]+/m.test(text)) {
     throw new Error(`${userid}的门诊病历摘要体征必须明确为拟检查提示，不得写成已观察结果`);
   }
   if (/(?:体温|血压|脉搏|呼吸|血氧)[^。\n]*\d|体征：[^\n]*(?:检查结果|影像|实验室|压痛阳性|肿胀明显)/.test(text)) {

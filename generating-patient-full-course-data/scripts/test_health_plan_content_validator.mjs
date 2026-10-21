@@ -45,4 +45,18 @@ assert.throws(
   /只能介绍患者的每种药品及已有手术或器械/,
 );
 
+for (const phrase of ["辅助对症", "辅助性对症", "非患者已报告症状", "非已观察结果", "并非患者已报告的症状", "并非已观察到的结果", "拟采集提示", "模拟检查提示"]) {
+  for (const field of ["aiManagerIntro", "aiMedicalRecord", "treatmentPlan", "aiPharmacology", "aiHealthPlan", "monitoringIndicators", "lifestyleAvoid", "lifestyleRecommend", "followupPlan", "emergencyReminder"]) {
+    assert.throws(
+      () => validateHealthPlanContent({ userid: "U001", [field]: phrase }),
+      /不得出现辅助对症或事实状态说明文案/,
+    );
+  }
+}
+assert.doesNotThrow(() => validateHealthPlanContent({
+  userid: "U001",
+  aiMedicalRecord: "主诉：门诊拟询问上腹不适与进食影响\n体征：门诊拟检查腹部情况及营养状态",
+  aiHealthPlan: "每日观察有无皮疹，出现异常及时就医。",
+}));
+
 console.log(JSON.stringify({ status: "passed", cases: 10 }));

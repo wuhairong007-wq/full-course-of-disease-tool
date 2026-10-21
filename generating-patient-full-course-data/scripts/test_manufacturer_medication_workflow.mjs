@@ -15,7 +15,7 @@ const skillRoot = root;
 const temp = await fs.mkdtemp(path.join(os.tmpdir(), "manufacturer-medication-"));
 const product = "硫酸氨基葡萄糖胶囊";
 const disease = "原发性膝骨关节炎";
-const prescription = `${product} 规格0.25g/粒；每次用量0.5g；口服，每日3次，餐后；连续30天；观察皮疹`;
+const prescription = `${product} 规格0.25g/粒；每次用量0.5g；口服，每日3次，餐后；连续30天`;
 const headers = ["序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
   "患者标签", "既往过敏史", "产品名称", "产品类型", "关联厂家用药"];
 const sourceRows = [1, 2].map(sequence => [

@@ -8,6 +8,7 @@ import { getDeviceCompanyPolicy, shouldExcludeMedicinalProduct, validateClinical
 import { validateMedicationReviews } from "./medication_review_validator.mjs";
 import { validateFictionalReview, DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS, hasFictionalFilename } from "./fictional_test_mode.mjs";
 import { validateCoursePlanName } from "./course_plan_name_validator.mjs";
+import { validatePrescriptionContent } from "./prescription_content_validator.mjs";
 import { getMedicationColumn, MANUFACTURER_MEDICATION_COLUMN, resolveMedicationMinimum, validateManufacturerMedication } from "./medication_column.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
@@ -98,6 +99,7 @@ function validatePrescriptionMapping(userid, medications, prescriptionList, poli
     }
     validateDrugSpecification({ userid, medication, prescriptionEntry: entry });
     validatePrescriptionDuration(userid, medication, entry);
+    validatePrescriptionContent({ userid, medication, prescriptionEntry: entry });
   }
   if (policy.prescriptionProductMode === "omit" && prescriptionList.includes(policy.consumableName)) {
     throw new Error(`${userid}的处方清单不得出现器械产品名称：${policy.consumableName}`);

@@ -1,3 +1,5 @@
+import { normalizeConsumableName } from "./clinical_medication_validator.mjs";
+
 function normalize(value) {
   return String(value ?? "").trim();
 }
@@ -10,10 +12,11 @@ export function validateCoursePlanName({ userid, disease, coursePlanName, produc
   const plan = normalize(coursePlanName);
   const sourceDisease = normalize(disease);
   const sourceProduct = normalize(productName);
+  const productNames = [sourceProduct, normalizeConsumableName(sourceProduct)].filter(Boolean);
   const id = normalize(userid) || "患者";
 
   if (!plan) throw new Error(`${id}的coursePlanName不能为空`);
-  if (sourceProduct && plan.includes(sourceProduct)) {
+  if (productNames.some((name) => plan.includes(name))) {
     throw new Error(`${id}的方案名称不得出现产品名称`);
   }
   if (sourceDisease && !plan.includes(sourceDisease)) {
