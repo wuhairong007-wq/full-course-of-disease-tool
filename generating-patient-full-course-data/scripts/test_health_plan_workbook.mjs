@@ -104,9 +104,9 @@ assert(outputRows.slice(1).every((row) => row.slice(1, 11).every((value) => Stri
 assert(outputRows.slice(1).every((row) => row[11] === "已生成" && row[12] === "待审核"));
 assert.equal(outputSheet.tables.items.length, 1);
 
-async function assertInvalidRecords(invalidRecords, expectedMessage) {
+async function assertInvalidRecords(invalidRecords, expectedMessage, args = buildArgs) {
   await fs.writeFile(recordsPath, JSON.stringify(invalidRecords, null, 2), "utf8");
-  const invalidResult = run("build_health_plan_workbook.mjs", buildArgs);
+  const invalidResult = run("build_health_plan_workbook.mjs", args);
   assert.notEqual(invalidResult.status, 0);
   assert.match(`${invalidResult.stdout}\n${invalidResult.stderr}`, expectedMessage);
 }
@@ -165,5 +165,39 @@ assert.equal(manufacturerValues.length, 2);
 assert.equal(manufacturerValues[1][0], "U002");
 assert(manufacturerValues[1][3].includes("奥美拉唑肠溶胶囊"));
 assert(!manufacturerValues[1][3].includes("铝碳酸镁咀嚼片"));
+
+const simulatedRecords = records.map((record, index) => ({
+  ...record,
+  aiMedicalRecord: index === 0
+    ? "就诊科室：心血管内科\n就诊日期：2026年8月1日\n主诉：单腔永久心脏起搏器植入术后1周复查，切口轻微不适2天\n体征：T 36.5℃，P 76次/分，BP 128/78mmHg，切口干燥\n处置：围绕心房颤动伴缓慢心室率术后管理评估切口，安排起搏器参数及抗凝复查，核对既有用药。\n复诊：1周后复查切口及起搏器参数，出血或晕厥时立即就医。"
+    : "就诊科室：消化内科\n就诊日期：2026年8月2日\n主诉：反复上腹不适伴反酸2周\n体征：T 36.5℃，P 80次/分，BP 118/76mmHg，腹软，上腹轻压痛，无反跳痛\n处置：围绕慢性胃炎复核抑酸治疗及用药时机，指导规律进餐，评估进一步消化专科检查的必要性。\n复诊：完成14天疗程后复诊，呕血或黑便时立即就医。",
+}));
+const simulatedOutput = path.join(tempDir, "健康管理方案_模拟.xlsx");
+const simulatedArgs = buildArgs.map((value) => value === outputPath ? simulatedOutput : value)
+  .concat(["--mode", "fictional-test"]);
+await fs.writeFile(recordsPath, JSON.stringify(simulatedRecords), "utf8");
+const simulatedResult = run("build_health_plan_workbook.mjs", simulatedArgs);
+assert.equal(simulatedResult.status, 0, `${simulatedResult.stdout}\n${simulatedResult.stderr}`);
+const simulatedSaved = await SpreadsheetFile.importXlsx(await FileBlob.load(simulatedOutput));
+const simulatedSheet = simulatedSaved.worksheets.getItemAt(0);
+const simulatedValues = simulatedSheet.getUsedRange(true).values;
+assert.deepEqual(simulatedValues[0], expectedHeaders);
+assert.deepEqual(simulatedValues.slice(1).map((row) => row[0]), records.map((record) => record.userid));
+assert.deepEqual(simulatedValues.slice(1).map((row) => row[2]), simulatedRecords.map((record) => record.aiMedicalRecord));
+assert(simulatedValues.slice(1).every((row) => row[11] === "已生成" && row[12] === "待审核"));
+assert.equal(simulatedSheet.tables.items.length, 1);
+assert(!/模拟|拟询问|拟检查|非已观察结果|非患者已报告症状/.test(simulatedValues.map((row) => row[2]).join("\n")));
+await assertInvalidRecords(simulatedRecords, /主诉必须明确为拟询问提示/);
+await assertInvalidRecords(simulatedRecords, /文件名必须含/, [...buildArgs, "--mode", "fictional-test"]);
+await assertInvalidRecords(simulatedRecords, /不支持.*模式/, [...buildArgs, "--mode", "unknown"]);
+await assertInvalidRecords(records, /主诉.*典型就诊/, simulatedArgs);
+await assertInvalidRecords([
+  { ...simulatedRecords[0], aiMedicalRecord: simulatedRecords[0].aiMedicalRecord.replace("植入术后1周复查，切口轻微不适2天", "植入术前评估2天，尚未接受手术") },
+  simulatedRecords[1],
+], /术后.*矛盾/, simulatedArgs);
+await assertInvalidRecords([
+  simulatedRecords[0],
+  { ...simulatedRecords[1], aiMedicalRecord: simulatedRecords[1].aiMedicalRecord.replace("处置：围绕慢性胃炎复核", "处置：围绕膝骨关节炎复核") },
+], /处置.*疾病/, simulatedArgs);
 
 console.log(JSON.stringify({ status: "passed", rows: outputRows.length, columns: outputRows[0].length }));

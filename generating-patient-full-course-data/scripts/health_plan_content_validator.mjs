@@ -15,10 +15,75 @@ export function validateNoRedundantSemicolon(text, userid, fieldLabel) {
   }
 }
 
-export function validateMedicalRecordContent(text, userid) {
+export function validateMedicalRecordContent(text, userid, { patient, mode = "real" } = {}) {
   const value = normalize(text);
   if (medicalRecordCoursePlanPattern.test(value)) {
     throw new Error(`${userid || "患者"}的门诊病历摘要不得出现全病程方案：xxxxx文案`);
+  }
+  if (!patient) return;
+  if (!["real", "fictional-test"].includes(mode)) throw new Error(`不支持的门诊病历摘要模式：${mode}`);
+  validateHealthPlanContent({ userid, aiMedicalRecord: value });
+  const labels = ["就诊科室", "就诊日期", "主诉", "体征", "处置", "复诊"];
+  const lines = value.split(/\r?\n/).map(normalize).filter(Boolean);
+  const sections = {};
+  for (const label of labels) {
+    const matches = lines.filter((line) => line.startsWith(`${label}：`));
+    if (!matches.length || !normalize(matches[0].slice(label.length + 1))) {
+      throw new Error(`${userid}的门诊病历摘要缺少：${label}`);
+    }
+    if (matches.length !== 1) throw new Error(`${userid}的门诊病历摘要不得重复${label}，必须使用六段式结构`);
+    sections[label] = normalize(matches[0].slice(label.length + 1));
+  }
+  if (lines.length !== labels.length || lines.some((line, index) => !line.startsWith(`${labels[index]}：`))) {
+    throw new Error(`${userid}的门诊病历摘要必须按就诊科室、就诊日期、主诉、体征、处置、复诊排列为六段`);
+  }
+  if (mode === "real") {
+    if (!/^门诊拟询问\S+/.test(sections.主诉)) {
+      throw new Error(`${userid}的门诊病历摘要主诉必须明确为拟询问提示，不得写成已报告症状`);
+    }
+    if (!/^门诊拟检查\S+/.test(sections.体征)) {
+      throw new Error(`${userid}的门诊病历摘要体征必须明确为拟检查提示，不得写成已观察结果`);
+    }
+    if (/(?:体温|血压|脉搏|心率|呼吸|血氧|\bT|\bP|\bBP)[^。\n]*\d|体征：[^\n]*(?:检查结果|影像|实验室|压痛阳性|肿胀明显)/.test(value)) {
+      throw new Error(`${userid}的门诊病历摘要不得伪造体征或检查结果`);
+    }
+    return;
+  }
+  if (/模拟|虚构|拟询问|拟采集|待采集|待询问/.test(sections.主诉)) {
+    throw new Error(`${userid}的门诊病历摘要主诉必须描述典型就诊信息，不得写成采集提示或模拟说明`);
+  }
+  if (!/[0-9一二三四五六七八九十百两半]+(?:余)?(?:分钟|小时|天|日|周|个月|月|年)/.test(sections.主诉)) {
+    throw new Error(`${userid}的门诊病历摘要主诉必须包含病程或持续时间`);
+  }
+  const findingPattern = /(?:体温|\bT)\s*[：:]?\s*\d+(?:\.\d+)?\s*(?:℃|°C)|(?:血压|\bBP)\s*[：:]?\s*\d+\s*[/／]\s*\d+|(?:心率|脉搏|\bP)\s*[：:]?\s*\d+\s*次|压痛|肿胀|红肿|活动受限|腹软|切口干燥/;
+  if (/模拟|虚构|拟检查|拟采集|待检查/.test(sections.体征) || !findingPattern.test(sections.体征)) {
+    throw new Error(`${userid}的门诊病历摘要体征必须描述具体查体信息，不得写成检查提示或模拟说明`);
+  }
+  const disease = normalize(patient.disease);
+  const coursePlanName = normalize(patient.coursePlanName);
+  if (!disease || !coursePlanName.includes(disease)) {
+    throw new Error(`${userid}的疾病与全病程方案名称不一致，请核对疾病及方案`);
+  }
+  if (!sections.处置.includes(disease)) {
+    throw new Error(`${userid}的门诊病历摘要处置必须关联疾病名称，并与全病程方案阶段一致`);
+  }
+  const bloodPressures = [...sections.体征.matchAll(/(?:血压|\bBP)\s*[：:]?\s*(\d{2,3})\s*[/／]\s*(\d{2,3})\s*(?:mmHg|毫米汞柱)/gi)];
+  if (bloodPressures.some((match) => Number(match[1]) <= Number(match[2]))) {
+    throw new Error(`${userid}的门诊病历摘要血压收缩压与舒张压矛盾`);
+  }
+  if (/高血压/.test(disease)
+    && (!bloodPressures.length || bloodPressures.some((match) => Number(match[1]) < 140 && Number(match[2]) < 90)
+      || /血压正常/.test(sections.体征))) {
+    throw new Error(`${userid}的高血压典型模拟就诊必须包含一致的升高血压读数，不得套用正常血压`);
+  }
+  if (/术后/.test(coursePlanName)) {
+    const unoperated = /尚未(?:接受|进行|实施)?手术|未行手术|未手术|待行手术|术前待手术/.test(value);
+    const surgeryName = normalize(patient.surgeryName);
+    const awaitingReviewedSurgery = surgeryName && ["拟行", "待行"].some((prefix) =>
+      [sections.主诉, sections.处置].some((section) => section.includes(`${prefix}${surgeryName}`)));
+    if (unoperated || awaitingReviewedSurgery || !/术后|切口|伤口/.test(`${sections.主诉}${sections.体征}${sections.处置}`)) {
+      throw new Error(`${userid}的门诊病历摘要与术后方案阶段矛盾`);
+    }
   }
 }
 
@@ -79,7 +144,7 @@ export function validateHealthPlanContent(fields) {
   };
   visit(fields);
   if (values.some((value) => metaCommentaryPattern.test(value.replace(/\s+/g, "")))) {
-    throw new Error(`${fields.userid || "患者"}的健康管理方案不得出现辅助对症或事实状态说明文案，请直接写明用途、拟询问内容或拟检查项目`);
+    throw new Error(`${fields.userid || "患者"}的健康管理方案不得出现辅助对症或事实状态说明文案，请直接写明用途、就诊信息或处理动作`);
   }
   if (values.some((value) => externalBasisPattern.test(value))) {
     throw new Error(`${fields.userid || "患者"}的健康管理方案不得引用审核处方、审核方案或已确认方案，请直接写明药品、用法和处理动作`);

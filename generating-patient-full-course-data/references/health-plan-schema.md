@@ -64,18 +64,28 @@ Do not copy a sample disease into another patient's record. Do not use “保证
 
 ### aiMedicalRecord (output header: `门诊病历摘要`)
 
-Include these six labels on separate lines:
+The stage-2 trigger authorizes typical-consultation simulation for this field by default. Pass `--mode fictional-test` and mark the output filename `模拟` (legacy `虚构测试` also accepted). Do not put `模拟检查提示`, `模拟采集提示`, `非已观察结果`, `非患者已报告症状` or other simulation/factual-status disclaimers inside this field. An explicit real-evidence/no-simulation request selects `--mode real`; it overrides this default. The builder itself defaults to real when no mode is passed.
+
+Include exactly these six nonempty labels in order on separate lines:
 
 - `就诊科室：` — choose a conventional specialty from the disease; this is routing guidance, not a new diagnosis.
 - `就诊日期：` — use the activation date.
-- `主诉：` — when source evidence contains a chief complaint, summarize it faithfully. When none exists, write a prospective interview prompt such as `门诊拟询问受累关节症状及对日常活动的影响`; never assert a symptom as patient-reported. Do not append explanatory parentheses or phrases such as `非患者已报告症状`, `拟采集提示` or `模拟采集提示`.
-- `体征：` — when source evidence contains examination findings, summarize them faithfully. When none exists, write a prospective examination prompt such as `门诊拟检查受累关节活动情况及局部体征`; never invent measurements, examination findings, or test results. Do not append `非已观察结果`, `拟检查提示`, `模拟检查提示` or equivalent commentary.
-- `处置：` — conservatively summarize only the reviewed disease, surgery, medication, prescription, and plan.
+- `主诉：` — describe a typical reason for attendance with duration, matching the disease, anatomical site and course-plan phase. This may be symptoms, postoperative review or disease follow-up; do not force pain or another symptom into an asymptomatic presentation. Do not substitute `门诊拟询问` or an interview checklist in simulated mode.
+- `体征：` — write specific plausible vital signs and clinically relevant local examination findings, using units, such as `T 36.5℃，P 80次/分，BP 156/94mmHg`. Choose findings in context, not a universal normal examination template. Do not substitute `门诊拟检查` in simulated mode.
+- `处置：` — include the exact disease name and professionally interpret the complaint/findings within the reviewed plan phase. Describe relevant assessment, indicated investigations, reviewed treatment execution, postoperative care if applicable, and escalation. Do not introduce active drugs or procedures beyond the reviewed medication/surgery input; simulated findings never authorize new prescriptions or unsupported diagnoses.
 - `复诊：` — state the reviewed follow-up timing and purpose from the prescription/course context, plus earlier review for worsening or urgent symptoms as appropriate.
 
-Do not present prospective prompts as observed or patient-reported facts. Do not add a separate `全病程方案：` label or repeat the full-course plan name in this field. The plan name is used in `aiManagerIntro`; `aiMedicalRecord` must contain only the six required labels and supported facts or clearly prospective prompts.
+Before writing, read `disease` and `coursePlanName` together. The plan must preserve the supplied disease wording; stop when the source disease and plan conflict. Resolve anatomical site, acute/chronic context and preoperative/postoperative phase. Before export, review every patient for all three relationships: disease/plan, complaint/findings and disposition/phase. Consult applicable authoritative clinical guidance when the expected presentation or management is uncertain.
 
-Never invent temperatures, pulse, respiratory rate, blood pressure, oxygen saturation, laboratory values, imaging results, pathological stage, chief complaint, symptoms, examination findings, contraindications, or treatment response.
+- In the requested default typical hypertension scenario, use an elevated reading rather than a normal-BP template; include `BP` or `血压` with a numeric pair and `mmHg` or `毫米汞柱`. The targeted simulation check uses systolic ≥140 and/or diastolic ≥90. This is not a claim that real treated hypertension always has high BP, and must never override an actual source reading. Clinical reference: WHO, *Hypertension*, https://www.who.int/news-room/fact-sheets/detail/hypertension.
+- A postoperative plan must describe postoperative review/care, not claim that the same first operation has not occurred. Do not repeat preoperative symptoms as current postoperative symptoms without a coherent clinical reason.
+- The user's right-upper-quadrant-pain/laparoscopic-surgery example illustrates concrete clinical writing, not a universal regimen. Never copy abdominal surgery, antibiotics, fasting until flatus or suture removal into unrelated disease/procedure cases. Use only applicable perioperative advice.
+- Simulate only consultation detail needed for this field. Do not invent laboratory/imaging confirmation, pathological staging, contraindications, treatment response, complications or completed interventions merely to make the narrative richer. Preserve all real source facts, allergy history, current medications and surgery. Never propagate simulated findings into other fields as genuine evidence.
+- Machine validation catches selected structural and known clinical conflicts; passing it does not establish general clinical correctness. Patient-specific semantic review remains mandatory.
+
+Do not add a separate `全病程方案：` label or repeat the full-course plan name in this field. Use the plan for clinical reasoning; its exact title belongs in `aiManagerIntro`.
+
+In explicit real mode, the fixed reviewed-input workbook contains no actual complaint or examination columns. Use plain prospective `主诉：门诊拟询问受累关节症状及对日常活动的影响` and `体征：门诊拟检查受累关节活动情况及局部体征`, tailored to the disease, without disclaimer parentheses. Do not generate measurements or patient-reported/observed findings in this mode. If the user instead supplies actual consultation evidence, preserve it and arrange an explicit evidence-aware input contract rather than silently inventing or dropping observations.
 
 ### treatmentPlan (output header: `关联产品临床应用方案`)
 
@@ -133,8 +143,8 @@ At least four newline-separated danger signals beginning with `⚠`. Tailor them
 ## Cross-Field Compliance
 
 - Keep `userid` unchanged and cover every input patient exactly once.
-- Use only supplied patient facts; do not fabricate history, comorbidities, tests, staging, contraindications, complications, or outcomes.
-- All ten content fields must avoid `辅助对症`, `辅助性对症`, `非患者已报告症状`, `非已观察结果`, `拟采集提示`, `模拟检查提示` and equivalent meta-commentary. State the supported drug use or action directly, and use plain `门诊拟询问` / `门诊拟检查` when observations are absent. Removing these phrases never authorizes inventing patient symptoms or findings.
+- Use only supplied patient facts outside the explicitly authorized simulated `aiMedicalRecord` scenario. Do not fabricate history, comorbidities, tests, staging, contraindications, complications or outcomes. A simulated summary is not new clinical evidence for the treatment plan, pharmacology, health-management baseline or later stages.
+- All ten content fields must avoid `辅助对症`, `辅助性对症`, `非患者已报告症状`, `非已观察结果`, `拟采集提示`, `模拟检查提示` and equivalent meta-commentary. State the supported drug use or action directly. Simulated medical summaries use concrete typical consultation information; only real-mode summaries use plain `门诊拟询问` / `门诊拟检查` when observations are absent. The simulation filename marker must remain present.
 - `treatmentPlan` and `aiPharmacology` must each contain every medication in `combinedMedication`.
 - `AI药理科普` must contain only one medication/device paragraph per reviewed item; reject unrelated medication introductions, generic pharmacology summaries, and paragraphs whose use or execution details belong to another item.
 - Every generated field must avoid external-basis wording such as `按审核处方`, `按审核方案`, `依据经审定方案`, `根据已确认处方`, `已审核用药`, or equivalent phrases; state the supported action directly.

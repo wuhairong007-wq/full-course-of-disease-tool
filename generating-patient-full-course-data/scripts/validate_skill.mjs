@@ -51,6 +51,7 @@ const requiredFiles = [
   "scripts/health_plan_content_validator.mjs",
   "scripts/test_health_plan_workbook.mjs",
   "scripts/test_health_plan_content_validator.mjs",
+  "scripts/test_health_plan_medical_record.mjs",
   "scripts/extract_medication_tracking_patients.mjs",
   "scripts/build_medication_tracking_workbooks.mjs",
   "scripts/activation_time_windows.mjs",
@@ -293,6 +294,11 @@ assert.doesNotMatch(insightBuilder, /图表说明：/);
 const healthPlanSchema = await fs.readFile(path.join(skillDir, "references", "health-plan-schema.md"), "utf8");
 assert.match(healthPlanSchema, /门诊拟询问受累关节症状及对日常活动的影响/);
 assert.match(healthPlanSchema, /门诊拟检查受累关节活动情况及局部体征/);
+assert.match(healthPlanSchema, /typical-consultation simulation for this field by default/);
+assert.match(healthPlanSchema, /Patient-specific semantic review remains mandatory/);
+assert.match(healthPlanSchema, /simulated summary is not new clinical evidence/);
+assert.match(skill, /--mode fictional-test/);
+assert.match(skill, /_健康管理方案_模拟\.xlsx/);
 assert.match(healthPlanSchema, /Do not use `按审核处方`.*equivalent wording/s);
 assert.match(healthPlanSchema, /only one medication\/device paragraph per reviewed item/);
 assert.match(healthPlanSchema, /Never mention the source file or describe absent input/);

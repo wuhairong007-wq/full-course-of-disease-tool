@@ -27,7 +27,7 @@ Compare it with `metadata.version` in the latest GitHub `SKILL.md`. Reinstall th
 
 ```text
 生成患者明细 依据文件：<Excel路径>
-生成健康管理方案 依据文件：<Excel路径>
+生成健康管理方案 依据文件：<Excel路径> 产品：<当前产品名称>
 生成跟踪提醒和用药清单 依据文件：<Excel路径> 服务周期 YYYY-MM-DD 至 YYYY-MM-DD
 生成不良反应清单 依据文件：<Excel路径> 数量：N
 ```
@@ -44,5 +44,12 @@ this scope. All later stages accept either input heading; ordinary combined
 medication behavior and safety checks remain unchanged.
 
 Health-management exports use `门诊病历摘要` and `关联产品临床应用方案`.
-Medical summaries contain six labeled sections; missing complaint or examination
-facts are expressed as prospective interview or examination prompts.
+Medical summaries contain six labeled sections. By default the stage-2 trigger
+authorizes typical simulated consultation information for this field only:
+complaint with duration, specific findings, and disposition consistent with the
+disease and full-course plan phase. Do not put simulation disclaimers in cells.
+Export with `--mode fictional-test` and a filename containing `模拟`; this does
+not authorize changing reviewed medications or treating simulated findings as
+real clinical evidence. An explicit `模式：真实` or no-simulation request selects
+`--mode real`, retaining prospective interview/examination prompts. Direct builder
+calls without a mode keep the historical real-mode behavior.

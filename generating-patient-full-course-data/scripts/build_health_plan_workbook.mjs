@@ -35,6 +35,11 @@ function parseArgs(argv) {
     if (!args[required]) throw new Error(`缺少参数：--${required}`);
   }
   if (!normalize(args.product)) throw new Error("缺少参数：--product（当前产品名称）");
+  args.mode ??= "real";
+  if (!["real", "fictional-test"].includes(args.mode)) throw new Error(`不支持的门诊病历摘要模式：${args.mode}`);
+  if (args.mode === "fictional-test" && !/模拟|虚构测试/.test(path.basename(args.output))) {
+    throw new Error("含模拟门诊病历摘要的输出文件名必须含“模拟”或“虚构测试”");
+  }
   return args;
 }
 
@@ -54,22 +59,6 @@ function parseTreatmentItemNames(text) {
     const item = line.trim().slice(1).trim();
     return normalize(item.split(/[：:]/)[0]);
   });
-}
-
-function validateMedicalRecord(userid, text) {
-  validateMedicalRecordContent(text, userid);
-  for (const required of ["就诊科室：", "就诊日期：", "主诉：", "体征：", "处置：", "复诊："]) {
-    if (!text.includes(required)) throw new Error(`${userid}的门诊病历摘要缺少：${required}`);
-  }
-  if (!/^主诉：门诊拟询问[^\r\n]+/m.test(text)) {
-    throw new Error(`${userid}的门诊病历摘要主诉必须明确为拟询问提示，不得写成已报告症状`);
-  }
-  if (!/^体征：门诊拟检查[^\r\n]+/m.test(text)) {
-    throw new Error(`${userid}的门诊病历摘要体征必须明确为拟检查提示，不得写成已观察结果`);
-  }
-  if (/(?:体温|血压|脉搏|呼吸|血氧)[^。\n]*\d|体征：[^\n]*(?:检查结果|影像|实验室|压痛阳性|肿胀明显)/.test(text)) {
-    throw new Error(`${userid}的门诊病历摘要不得伪造体征或检查结果`);
-  }
 }
 
 function validateManagerIntro(userid, text, patient, productName) {
@@ -121,7 +110,7 @@ function validateHealthPlan(userid, text) {
   if (!/若|如|一旦|出现|持续|加重|超过|低于|高于|未改善|不缓解/.test(text)) throw new Error(`${userid}的AI健康管理方案必须说明异常或目标未达成时的处理动作`);
 }
 
-function validateRecord(record, patient) {
+function validateRecord(record, patient, mode) {
   const userid = patient.userid;
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error(`${userid}记录必须为对象`);
   if (JSON.stringify(Object.keys(record)) !== JSON.stringify(recordKeys)) throw new Error(`${userid}必须且只能依次包含11个健康方案字段`);
@@ -130,7 +119,7 @@ function validateRecord(record, patient) {
   for (const key of contentKeys) if (!normalize(record[key])) throw new Error(`${userid}的${key}不能为空`);
   validateGeneratedContent({ userid, fields: Object.fromEntries(contentKeys.map((key) => [key, record[key]])) });
   validateManagerIntro(userid, record.aiManagerIntro, patient, patient.productName);
-  validateMedicalRecord(userid, record.aiMedicalRecord);
+  validateMedicalRecordContent(record.aiMedicalRecord, userid, { patient, mode });
   validatePharmacology(userid, record.aiPharmacology, patient);
   validateNoStandaloneSpecialSymbols(userid, record.treatmentPlan, "关联产品临床应用方案");
   validateNoStandaloneSpecialSymbols(userid, record.aiPharmacology, "AI药理科普");
@@ -201,7 +190,7 @@ for (const record of records) {
 const outputRows = patients.map((patient) => {
   const record = recordByUserid.get(patient.userid);
   if (!record) throw new Error(`缺少userid记录：${patient.userid}`);
-  validateRecord(record, patient);
+  validateRecord(record, patient, args.mode);
   return [
     record.userid, record.aiManagerIntro, record.aiMedicalRecord, record.treatmentPlan, record.aiPharmacology,
     record.aiHealthPlan, record.monitoringIndicators, record.lifestyleAvoid, record.lifestyleRecommend,
@@ -241,4 +230,4 @@ if (args.preview) {
   await fs.writeFile(args.preview, new Uint8Array(await preview.arrayBuffer()));
 }
 
-console.log(JSON.stringify({ status: "passed", output: args.output, patients: outputRows.length, fields: outputHeaders.length }));
+console.log(JSON.stringify({ status: "passed", output: args.output, patients: outputRows.length, fields: outputHeaders.length, medicalRecordMode: args.mode }));
