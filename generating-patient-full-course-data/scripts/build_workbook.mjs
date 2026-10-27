@@ -10,6 +10,7 @@ import { validateFictionalReview, DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS, hasFict
 import { validateCoursePlanName } from "./course_plan_name_validator.mjs";
 import { validatePrescriptionContent } from "./prescription_content_validator.mjs";
 import { getMedicationColumn, MANUFACTURER_MEDICATION_COLUMN, resolveMedicationMinimum, validateManufacturerMedication } from "./medication_column.mjs";
+import { createResearchGapDraft } from "./research_gap_draft.mjs";
 
 const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
@@ -30,17 +31,22 @@ function parseArgs(argv) {
     if (!key?.startsWith("--") || value === undefined) throw new Error(`无效参数：${key ?? ""}`);
     args[key.slice(2)] = value;
   }
-  for (const required of ["input", "records", "template", "output", "review"]) {
+  args.mode ??= "real";
+  if (!["real", "fictional-test", "fictional-draft"].includes(args.mode)) throw new Error("--mode必须为real、fictional-test或fictional-draft");
+  for (const required of ["input", "template", "output", "review", ...(args.mode === "fictional-draft" ? [] : ["records"])]) {
     if (!args[required]) throw new Error(`缺少参数：--${required}`);
+  }
+  if (path.resolve(args.input) === path.resolve(args.output) || path.resolve(args.template) === path.resolve(args.output)) throw new Error("输出不得覆盖源文件或模板");
+  if (args.mode === "fictional-draft") {
+    if (args.records !== undefined) throw new Error("草稿不得提交处方记录；生成字段由源表确定");
+    if (args["min-medications"] !== undefined) throw new Error("草稿不适用最少种数；不能将留空字段计为完整处方");
+    if (!hasFictionalFilename(args.output) || !path.basename(args.output).includes("待核实")) throw new Error("草稿文件名必须同时包含“模拟”（或“虚构测试”）和“待核实”");
   }
   if (args["min-medications"] !== undefined && !/^[1-5]$/.test(args["min-medications"])) {
     throw new Error("--min-medications（最少种数）必须为1～5的整数");
   }
-  args.mode ??= "real";
-  if (!["real", "fictional-test"].includes(args.mode)) throw new Error("--mode必须为real或fictional-test");
   args.minimumMedications = Number(args["min-medications"] ?? DEFAULT_FICTIONAL_MINIMUM_MEDICATIONS);
   if (args.mode === "fictional-test" && !hasFictionalFilename(args.output)) throw new Error("虚构输出文件名必须含“模拟”或“虚构测试”");
-  if (path.resolve(args.input) === path.resolve(args.output) || path.resolve(args.template) === path.resolve(args.output)) throw new Error("输出不得覆盖源文件或模板");
   return args;
 }
 
@@ -248,8 +254,16 @@ const manufacturerOnly = medicationColumn === MANUFACTURER_MEDICATION_COLUMN;
 args.minimumMedications = resolveMedicationMinimum(medicationColumn, args["min-medications"]);
 const effectiveCompany = manufacturerOnly ? "" : args.company;
 const actualTemplateHeaders = templateSheet.getUsedRange(true).values[0].map(normalize);
-const records = JSON.parse(await fs.readFile(args.records, "utf8"));
 const reviews = JSON.parse(await fs.readFile(args.review, "utf8"));
+const reviewPatients = sourceRows.slice(1).map(row => Object.fromEntries(sourceHeaders.map((header, index) => [header, row[index]])));
+const isDraft = args.mode === "fictional-draft";
+if (!isDraft && reviews?.kind === "fictional-draft-review/v1") throw new Error("草稿审核不能用于完整处方模式");
+const draft = isDraft ? createResearchGapDraft({
+  review: reviews,
+  patients: reviewPatients,
+  sourceSHA256: crypto.createHash("sha256").update(await fs.readFile(args.input)).digest("hex"),
+}) : null;
+const records = isDraft ? draft.records : JSON.parse(await fs.readFile(args.records, "utf8"));
 
 if (JSON.stringify(actualTemplateHeaders) !== JSON.stringify(templateHeaders)) throw new Error("模板必须使用固定16列表头");
 if (templateWorkbook.worksheets.items.length !== 1) throw new Error("患者明细模板必须仅含一个工作表，不能附加评估工作表");
@@ -283,9 +297,9 @@ const outputRows = sourceRows.slice(1).map((sourceRow) => {
   const productType = normalize(sourceRow[indexes["产品类型"]]);
   const sourceRecord = recordByUserid.get(userid);
   if (!sourceRecord) throw new Error(`缺少userid记录：${userid}`);
-  const filteredRecord = filterCompanyProduct(sourceRecord, { productName, productType }, effectiveCompany);
-  const { record } = applyDeviceCompanyPolicy(filteredRecord, { userid, productName, productType }, effectiveCompany);
-  validateRecord(record, { userid, age, gender, disease, sourceAllergy, productName, productType }, effectiveCompany, medicationColumn);
+  const filteredRecord = isDraft ? sourceRecord : filterCompanyProduct(sourceRecord, { productName, productType }, effectiveCompany);
+  const { record } = isDraft ? { record: filteredRecord } : applyDeviceCompanyPolicy(filteredRecord, { userid, productName, productType }, effectiveCompany);
+  if (!isDraft) validateRecord(record, { userid, age, gender, disease, sourceAllergy, productName, productType }, effectiveCompany, medicationColumn);
   finalRecords.push(record);
   if (record.allergyHistory !== "无") allergyCount += 1;
   return [
@@ -298,9 +312,10 @@ const outputRows = sourceRows.slice(1).map((sourceRow) => {
   ];
 });
 
-const reviewPatients = sourceRows.slice(1).map(row => Object.fromEntries(sourceHeaders.map((header, index) => [header, row[index]])));
 let fictionalMetrics;
-if (args.mode === "fictional-test") {
+if (isDraft) {
+  fictionalMetrics = { unresolvedPatients: draft.unresolvedPatients, clinicalValidation: draft.clinicalValidation };
+} else if (args.mode === "fictional-test") {
   fictionalMetrics = validateFictionalReview({
     review: reviews, records: finalRecords, patients: reviewPatients,
     sourceSHA256: crypto.createHash("sha256").update(await fs.readFile(args.input)).digest("hex"),
@@ -313,7 +328,7 @@ if (args.mode === "fictional-test") {
 
 // Count the final, validated medications after company exclusions, not search candidates.
 // Fail before touching the output path so a previous valid workbook remains intact.
-const belowMinimum = finalRecords.filter(record => record.combinedMedication.length < args.minimumMedications);
+const belowMinimum = isDraft ? [] : finalRecords.filter(record => record.combinedMedication.length < args.minimumMedications);
 if (belowMinimum.length) {
   const affected = belowMinimum.map(record => `${record.userid}（实际${record.combinedMedication.length}种）`).join("；");
   throw new Error(`联合用药未达到最少种数${args.minimumMedications}：${affected}。未生成患者明细，不输出替代评估文件。`);
@@ -358,12 +373,12 @@ if (args.preview) {
 }
 
 console.log(JSON.stringify({
-  status: "passed",
+  status: isDraft ? "draft" : "passed",
   output: args.output,
   patients: outputRows.length,
   fields: templateHeaders.length,
   allergyCount,
-  minimumMedications: args.minimumMedications,
+  minimumMedications: isDraft ? null : args.minimumMedications,
   minimumActualMedications: Math.min(...finalRecords.map(record => record.combinedMedication.length)),
   mode: args.mode,
   medicationColumn,

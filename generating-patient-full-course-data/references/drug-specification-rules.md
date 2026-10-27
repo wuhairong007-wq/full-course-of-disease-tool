@@ -11,7 +11,8 @@ Use an approved product instruction, source-reviewed product data, or an establi
 1. Exact drug-and-dosage-form rule.
 2. Source-reviewed or approved-instruction specification for the selected product.
 3. Dosage-form convention only as a structural fallback; it cannot determine an unknown strength.
-4. If the exact strength or unit cannot be supported, stop for that patient and request an audited specification instead of guessing.
+4. If the exact strength, unit, dose, frequency, route, timing, or duration is not already known, first perform an active web search for the exact product and dosage form. Prioritize current regulator records, official manufacturer instructions, pharmacopoeia or other authoritative primary sources, then applicable guidelines and high-quality clinical references. Read the relevant source content, record the source and the supported parameter, and distinguish exact-product evidence from similarly named or combination products.
+5. If the active search is complete and an exact parameter still cannot be supported, stop prescription generation for the affected patient or batch and report the product, parameter, search scope, sources checked, and unresolved gap. 检索完成后仍无法核实时，报告缺口（含已查来源和已确认项目）；不得要求操作者提供说明书、审核材料、批准文件或其他临床资料；do not infer, convert, or borrow the value from a similar product. Real mode still stops without output. Authorized fictional stage 1 uses an internal `simulation-only` parameter catalog with complete non-empty name, specification, dose, route, frequency, timing and concrete duration when a lawful simulation scenario can be formed; only an explicit `待核实` request or an impossible simulation scenario uses `research-gap-draft.md`.
 
 After any equivalent medication substitution, discard the previous candidate's specification, dose, route, frequency, timing, duration, and warnings. Rebuild and validate the entire prescription entry for the final selected medication.
 
