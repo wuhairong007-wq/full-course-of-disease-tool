@@ -17,9 +17,6 @@ const recordKeys = [
   "monitoringIndicators", "lifestyleAvoid", "lifestyleRecommend", "followupPlan", "emergencyReminder",
 ];
 const contentKeys = recordKeys.slice(1);
-const pharmacologyMechanismPattern = /机制|通过|抑制|阻断|拮抗|激动|促进|调节|补充|替代|中和|结合|减少|增加|稳定|松弛|抗菌|抗炎|镇痛|保护|吸收|分泌|代谢|酶|受体/;
-const pharmacologyExecutionPattern = /服用|使用|给药|外用|涂抹|贴敷|注射|吸入|疗程|间隔|空腹|餐前|餐后|固定时间|按审核处方|遵医嘱/;
-const pharmacologySafetyPattern = /注意|避免|监测|观察|风险|不良反应|咨询|就医|复核|过敏|停用|禁用/;
 const healthPlanNumberedMarker = /^[①②③④⑤⑥]/;
 const managerIntroOpening = "你好！我是您的AI健康管理师，我将为您提供全面专业的疾病管理支持";
 
@@ -85,12 +82,7 @@ function validatePharmacology(userid, text, patient) {
     const line = lines.find((value) => value.startsWith(medication));
     if (!line) throw new Error(`${userid}的AI药理科普必须为${medication}单独分段并以药名开头`);
     validatePharmacologyParagraph(line, patient, medication);
-    if (line.length < medication.length + 45) throw new Error(`${userid}的${medication}药理科普过于简略，必须说明机制、用途、执行要点和风险监测`);
-    if (!pharmacologyMechanismPattern.test(line)) throw new Error(`${userid}的${medication}药理科普缺少通俗药理机制`);
-    if (!pharmacologyExecutionPattern.test(line)) throw new Error(`${userid}的${medication}药理科普缺少用法或疗程执行要点`);
-    if (!pharmacologySafetyPattern.test(line)) throw new Error(`${userid}的${medication}药理科普缺少风险或监测提示`);
   }
-  if (patient.surgeryName && !text.includes(patient.surgeryName)) throw new Error(`${userid}的AI药理科普遗漏已审核手术或器械：${patient.surgeryName}`);
 }
 
 function validateHealthPlan(userid, text) {

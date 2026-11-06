@@ -139,7 +139,8 @@ assert.match(skill, /产品名称.*联合用药.*处方清单/s);
 assert.match(skill, /生成健康管理方案 依据文件：<source\.xlsx>/);
 assert.match(skill, /生成跟踪提醒和用药清单 依据文件：<source\.xlsx>/);
 assert.match(skill, /service-period reminder formulas/);
-assert.match(skill, /Reject generic or unrelated pharmacology/);
+assert.match(skill, /Require exactly one medication-specific pharmacology paragraph/);
+assert.match(skill, /Do not require patient disease names, prescription details or safety paragraphs/);
 assert.match(skill, /Reject external-basis wording in every output field/);
 assert.match(skill, /integer response rates of 45～70/);
 assert.match(skill, /Do not use `按已审核处方执行`.*similar external-basis wording/s);
@@ -303,7 +304,7 @@ assert.match(healthPlanSchema, /simulated summary is not new clinical evidence/)
 assert.match(skill, /--mode fictional-test/);
 assert.match(skill, /_健康管理方案_模拟\.xlsx/);
 assert.match(healthPlanSchema, /Do not use `按审核处方`.*equivalent wording/s);
-assert.match(healthPlanSchema, /only one medication\/device paragraph per reviewed item/);
+assert.match(healthPlanSchema, /exactly one medication-only paragraph per reviewed medication/);
 assert.match(healthPlanSchema, /Never mention the source file or describe absent input/);
 
 const healthPlanContentValidator = await fs.readFile(path.join(skillDir, "scripts", "health_plan_content_validator.mjs"), "utf8");
