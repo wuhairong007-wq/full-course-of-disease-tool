@@ -145,7 +145,7 @@ const sourceWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args
 const templateWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.template));
 const sourceRows = sourceWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
 const sourceHeaders = sourceRows[0].map(normalize);
-const { hasConsumableName } = parsePatientDetailHeaders(sourceHeaders);
+const { hasConsumableName, prescriptionHeader } = parsePatientDetailHeaders(sourceHeaders);
 const medicationColumn = getMedicationColumn(sourceHeaders);
 const templateSheet = templateWorkbook.worksheets.getItemAt(0);
 const templateHeaders = templateSheet.getRange("A1:M1").values[0].map(normalize);
@@ -160,7 +160,7 @@ const patients = patientRows.map((row) => {
     userid,
     disease: normalize(row[indexes["疾病"]]),
     combinedMedication: parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, userid),
-    prescriptionList: normalize(row[indexes["处方清单"]]),
+    prescriptionList: normalize(row[indexes[prescriptionHeader]]),
     surgeryName,
     consumableName,
     isDevice: Boolean(consumableName || surgeryName),

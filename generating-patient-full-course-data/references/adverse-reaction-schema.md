@@ -6,7 +6,9 @@
 
 Accept the reviewed patient workbook in the current 16-column sequence, the legacy 17-column sequence below, or the compatible 18-column sequence with `耗材名称` inserted after `手术名称`:
 
-`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
+`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 患者提供处方 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
+
+For compatibility, the prescription header may be the legacy `处方清单` at the same position. The extractor resolves whichever single name is present; new workbooks use `患者提供处方`, and both names may not appear together.
 
 The trigger must include `数量：N`, where `N` is a positive integer. Accept `患者标签` values `正常 | 无 | 轻度 | 中度 | 高度 | 重度`, normalize legacy `无` to `正常` and `重度` to `高度`, then select patients whose normalized label is `轻度`, `中度` or `高度`; exclude every `正常` (including legacy `无`) patient. Preserve source order and select the first `N` eligible patients, with no repeated patient. Stop when fewer than `N` eligible patients exist instead of duplicating records.
 
@@ -34,7 +36,7 @@ The builder derives the sequence number, disease, occurrence time, severity, and
 - `不良反应症状描述` (`symptomDescription`) must not contain current-product information: full product name, ingredient shorthand or known aliases/brand, manufacturer, model/specification, promotional or mechanism text, or references such as `本品`、`该产品`、`当前产品`、`该药`、`该器械`. Describe manifestations, body site, degree, timing and changes supported by the source. For example, with current product `注射用胰蛋白酶`, replace `使用注射用胰蛋白酶期间出现皮疹和瘙痒` with `出现皮疹和瘙痒` when that preserves the actual evidence. Do not replace the product with a pronoun, assign blame to another medicine, delete symptom facts, or invent a different reaction. This exclusion is specific to the symptom-description column; other fields retain their existing clinical and source-fidelity rules.
 - Before export, `validateAdverseReactionRecord` rejects the normalized product name, common dosage-form shorthand and explicit product references in `symptomDescription`, even when that product is an allowed prescription drug. A rejected record must be rewritten and revalidated; do not weaken the check or remove `--product` to export it. During final review, also check known brand/aliases, manufacturer/model/specification and product-related prose that lexical matching may not recognize. Reopen the workbook and inspect the symptom-description column after export.
 - Keep treatment measures proportional to the supplied `轻度`, `中度` or `高度` label. Include monitoring, pausing activity, contacting the relevant clinical service, medication review, or urgent evaluation only when clinically appropriate.
-- Do not introduce a medication absent from `联合用药` or `处方清单`. Use `由医生评估是否调整现有用药` when the source cannot support a named intervention.
+- Do not introduce a medication absent from `联合用药` or `患者提供处方`. Use `由医生评估是否调整现有用药` when the source cannot support a named intervention.
 - Keep the outcome conservative: describe partial stabilization, ongoing observation, referral, or pending reassessment. Never promise recovery or invent normalized measurements.
 - Use remarks for disease-specific danger signs, medication/allergy cautions, monitoring and follow-up. Do not repeat generic boilerplate unrelated to the patient.
 - Never mention the source file or describe absent input with wording such as `源文件未提供`, `未提供`, `未获取`, `未记录`, or `暂无资料`. Omit unsupported narrative instead; never fabricate a replacement.

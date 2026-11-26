@@ -16,7 +16,7 @@ const { FileBlob, SpreadsheetFile } = await loadArtifactTool();
 
 const templateHeaders = [
   "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
-  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称",
+  "患者标签", "既往过敏史", "联合用药", "患者提供处方", "手术名称", "耗材名称", "全病程方案名称",
 ];
 const baseHeaders = templateHeaders.slice(0, 11);
 const sourceRequiredHeaders = [...baseHeaders, "产品名称", "产品类型"];
@@ -88,50 +88,50 @@ function validatePrescriptionMapping(userid, medications, prescriptionList, poli
   const medicationEntries = hasConsumableEntry ? prescriptionEntries.slice(0, -1) : prescriptionEntries;
   if (hasConsumableEntry) {
     if (prescriptionEntries.at(-1) !== policy.consumableSegment) {
-      throw new Error(`${userid}的处方清单必须以${policy.consumableSegment}结尾`);
+      throw new Error(`${userid}的患者提供处方必须以${policy.consumableSegment}结尾`);
     }
     if (prescriptionEntries.filter((entry) => entry === policy.consumableSegment).length !== 1) {
-      throw new Error(`${userid}的处方清单耗材段不得重复`);
+      throw new Error(`${userid}的患者提供处方耗材段不得重复`);
     }
   }
   if (medicationEntries.length !== medications.length) {
-    throw new Error(`${userid}的处方清单必须与联合用药按顺序一一对应`);
+    throw new Error(`${userid}的患者提供处方必须与联合用药按顺序一一对应`);
   }
   for (let index = 0; index < medications.length; index += 1) {
     const medication = medications[index];
     const entry = medicationEntries[index];
     if (entry !== medication && !entry.startsWith(`${medication} `)) {
-      throw new Error(`${userid}的处方清单必须与联合用药按顺序一一对应`);
+      throw new Error(`${userid}的患者提供处方必须与联合用药按顺序一一对应`);
     }
     validateDrugSpecification({ userid, medication, prescriptionEntry: entry });
     validatePrescriptionDuration(userid, medication, entry);
     validatePrescriptionContent({ userid, medication, prescriptionEntry: entry });
   }
   if (policy.prescriptionProductMode === "omit" && prescriptionList.includes(policy.consumableName)) {
-    throw new Error(`${userid}的处方清单不得出现器械产品名称：${policy.consumableName}`);
+    throw new Error(`${userid}的患者提供处方不得出现器械产品名称：${policy.consumableName}`);
   }
 }
 
 function validatePrescriptionText(userid, prescriptionList) {
   const value = normalize(prescriptionList);
   if (/【\s*术后用药阶段(?:\s*[：:]\s*[^】]*)?\s*】/.test(value)) {
-    throw new Error(`${userid}的处方清单不得出现术后用药阶段文案`);
+    throw new Error(`${userid}的患者提供处方不得出现术后用药阶段文案`);
   }
   if (/注意\s*[：:]/.test(value)) {
-    throw new Error(`${userid}的处方清单不得出现注意：文案`);
+    throw new Error(`${userid}的患者提供处方不得出现注意：文案`);
   }
   if (/【\s*阶梯启用\s*[：:][^】]*】/.test(value)) {
-    throw new Error(`${userid}的处方清单不得出现阶梯启用文案`);
+    throw new Error(`${userid}的患者提供处方不得出现阶梯启用文案`);
   }
 }
 
 function validatePrescriptionDuration(userid, medication, prescriptionEntry) {
   if (/长期(?:治疗|用药|服用|维持)?|持续治疗|维持治疗/.test(prescriptionEntry)) {
-    throw new Error(`${userid}的${medication}处方清单必须使用具体疗程，不得使用长期治疗等模糊时长`);
+    throw new Error(`${userid}的${medication}患者提供处方必须使用具体疗程，不得使用长期治疗等模糊时长`);
   }
   const hasConcreteDuration = /(?:连续|共(?:计)?|疗程(?:为)?|使用|服用|给药)\s*\d+(?:\.\d+)?\s*(?:小时|天|日|周|个月|月)|疗程至术后\s*\d+(?:\.\d+)?\s*(?:天|日|周|个月|月)|(?:单次|一次性)(?:服用|给药|使用|注射)/.test(prescriptionEntry);
   if (!hasConcreteDuration) {
-    throw new Error(`${userid}的${medication}处方清单必须填写可识别的具体疗程`);
+    throw new Error(`${userid}的${medication}患者提供处方必须填写可识别的具体疗程`);
   }
 }
 

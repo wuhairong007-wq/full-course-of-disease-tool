@@ -26,7 +26,7 @@ const workbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input
 const rows = workbook.worksheets.getItemAt(0).getUsedRange(true).values;
 if (!rows.length) throw new Error("审核后患者明细为空");
 const headers = rows[0].map(normalize);
-const { hasConsumableName } = parsePatientDetailHeaders(headers);
+const { hasConsumableName, prescriptionHeader } = parsePatientDetailHeaders(headers);
 const medicationColumn = getMedicationColumn(headers);
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
 
@@ -52,7 +52,7 @@ for (const row of rows.slice(1)) {
     disease,
     allergyHistory: normalize(row[indexes["既往过敏史"]]) || "无",
     combinedMedication,
-    prescriptionList: normalize(row[indexes["处方清单"]]),
+    prescriptionList: normalize(row[indexes[prescriptionHeader]]),
     surgeryName: normalize(row[indexes["手术名称"]]),
     consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
     coursePlanName,

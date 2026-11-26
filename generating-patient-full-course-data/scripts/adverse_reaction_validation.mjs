@@ -27,7 +27,7 @@ export function validateAdverseReactionRecord(record, patient) {
   const allowedMedicationText = `${patient.combinedMedication}\n${patient.prescriptionList}`;
   for (const match of clinicalText.matchAll(medicationNamePattern)) {
     const medicationName = match[1];
-    if (!allowedMedicationText.includes(medicationName)) throw new Error(`${patient.userid}不得引入处方清单之外的药物：${medicationName}`);
+    if (!allowedMedicationText.includes(medicationName)) throw new Error(`${patient.userid}不得引入患者提供处方之外的药物：${medicationName}`);
   }
   if (/(?:完全恢复|完全康复|痊愈|治愈|指标恢复正常|生命体征恢复正常|检查结果正常)/.test(record.outcome)) {
     throw new Error(`${patient.userid}的处理结果不得承诺完全恢复或虚构指标正常`);

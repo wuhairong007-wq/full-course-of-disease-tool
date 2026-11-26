@@ -41,7 +41,7 @@ const workbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input
 const rows = workbook.worksheets.getItemAt(0).getUsedRange(true).values;
 if (!rows.length) throw new Error("审核后患者明细为空");
 const headers = rows[0].map(normalize);
-const { hasConsumableName } = parsePatientDetailHeaders(headers);
+const { hasConsumableName, prescriptionHeader } = parsePatientDetailHeaders(headers);
 const medicationColumn = getMedicationColumn(headers);
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
 
@@ -52,7 +52,7 @@ for (const row of rows.slice(1)) {
   const age = Number(row[indexes["年龄"]]);
   const diseaseName = normalize(row[indexes["疾病"]]);
   const combinedMedication = parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, userid);
-  const prescriptionList = normalize(row[indexes["处方清单"]]);
+  const prescriptionList = normalize(row[indexes[prescriptionHeader]]);
   const activateDate = parseCalendarDate(row[indexes["激活时间"]], `${userid || "未知患者"}的激活时间`);
   const adverseReactionLevel = normalizeAdverseReactionLevel(row[indexes["患者标签"]]);
   if (!userid) throw new Error("审核后患者明细存在空userid");
@@ -61,10 +61,10 @@ for (const row of rows.slice(1)) {
   if (!diseaseName) throw new Error(`${userid}的疾病不能为空`);
   if (!combinedMedication.length) throw new Error(`${userid}的联合用药不能为空`);
   if (new Set(combinedMedication).size !== combinedMedication.length) throw new Error(`${userid}的联合用药存在重复`);
-  if (!prescriptionList) throw new Error(`${userid}的处方清单不能为空`);
+  if (!prescriptionList) throw new Error(`${userid}的患者提供处方不能为空`);
   if (!["正常", "轻度", "中度", "高度"].includes(adverseReactionLevel)) throw new Error(`${userid}的不良反应分层必须为正常、轻度、中度或高度（兼容旧值无、重度）`);
   for (const medication of combinedMedication) {
-    if (!prescriptionList.includes(medication)) throw new Error(`${userid}的处方清单遗漏联合用药：${medication}`);
+    if (!prescriptionList.includes(medication)) throw new Error(`${userid}的患者提供处方遗漏联合用药：${medication}`);
   }
   patients.push({
     userid,

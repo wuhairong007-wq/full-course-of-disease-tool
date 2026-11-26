@@ -6,7 +6,9 @@
 
 Accept the reviewed patient workbook in the current 16-column sequence, the legacy 17-column sequence below, or the compatible 18-column sequence with `耗材名称` inserted after `手术名称`:
 
-`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
+`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 患者提供处方 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
+
+For compatibility, the prescription header may be the legacy `处方清单` at the same position. The extractor resolves whichever single name is present; new workbooks use `患者提供处方`, and both names may not appear together.
 
 For stage 3, keep the reviewed workbook unchanged and treat a missing legacy `耗材名称` as empty. Read adverse-reaction level from `患者标签`; accept `正常 | 无 | 轻度 | 中度 | 高度 | 重度`, and normalize legacy `无` to `正常` and `重度` to `高度` before all downstream logic. Keep `正常` distinct from `轻度`; both map to no manual intervention. Require the trigger to include `服务周期 YYYY-MM-DD 至 YYYY-MM-DD`, parse both dates, and reject missing/invalid periods or a start after the end. Preserve every non-empty row, `userid`, source order, patient name, activation time, gender, age, disease, allergy history, combined medication, prescription list, and consumable context. Reject blank or duplicate `userid`, invalid age or activation date, invalid patient labels, blank disease, blank combined medication, blank prescription list, or reordered headers. Never create a medication item from `耗材名称`. Do not substitute medication duration for the service period.
 

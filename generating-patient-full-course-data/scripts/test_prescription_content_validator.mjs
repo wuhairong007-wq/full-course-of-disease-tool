@@ -9,7 +9,7 @@ for (const warning of [
 ]) {
   assert.throws(() => validatePrescriptionContent({
     userid: "TEST", medication: "牛黄清火丸", prescriptionEntry: `${prescription}；${warning}`,
-  }), /处方清单只允许药品名称、规格、用法用量、服用方式、频次及疗程/);
+  }), /患者提供处方只允许药品名称、规格、用法用量、服用方式、频次及疗程/);
 }
 for (const entry of [
   prescription,

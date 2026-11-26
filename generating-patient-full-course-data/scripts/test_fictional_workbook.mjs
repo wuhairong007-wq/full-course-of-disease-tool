@@ -57,7 +57,7 @@ try {
   const sheet=saved.worksheets.getItemAt(0);
   assert.equal(sheet.tables.items.length,1);
   const values=sheet.getUsedRange(true).values;
-  assert.deepEqual(values[0],[...headers.slice(0,11),'联合用药','处方清单','手术名称','耗材名称','全病程方案名称']);
+  assert.deepEqual(values[0],[...headers.slice(0,11),'联合用药','患者提供处方','手术名称','耗材名称','全病程方案名称']);
   assert.equal(values.length,rows.length+1);
   values.slice(1).forEach((row,i)=>{
     assert.deepEqual(row.slice(0,11),rows[i].slice(0,11).map((value,column)=>column===9?'正常':value));

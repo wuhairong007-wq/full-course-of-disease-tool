@@ -5,6 +5,6 @@ export function validatePrescriptionContent({ userid, medication, prescriptionEn
   const text = String(prescriptionEntry ?? "").trim();
   const description = text.startsWith(medication) ? text.slice(medication.length) : text;
   if (extraDescriptionPattern.test(description)) {
-    throw new Error(`${userid}的${medication}处方清单只允许药品名称、规格、用法用量、服用方式、频次及疗程，不得包含警示、禁忌、监测或其他说明`);
+    throw new Error(`${userid}的${medication}患者提供处方只允许药品名称、规格、用法用量、服用方式、频次及疗程，不得包含警示、禁忌、监测或其他说明`);
   }
 }

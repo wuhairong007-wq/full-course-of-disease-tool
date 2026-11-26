@@ -89,7 +89,7 @@ try {
   const saved = await SpreadsheetFile.importXlsx(await FileBlob.load(output));
   const values = saved.worksheets.getItemAt(0).getUsedRange(true).values;
   assert.deepEqual(values[0], [
-    ...sourceHeaders.slice(0, 11), "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称",
+    ...sourceHeaders.slice(0, 11), "联合用药", "患者提供处方", "手术名称", "耗材名称", "全病程方案名称",
   ]);
   assert.equal(values[1][14], "利赛一次性介入器械");
   assert.doesNotMatch(values[1][12], /利赛一次性介入器械/);

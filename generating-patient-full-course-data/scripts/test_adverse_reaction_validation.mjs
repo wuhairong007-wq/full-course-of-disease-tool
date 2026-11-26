@@ -18,7 +18,7 @@ const valid = {
 };
 
 assert.doesNotThrow(() => validateAdverseReactionRecord(valid, patient));
-assert.throws(() => validateAdverseReactionRecord({ ...valid, treatmentMeasures: "给予阿司匹林肠溶片并继续观察。" }, patient), /不得引入处方清单之外的药物/);
+assert.throws(() => validateAdverseReactionRecord({ ...valid, treatmentMeasures: "给予阿司匹林肠溶片并继续观察。" }, patient), /不得引入患者提供处方之外的药物/);
 assert.throws(() => validateAdverseReactionRecord({ ...valid, outcome: "患者已完全恢复，相关指标恢复正常。" }, patient), /不得承诺完全恢复或虚构指标正常/);
 assert.throws(() => validateAdverseReactionRecord({ ...valid, treatmentMeasures: "立即收入院并完成心脏超声检查。" }, patient), /不得虚构住院或已完成的检查处置/);
 assert.throws(() => validateAdverseReactionRecord({ ...valid, remarks: "如有不适请及时复诊。" }, patient), /必须提示既往过敏史/);

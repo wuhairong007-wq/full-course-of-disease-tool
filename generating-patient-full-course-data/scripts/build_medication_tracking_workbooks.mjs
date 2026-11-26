@@ -160,7 +160,7 @@ function validateRecord(record, patient) {
     if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error(`${userid}的用药项目必须为对象`);
     if (JSON.stringify(Object.keys(item)) !== JSON.stringify(itemKeys)) throw new Error(`${userid}的每个用药项目必须且只能依次包含7个字段`);
     for (const key of itemKeys) if (!normalize(item[key])) throw new Error(`${userid}的${item.drugName || "用药项目"}.${key}不能为空`);
-    if (!patient.prescriptionList.includes(item.drugName)) throw new Error(`${userid}含处方清单之外的药物：${item.drugName}`);
+    if (!patient.prescriptionList.includes(item.drugName)) throw new Error(`${userid}含患者提供处方之外的药物：${item.drugName}`);
     if (latinFrequency.test(item.frequency) || !/^(?:单次|每日[1-9]\d*(?:至[1-9]\d*)?次|每[1-9]\d*小时1次|每周[1-9]\d*次|隔日1次)$/.test(item.frequency)) {
       throw new Error(`${userid}的${item.drugName}用药频率必须使用中文量化格式`);
     }
@@ -238,7 +238,7 @@ for (const output of [args["tracking-output"], args["medication-output"]]) {
 const sourceWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input));
 const sourceRows = sourceWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
 const actualSourceHeaders = sourceRows[0].map(normalize);
-const { hasConsumableName } = parsePatientDetailHeaders(actualSourceHeaders);
+const { hasConsumableName, prescriptionHeader } = parsePatientDetailHeaders(actualSourceHeaders);
 const medicationColumn = getMedicationColumn(actualSourceHeaders);
 const isManufacturerMedication = medicationColumn === MANUFACTURER_MEDICATION_COLUMN;
 const outputTrackingHeaders = trackingHeaders.filter((_, index) => !isManufacturerMedication || index !== 7);
@@ -260,7 +260,7 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   allergyHistory: normalize(row[indexes["既往过敏史"]]) || "无",
   combinedMedication: parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, userid),
   isManufacturerMedication,
-  prescriptionList: normalize(row[indexes["处方清单"]]),
+  prescriptionList: normalize(row[indexes[prescriptionHeader]]),
   consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
   treatmentPlan: "",
   serviceStartDate: serviceStartDate.text,

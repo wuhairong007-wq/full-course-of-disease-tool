@@ -123,7 +123,7 @@ const outputSheet = outputWorkbook.worksheets.getItemAt(0);
 const outputRows = outputSheet.getUsedRange(true).values;
 const expectedHeaders = [
   "序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区",
-  "患者标签", "既往过敏史", "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称",
+  "患者标签", "既往过敏史", "联合用药", "患者提供处方", "手术名称", "耗材名称", "全病程方案名称",
 ];
 
 assert.deepEqual(outputRows[0], expectedHeaders);
@@ -278,7 +278,7 @@ await assertInvalidRecords([
     prescriptionList: `${records[0].prescriptionList} + 奥美拉唑肠溶胶囊 规格20mg/粒，每次20mg，口服，每日1次，早餐前服用，连续7天`,
   },
   ...records.slice(1),
-], /处方清单必须与联合用药按顺序一一对应/);
+], /患者提供处方必须与联合用药按顺序一一对应/);
 
 await assertInvalidRecords([
   {
@@ -286,7 +286,7 @@ await assertInvalidRecords([
     prescriptionList: "对乙酰氨基酚片 规格0.5g/片，每次0.25g，口服，每8小时1次，餐后服用，连续3天 + 华法林钠片 规格2.5mg/片，每次2.5mg，口服，每日1次，晚餐中服用，疗程至术后4周",
   },
   ...records.slice(1),
-], /处方清单必须与联合用药按顺序一一对应/);
+], /患者提供处方必须与联合用药按顺序一一对应/);
 
 await assertInvalidRecords([
   {
@@ -303,7 +303,7 @@ await assertInvalidRecords([
     prescriptionList: records[0].prescriptionList.replace("疗程至术后4周", "疗程至术后4周；注意：术后用药阶段【阶梯启用：阶段一】"),
   },
   ...records.slice(1),
-], /处方清单不得出现术后用药阶段|注意：|阶梯启用/);
+], /患者提供处方不得出现术后用药阶段|注意：|阶梯启用/);
 
 await assertInvalidRecords([
   {
@@ -311,7 +311,7 @@ await assertInvalidRecords([
     prescriptionList: records[0].prescriptionList.replace("连续1个月", "长期治疗"),
   },
   ...records.slice(1),
-], /处方清单.*具体疗程/);
+], /患者提供处方.*具体疗程/);
 
 await assertInvalidRecords([
   { ...records[0], coursePlanName: "心脏起搏器全病程管理方案" },
@@ -321,6 +321,6 @@ await assertInvalidRecords([
 await assertInvalidRecords([
   { ...records[0], prescriptionList: `${records[0].prescriptionList}；孕妇禁用；出现皮疹停药就医` },
   ...records.slice(1),
-], /处方清单只允许药品名称、规格、用法用量、服用方式、频次及疗程/);
+], /患者提供处方只允许药品名称、规格、用法用量、服用方式、频次及疗程/);
 
 console.log(JSON.stringify({ status: "passed", rows: outputRows.length, columns: outputRows[0].length }));

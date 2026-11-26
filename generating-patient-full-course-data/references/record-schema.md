@@ -10,6 +10,8 @@ The first worksheet must contain these exact headers:
 
 `序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 产品名称 | 产品类型`
 
+The generated patient-detail workbook uses `患者提供处方` for the prescription column. Downstream stages also accept the legacy name `处方清单` in the same position and normalize it to the current contract; do not provide both names in one workbook.
+
 Each source row is one patient. Preserve row count, order, values, and `userid` exactly, except the requested display migration of `患者标签` from legacy `无` to `正常` in the new output. Trim only to recognize this legacy value; preserve other label values and do not interpret blank as normal. The source file itself remains unchanged.
 
 Optional source columns: `疼痛程度`, `疼痛评分`, `炎症表现`, `症状`, `症状描述`, `主诉`, `症状持续时间`, `晨僵时间`, `关节肿胀`, `活动受限`. The extractor retains populated values in `symptomEvidence` under their original column names, trimming surrounding whitespace and representing numbers as text. Preserve `0`, `无痛`, `无红肿` and other negative observations. Omit empty values; when no populated optional values exist, omit `symptomEvidence` entirely. Never assign missing values randomly or interpret `患者标签` as a symptom. This extractor-only object is not an additional key in the final six-key records or a new output column.
@@ -47,12 +49,12 @@ Rules:
 - After drafting all records, review every same-disease cohort with at least two patients. When a shared role has multiple eligible equivalents, verify that each eligible patient used the stable selector rather than inheriting one disease-wide default. Regenerate the entire matching prescription entry after any equivalent substitution. Identical regimens are valid when only one safe candidate remains or patient-specific facts leave one supported option; never change roles, medication counts, doses, or durations merely to manufacture diversity.
 - Generate `prescriptionList` only after `combinedMedication` and every equivalent selection are final. Split the prescription at ` + `: the number of prescription entries must equal the medication count, and entry N must begin with medication N's exact name. AI-added medications must never lack their own complete prescription entry. This same-order one-to-one mapping prevents omissions, duplicates, and extra prescription drugs.
 - The allergy-safe medication set controls both output fields: no medication conflicting with `allergyHistory` may appear in `combinedMedication` or as an active prescription item in `prescriptionList`. Re-run the allergy check after every equivalent substitution and before workbook export.
-- 等效替换后，药品名、规格、每次剂量、给药途径、频次、服药时机和疗程必须全部对应最终选中的药物；不得保留被替换药物的规格、剂量、频次或疗程。专项警示随最终药物在内部审核材料中更新，不写入处方清单。
+- 等效替换后，药品名、规格、每次剂量、给药途径、频次、服药时机和疗程必须全部对应最终选中的药物；不得保留被替换药物的规格、剂量、频次或疗程。专项警示随最终药物在内部审核材料中更新，不写入患者提供处方。
 - Before writing each entry, validate the exact drug and dosage form against `drug-specification-rules.md`. The specification must use the drug's supported mass, volume, concentration, potency, activity, or biological-unit convention. Do not guess or silently convert units.
 - `给药途径` must be an AI clinical judgment based on disease site, treatment role, treatment setting, patient safety facts, the drug dosage form（药品剂型）, and the route supported by its instructions（药品说明书）or reviewed product data（已审核药品数据）. Do not hard-code a disease to one route or default every injectable product to `肌内注射`. For airway-clearance goals, assess whether `雾化吸入` is the supported and clinically appropriate route; for ophthalmic or soft-tissue goals, assess the corresponding local route. These are reasoning cues, not unconditional mappings. If route fit is uncertain or conflicts with the dosage form/approved route, stop and report the patient and drug instead of guessing.
 - When route judgment changes, regenerate the entire candidate-owned prescription entry: specification, single dose, route, frequency, timing, duration, and any route-specific administration instructions must all match the final choice. Update warnings in the internal review, not in the prescription text.
 - `注射用胰蛋白酶` must use an activity specification such as `5万单位` or `5万单位/支`; `5mg` and `g`-based specifications are invalid. Tablet and capsule package denominators, when present, must match `/片` and `/粒` respectively.
-- `处方清单`只描述药品名称、规格、用法用量、服用方式、频次及疗程；服药时机、整粒吞服等实际给药操作属于服用方式。不得出现禁忌、慎用、相互作用、不良反应、监测、过敏替换解释、药理功效或停药就医等其他描述。安全评估保留在内部审核材料，后续健康管理方案及用药清单使用各自的风险/注意事项字段；不新增输出列。不得追加 `【术后用药阶段：...】`、`注意：...` 或 `【阶梯启用：...】`。
+- `患者提供处方`只描述药品名称、规格、用法用量、服用方式、频次及疗程；服药时机、整粒吞服等实际给药操作属于服用方式。不得出现禁忌、慎用、相互作用、不良反应、监测、过敏替换解释、药理功效或停药就医等其他描述。安全评估保留在内部审核材料，后续健康管理方案及用药清单使用各自的风险/注意事项字段；不新增输出列。不得追加 `【术后用药阶段：...】`、`注意：...` 或 `【阶梯启用：...】`。
 - 合格示例：`牛黄清火丸 规格3g/丸；每次用量2丸；口服，一日2次，早、晚餐后温水送服；疗程3天`。不得继续追加`孕妇禁用`、`本品含雄黄，不宜久服`或停药就医建议。该示例说明字段边界，不是对任意患者的用药推荐。
 - Each prescription entry uses `药品名 + 规格 + 每次用量 + 给药途径 + 频次 + 服药时机 + 具体疗程`; join complete entries with the exact separator ` + `. Use a concrete duration such as `连续30天`, `连续1个月`, `连续2个月`, `疗程至术后4周`, or `单次服用`; never use `长期治疗`, `长期用药`, `持续治疗`, or another indefinite duration.
 - Do not use `tid`, `bid`, `qd`, `q8h`, `prn`, `ivgtt`, `im`, `po`, `适量`, `酌情`, or `必要时`.
@@ -65,7 +67,7 @@ Rules:
 
 Use the bundled template with these exact 16 columns:
 
-`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 耗材名称 | 全病程方案名称`
+`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 患者提供处方 | 手术名称 | 耗材名称 | 全病程方案名称`
 
 - Columns `A:K`: copied from source except `J` (`患者标签`), where legacy `无` displays as `正常`. `既往过敏史` and all non-label `无` values retain their original meaning.
 - `L`: medications joined with `+`, not JSON text.

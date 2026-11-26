@@ -44,7 +44,7 @@ const workbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.input
 const rows = workbook.worksheets.getItemAt(0).getUsedRange(true).values;
 if (!rows.length) throw new Error("审核后患者明细为空");
 const headers = rows[0].map(normalize);
-const { hasConsumableName } = parsePatientDetailHeaders(headers);
+const { hasConsumableName, prescriptionHeader } = parsePatientDetailHeaders(headers);
 const medicationColumn = getMedicationColumn(headers);
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
 
@@ -65,9 +65,9 @@ for (const row of rows.slice(1)) {
   const activateTime = parseDateTime(row[indexes["激活时间"]], `${userid}的激活时间`);
   if (!["轻度", "中度", "高度"].includes(level)) continue;
   const combinedMedication = parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, userid).join("+");
-  const prescriptionList = normalize(row[indexes["处方清单"]]);
+  const prescriptionList = normalize(row[indexes[prescriptionHeader]]);
   if (!combinedMedication) throw new Error(`${userid}的联合用药不能为空`);
-  if (!prescriptionList) throw new Error(`${userid}的处方清单不能为空`);
+  if (!prescriptionList) throw new Error(`${userid}的患者提供处方不能为空`);
   eligible.push({
     userid,
     patientName: normalize(row[indexes["患者姓名"]]),

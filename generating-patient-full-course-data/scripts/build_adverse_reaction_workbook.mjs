@@ -46,7 +46,7 @@ const sourceWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args
 const templateWorkbook = await SpreadsheetFile.importXlsx(await FileBlob.load(args.template));
 const sourceRows = sourceWorkbook.worksheets.getItemAt(0).getUsedRange(true).values;
 const headers = sourceRows[0].map(normalize);
-const { hasConsumableName } = parsePatientDetailHeaders(headers);
+const { hasConsumableName, prescriptionHeader } = parsePatientDetailHeaders(headers);
 const medicationColumn = getMedicationColumn(headers);
 const indexes = Object.fromEntries(headers.map((header, index) => [header, index]));
 const patients = sourceRows.slice(1).filter((row) => row.some((value) => normalize(value))).map((row) => ({
@@ -56,7 +56,7 @@ const patients = sourceRows.slice(1).filter((row) => row.some((value) => normali
   adverseReactionLevel: normalizeAdverseReactionLevel(row[indexes["患者标签"]]),
   allergyHistory: normalize(row[indexes["既往过敏史"]]) || "无",
   combinedMedication: parseMedicationCell(row[indexes[medicationColumn]], medicationColumn, normalize(row[indexes.userid])).join("+"),
-  prescriptionList: normalize(row[indexes["处方清单"]]),
+  prescriptionList: normalize(row[indexes[prescriptionHeader]]),
   surgeryName: normalize(row[indexes["手术名称"]]),
   consumableName: hasConsumableName ? normalize(row[indexes["耗材名称"]]) : "",
   coursePlanName: normalize(row[indexes["全病程方案名称"]]),

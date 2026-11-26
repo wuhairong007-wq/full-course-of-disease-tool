@@ -15,7 +15,7 @@ const temp = await fs.mkdtemp(path.join(os.tmpdir(), "stage1-output-contract-"))
 const output = path.join(temp, "patients.xlsx");
 const template = path.join(root, "assets/patient-full-course-template.xlsx");
 const sourceHeaders = ["序号", "userid", "患者姓名", "激活时间", "性别", "年龄", "疾病", "手机号码", "地区", "患者标签", "既往过敏史", "产品名称", "产品类型"];
-const expectedHeaders = [...sourceHeaders.slice(0, 11), "联合用药", "处方清单", "手术名称", "耗材名称", "全病程方案名称"];
+const expectedHeaders = [...sourceHeaders.slice(0, 11), "联合用药", "患者提供处方", "手术名称", "耗材名称", "全病程方案名称"];
 const rows = ["U001", "U002"].map((id, i) => [i + 1, id, "测试", "2026-09-01 08:00:00", "男", 60, "原发性高血压", null, null, "无", "无", "缬沙坦胶囊", "用药"]);
 const prescriptions = [
   ["缬沙坦胶囊", "缬沙坦胶囊 规格80mg/粒，每次80mg，口服，每日1次，早餐后服用，连续28天"],

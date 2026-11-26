@@ -6,7 +6,9 @@
 
 The first worksheet may use the current 16-column sequence, the legacy 17-column sequence below, or the compatible 18-column sequence with `耗材名称` inserted after `手术名称`. The legacy 17-column form is normalized to an empty consumable name; trailing historical status columns are ignored.
 
-`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 处方清单 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
+`序号 | userid | 患者姓名 | 激活时间 | 性别 | 年龄 | 疾病 | 手机号码 | 地区 | 患者标签 | 既往过敏史 | 联合用药 | 患者提供处方 | 手术名称 | 全病程方案名称 | AI状态 | 确认状态`
+
+For compatibility, the prescription header may be the legacy `处方清单` at the same position. The extractor resolves whichever single name is present; new workbooks use `患者提供处方`, and both names may not appear together.
 
 Each non-empty data row is one patient. Preserve all `userid` values, their original text representation, count, and order. Reject blank or duplicate `userid`, invalid age, blank disease, blank full-course plan name, blank combined medication, and any header mismatch.
 

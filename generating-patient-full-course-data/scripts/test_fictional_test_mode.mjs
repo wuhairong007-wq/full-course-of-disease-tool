@@ -28,7 +28,7 @@ for(const diseases of [[],['未知疾病'],[otherDisease,otherDisease],'非数�
 const result=generateFictionalRecords(options);
 for(const record of result.records) {
  for(const drug of Object.values(catalog.drugs)) {
-  assert(!record.prescriptionList.includes(drug.warnings),'处方清单不得追加方案库警示文案');
+  assert(!record.prescriptionList.includes(drug.warnings),'患者提供处方不得追加方案库警示文案');
  }
 }
 assert.equal(result.records.length,144);
@@ -66,7 +66,7 @@ assert.throws(()=>generateFictionalRecords({...options,catalog:labeled,patients:
 const productLabeled=structuredClone(catalog);productLabeled.planSuffix=catalog.scope.productName+'管理方案';
 assert.throws(()=>generateFictionalRecords({...options,catalog:productLabeled,patients:[patients[1]],company:'山东利赛医药有限公司',minimumMedications:2}),/方案名称不得出现产品名称/);
 const warningSuffix=structuredClone(catalog);warningSuffix.drugs.glucosamine.durationSuffix='；孕妇禁用';
-assert.throws(()=>generateFictionalRecords({...options,catalog:warningSuffix}),/处方清单只允许/);
+assert.throws(()=>generateFictionalRecords({...options,catalog:warningSuffix}),/患者提供处方只允许/);
 // All-sulfonamide and small cohorts must remain covered despite catalog limits.
 const constrained=patients.slice(0,30).map(p=>({...p,allergyHistory:'磺胺类药物过敏',age:70}));
 assert(generateFictionalRecords({...options,patients:constrained}).records.every(r=>!r.combinedMedication.includes('塞来昔布胶囊')));
